@@ -1,0 +1,304 @@
+/* ==========================================================================
+   Meowrin Factory — ชีต/โมดัล/แถวพับ/toast (แยกจาก style.css ให้ไฟล์ไม่ยาวเกิน)
+   ใช้ tokens จาก :root ใน style.css
+   ========================================================================== */
+
+/* ---------- 10b. Preview button on thumbnail ---------- */
+.tplay{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  padding:0;border:0;background:none;
+  display:block;
+}
+.pbtn{
+  position:absolute;top:50%;left:50%;
+  width:46px;height:46px;margin:-23px 0 0 -23px;
+  display:grid;place-items:center;
+  border-radius:50%;
+  background:rgba(9,9,11,.55);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.25);
+  color:#fff;font-size:16px;padding-left:3px;
+  z-index:1;
+}
+.chip{pointer-events:none}
+
+/* ---------- 10c. Settings: collapsible rows ---------- */
+.fold{
+  background:var(--field);
+  border:1px solid var(--line);
+  border-radius:var(--r-ctl);
+  margin-top:8px;
+}
+.fold summary{
+  display:flex;align-items:center;gap:8px;
+  min-height:48px;padding:0 14px;
+  list-style:none;cursor:pointer;
+  font-size:14.5px;
+}
+.fold summary::-webkit-details-marker{display:none}
+.fold summary span{flex:1;min-width:0}
+.fold summary::after{
+  content:"";flex:none;width:8px;height:8px;
+  border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
+  transform:rotate(45deg);transition:transform .15s ease;margin:-3px 2px 0 0;
+}
+.fold[open]>summary::after{transform:rotate(-135deg);margin-top:3px}
+.fold[open]>summary{border-bottom:1px solid var(--line)}
+.fbody{padding:12px 14px 14px}
+/* หัวข้อใหญ่ในตั้งค่า: การ์ดพับได้ + ป้ายสถานะ */
+.fold.top{background:var(--surface);border-radius:var(--r-card);margin:0 0 12px}
+.fold.top>summary{min-height:56px;padding:0 16px;font:600 16px/1.3 Mitr,"IBM Plex Sans Thai",sans-serif}
+.fold.top>.fbody{padding:12px 16px 16px}
+.fold.top .fold{background:var(--field)}
+.fbody input,.fbody textarea{background-color:var(--bg)}
+.fbody textarea{min-height:240px;font-size:14px}
+.state{
+  font-style:normal;font-size:12px;font-weight:600;
+  padding:1px 9px;border-radius:999px;
+  background:rgba(255,255,255,.07);color:var(--muted);
+}
+.state:empty{display:none}
+.state.ok{background:var(--ok-soft);color:var(--ok)}
+.state.warn{background:var(--warn-soft);color:var(--warn)}
+.state.err{background:var(--err-soft);color:#fda4af}
+.state.idle{background:var(--field);color:var(--muted)}
+.strow{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;padding:7px 0;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.strow:first-child{border-top:0}.strow>span:first-child{flex:1;min-width:110px}.strow small{flex-basis:100%;font-size:12px;color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 10px;border-radius:999px;background:var(--field);color:var(--muted)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.err{background:var(--err-soft);color:#fda4af}
+
+.hint{color:var(--muted);font-size:12.5px;margin:8px 0 12px}
+.panel > .hint{margin-top:4px}
+
+/* ปุ่ม วาง / ลบ เหนือช่องกรอก */
+.ftools{display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px}
+.ftools .btn{min-width:64px}
+.ftools .btn.armed,.fmenu .btn.armed,.vrow .btn.armed{background:var(--err);border-color:var(--err);color:#fff}
+
+/* ---------- 10d. Player sheet ---------- */
+.noscroll{overflow:hidden}
+.modal{
+  position:fixed;inset:0;z-index:40;
+  display:flex;align-items:flex-end;justify-content:center;
+  background:rgba(0,0,0,.72);
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+}
+.sheet{
+  width:100%;max-width:var(--wrap);
+  max-height:100%;
+  display:flex;flex-direction:column;gap:10px;
+  padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+  background:var(--surface);
+  border:1px solid var(--line-strong);border-bottom:0;
+  border-radius:20px 20px 0 0;
+}
+.phead{display:flex;align-items:center;gap:10px}
+.phead b{flex:1;min-width:0;font-weight:500;font-size:14px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pframe{
+  align-self:center;
+  height:min(68vh, 640px);
+  aspect-ratio:9/16;max-width:100%;
+  background:#000;border-radius:12px;overflow:hidden;
+}
+.pframe iframe{width:100%;height:100%;border:0;display:block}
+.pact{display:flex;flex-wrap:wrap;gap:8px}
+.pact .btn{flex:1 1 calc(50% - 4px);min-width:0;padding:0 8px}
+
+
+/* ---------- 10e. Sheet picker (แทน dropdown ของระบบ) ---------- */
+select[data-sheet]{display:none}
+.sel-btn{
+  display:flex;align-items:center;gap:8px;
+  width:100%;min-height:48px;padding:0 14px;
+  border-radius:var(--r-ctl);
+  border:1px solid var(--line);
+  background:var(--field);
+  color:var(--text);
+  font-size:15px;text-align:left;
+}
+.tools .sel-btn{flex:1;min-width:0}
+.sel-main{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sel-tag{
+  flex:none;font-size:11.5px;font-weight:600;
+  padding:1px 9px;border-radius:999px;
+  background:var(--accent-soft);color:var(--accent);
+}
+.sel-btn::after{
+  content:"";flex:none;width:8px;height:8px;
+  border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
+  transform:rotate(45deg);margin:-3px 2px 0 4px;
+}
+.sel-btn:focus-visible{border-color:rgba(57,217,138,.65);box-shadow:0 0 0 3px var(--accent-glow)}
+.sel-title{font-family:Mitr,"IBM Plex Sans Thai",sans-serif;font-weight:500;font-size:16px;flex:1}
+.sel-list{overflow-y:auto;display:flex;flex-direction:column;gap:6px;max-height:68vh;margin:0 -4px;padding:0 4px}
+.sel-group{
+  margin:10px 2px 2px;font-size:12px;font-weight:600;
+  letter-spacing:.02em;color:var(--muted);
+}
+.sel-group:first-child{margin-top:0}
+.opt{
+  display:flex;align-items:center;gap:10px;
+  width:100%;min-height:52px;padding:8px 14px;
+  border-radius:var(--r-ctl);
+  border:1px solid var(--line);
+  background:var(--field);
+  color:var(--text);
+  text-align:left;font-size:15px;
+}
+.opt .on-t{flex:1;min-width:0}
+.opt b{display:block;font-weight:500;overflow-wrap:anywhere}
+.opt small{display:block;color:var(--muted);font-size:12.5px;margin-top:1px}
+.opt.on{
+  border-color:rgba(57,217,138,.6);
+  background:var(--accent-soft);
+}
+.opt.on::after{
+  content:"";flex:none;width:6px;height:11px;
+  border-right:2.5px solid var(--accent);border-bottom:2.5px solid var(--accent);
+  transform:rotate(45deg);margin:-3px 4px 0 0;
+}
+
+/* ---------- 10f. Toast ---------- */
+.toast{
+  position:fixed;left:50%;z-index:50;
+  bottom:calc(150px + env(safe-area-inset-bottom)); /* เหนือแถบล่าง แถบคลิปที่เลือก และปุ่มสร้างเสียง */
+  transform:translate(-50%,12px);
+  max-width:calc(100% - 28px);
+  padding:10px 16px;border-radius:999px;
+  background:var(--ok);color:#04130c;
+  font-size:13.5px;font-weight:600;
+  box-shadow:var(--shadow-float);
+  opacity:0;pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;
+}
+.toast.err{background:var(--err);color:#fff}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion:no-preference){
+  .sheet{animation:sheet-in .22s ease-out}
+  @keyframes sheet-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+}
+
+/* ---------- 10g. ประวัติบท ---------- */
+.hbtn{
+  position:relative;margin-left:auto;flex:none;
+  width:40px;height:40px;padding:0;
+  display:grid;place-items:center;
+  border-radius:12px;
+  border:1px solid var(--line-strong);
+  background:var(--surface);
+  color:var(--text);
+}
+.hbtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.hbtn i{
+  position:absolute;top:-6px;right:-6px;
+  min-width:20px;height:20px;padding:0 5px;
+  border-radius:999px;background:var(--accent);color:var(--accent-ink);
+  font:600 11.5px/20px "IBM Plex Sans Thai",sans-serif;font-style:normal;text-align:center;
+}
+#histClear{font-size:12.5px}
+.hrow{display:flex;flex-wrap:wrap;gap:6px;align-items:stretch}
+.hopen{
+  flex:1;min-width:0;
+  display:flex;align-items:center;gap:12px;
+  padding:8px 12px 8px 8px;
+  border-radius:var(--r-ctl);
+  border:1px solid var(--line);
+  background:var(--field);
+  color:var(--text);text-align:left;
+}
+.hopen img{display:block;width:44px;aspect-ratio:9/16;object-fit:cover;border-radius:8px;background:var(--bg)}
+.hthumb{position:relative;flex:none;padding:0;border:0;border-radius:8px;background:none;cursor:pointer}
+.hthumb i{position:absolute;inset:0;display:grid;place-items:center;border-radius:8px;background:rgba(0,0,0,.28)}
+.hthumb i svg{width:22px;height:22px;fill:#fff;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+.htags{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}.htags .sel-tag.vo{display:inline-flex;align-items:center;gap:4px;background:transparent;box-shadow:inset 0 0 0 1px rgba(57,217,138,.55)}.htags .sel-tag.vo .ic{margin:0;width:12px;height:12px}
+.hmain{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ht{flex:1;min-width:0}
+.ht b{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+  overflow:hidden;font-weight:500;font-size:14px;line-height:1.35;overflow-wrap:anywhere;
+}
+.ht small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.hmore{flex:none;align-self:center;width:32px;height:40px;margin-right:-6px;border:0;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer}.hmore .ic{margin:0}.hrow.open .hmore{color:var(--accent)}
+.hdel{display:none;flex:1 0 100%}.hrow.open .hdel{display:block}
+.vmore{flex:none;margin-left:auto;width:40px;height:40px;border-radius:50%;border:0;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer}.vmore .ic{margin:0}.vcard.open .vmore{color:var(--accent)}
+.vcard .vact{display:none}.vcard.open .vact{display:flex}
+.hdel.armed,#histClear.armed{background:var(--err);border-color:var(--err);color:#fff}
+
+/* ---------- 10h. สร้างเสียง (ElevenLabs) ---------- */
+.tts{margin-top:12px}
+#ttsOut{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+#ttsOut[hidden]{display:none}
+.tplayer{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--surface)}.tplayer .vbar{height:28px;touch-action:none}
+#ttsRaw{flex:none}
+#ttsTakes:empty{display:none}
+
+/* ---------- 10i. การ์ด PART 1 (แท็บบท) ---------- */
+.p1card{display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card)}
+.p1lab{margin:6px 8px 2px;font-size:12px;color:var(--muted)}
+.p1row{display:flex;align-items:center;gap:10px;width:100%;min-height:46px;padding:8px 12px;border:0;border-radius:10px;background:var(--field);color:var(--text);text-align:left;font-size:14.5px;line-height:1.4}
+.p1row span{flex:1;min-width:0;overflow-wrap:anywhere}
+.p1row em{flex:none;font-style:normal;font-size:12px;font-weight:600;color:var(--accent)}
+.p1row.done em{color:var(--ok)}
+.p1raw{padding:8px 10px;white-space:pre-wrap;font-size:14px;color:var(--muted)}
+.s2view{padding:12px 14px;white-space:pre-wrap;font-size:14.5px;line-height:1.6;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card)}
+
+/* ---------- 10j. แท็บเสียง (หน้าตาแบบ ElevenLabs: ข้อความเต็มหน้า ไม่มีกล่อง) ---------- */
+.vclip{display:flex;gap:8px;font-size:12px;color:var(--muted);margin-bottom:10px;white-space:nowrap}
+.vclip span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.vclip span:last-child{flex:none}
+.vvoice{display:flex;align-items:center;gap:12px;margin:0 0 14px}
+.vvoice .vv{flex:1;min-width:0}
+.vvoice b{display:block;font-size:17px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vvoice small{display:block;color:var(--muted);font-size:12.5px}
+.orb{flex:none;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#fff3 0,transparent 45%),linear-gradient(145deg,#d8b4fe,#8b6bc9 60%,#4c3a7a)}
+textarea.vtext,#tab-voice textarea.vtext:focus{display:block;width:100%;min-height:38vh;padding:0;border:0;border-radius:0;background:none;box-shadow:none;resize:none;overflow:hidden;font-size:17.5px;line-height:1.85;color:var(--text)}
+.vcount{margin:10px 0 4px}
+#tab-voice .fold{margin-top:12px}
+/* ปุ่มล่างติดจอจริง (fixed) เหนือแถบแท็บ — อยู่ใน #tab-voice จึงโผล่เฉพาะแท็บเสียง */
+.vbar2{position:fixed;left:0;right:0;bottom:calc(66px + env(safe-area-inset-bottom));z-index:12;max-width:var(--wrap);margin:0 auto;padding:12px 14px 6px;display:flex;gap:10px;background:linear-gradient(transparent,var(--bg) 38%)}
+.vbar2 .btn{flex:1;min-width:0;min-height:54px;border-radius:999px;font-size:16px}
+.vset{flex:none;width:54px;height:54px;padding:0;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line-strong);background:var(--surface);color:var(--text)}
+.vset svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+
+/* ---------- 10k. ชีตตั้งค่าเสียง ---------- */
+.vsbody{overflow-y:auto;max-height:72vh;padding:0 2px 6px}
+.vsbody > label:first-child{margin-top:0}
+.seg2{display:flex;gap:4px;padding:4px;background:var(--field);border:1px solid var(--line);border-radius:14px}
+.seg2 button{flex:1;min-height:42px;padding:0 6px;border:0;border-radius:10px;background:none;color:var(--muted);font-size:14px;font-weight:500}
+.seg2 button.on{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px rgba(57,217,138,.4)}
+.opt small.id{font-family:ui-monospace,monospace;word-break:break-all}
+.vrow{display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap}
+.vrow input{flex:1 1 90px;min-width:0}
+.vrow .vdel{display:none;flex:1 0 100%}.vrow.open .vdel{display:block}
+.rowmore{flex:none;width:36px;height:40px;border:0;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer}.rowmore .ic{margin:0}.vrow.open .rowmore,.fbody.mopen .rowmore{color:var(--accent)}
+.fmenu{display:none;gap:8px;margin-top:10px}.fbody.mopen .fmenu{display:flex}.fmenu .btn{flex:1;min-width:0;padding:0 8px}
+
+.vcard{padding:12px;margin-bottom:10px;border-radius:14px;border:1px solid var(--line);background:var(--surface)}
+.vtop{display:flex;align-items:center;gap:12px}
+.vplay{flex:none;width:44px;height:44px;border-radius:50%;border:0;display:grid;place-items:center;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.vplay svg{width:20px;height:20px;fill:currentColor}.vplay .ipa{display:none}.vplay.on .ip{display:none}.vplay.on .ipa{display:inline}
+.vmeta{min-width:0;flex:1;cursor:pointer}.vmeta b{display:block;font-size:14.5px}.vmeta small{display:block;color:var(--muted);font-size:12.5px;line-height:1.35}
+.vstxt{margin:10px 0 0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vprog{display:flex;align-items:center;gap:10px;margin-top:10px}
+.vbar{flex:1;height:18px;display:flex;align-items:center;cursor:pointer}
+.vbar::before{content:"";position:absolute;left:0;right:0;height:4px;border-radius:2px;background:var(--field)}
+.vbar{position:relative}.vbar i{position:relative;display:block;height:4px;width:0;border-radius:2px;background:var(--accent)}
+.vtime{flex:none;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.vact{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.vact .btn{flex:1 1 44%;text-align:center}
+
+/* ---------- หน้าตั้งค่า: กลุ่มหัวข้อ + การ์ดเครื่องมือ + ปุ่มสำรองด่วน ---------- */
+.sech{margin:22px 4px 8px;font-size:12px;letter-spacing:.04em;color:var(--muted)}
+.sech.first{margin-top:4px}
+.fold.top > summary .state:not(.warn):not(.err){display:none} /* ป้ายสถานะโชว์เฉพาะตอนมีอะไรต้องดูแล (เตือน/ผิดพลาด) */
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tool{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:16px;border:1px solid rgba(57,217,138,.35);background:linear-gradient(160deg,rgba(57,217,138,.12),rgba(57,217,138,.03));color:var(--text);text-decoration:none}
+.tool svg{width:26px;height:26px;fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tool b{font-size:15px}.tool small{color:var(--muted);font-size:12.5px;line-height:1.35}
+.qbk{display:flex;align-items:center;gap:12px;margin-top:10px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface)}
+.qbk > div{flex:1;min-width:0}.qbk b{display:block;font-size:14px}.qbk small{display:block;color:var(--muted);font-size:12.5px;line-height:1.35}
+.qbk .btn{flex:none}
+
+.ver{margin:28px 0 8px;text-align:center;font-size:12px;color:var(--muted)}
