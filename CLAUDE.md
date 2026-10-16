@@ -2,6 +2,8 @@
 
 > **หน้า `check.html` (ตรวจระบบแอพ, v5.7)** ทดสอบความสามารถของ WebView/ปลั๊กอินเนทีฟบนมือถือจริง (เซฟไฟล์ แชร์ กันจอดับ ล็อกอิน Google อ่านอัลบั้มด้วย Media ฯลฯ) ปุ่ม "คัดลอกผลทั้งหมด" ไว้ส่งผลให้ผู้ช่วย · ตัวสร้าง APK ลงปลั๊กอิน Filesystem/Share/KeepAwake/Media และใช้กุญแจเซ็น `tools/debug.keystore` ชุดเดียวทุกครั้ง (ติดตั้งทับได้) · ห้ามตั้งชื่อ class ว่า `.chk` (ชนกับแถวติ๊กใน footage.css)
 
+> **`local.js` (`window.MWLocal`, v5.8)** วิดีโอในมือถือ (เฉพาะในแอพ APK): สแกนทุกอัลบั้มด้วย Media.getAlbums (ตั้ง `androidGalleryMode:true` ใน workflow ให้ขอสิทธิ์ดูรูป/วิดีโอ + ได้ที่อยู่โฟลเดอร์) + Filesystem.readdir → จับคู่ `ชื่อ|ขนาด` กับดัชนี · `footage-find.js` `hasSrc/srcUrl` ลำดับ: ไฟล์ที่เลือกในรอบนี้ > MWLocal > R2 · แผงอยู่ footage.html แท็บตั้งค่า "วิดีโอในมือถือ" · ผลตรวจบนมือถือจริง (v5.7): อ่านโฟลเดอร์ luffy 125 ไฟล์ 8.4 GB ใช้ ~58 ms เล่นจากไฟล์ตรงได้ · **ข้อจำกัดที่ยืนยันแล้วในแอพ**: ดาวน์โหลดแบบ `<a download>` ไม่เซฟ (ต้องใช้ Filesystem), `navigator.share` ไม่มี (ใช้ปลั๊กอิน Share), อ่าน clipboard ไม่ได้ (เขียนได้), ล็อกอิน Google (GIS popup) ไม่ทำงาน · ปลั๊กอิน Media `getMedias` ใช้ไม่ได้บน Android
+
 # Meowrin factory
 
 แอพส่วนตัวของ Han สำหรับช่อง YouTube Shorts วันพีซภาษาไทย "meowrin"

@@ -133,7 +133,18 @@ try {
   const footAlign = await foot.page.evaluate(() => { const c = (e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; }; return Math.abs(c(document.querySelector('header a.back')) - c(document.querySelector('header h1'))); });
   check('หน้าฟุตเทจ: ปุ่มย้อนกลับกับชื่อหน้าอยู่กึ่งกลางแนวเดียวกัน', footAlign < 3, `ต่างกัน ${footAlign.toFixed(1)}px`);
   await foot.page.click('nav button[data-p="set"]'); await foot.page.waitForTimeout(300);
+  check('หน้าฟุตเทจ: วิดีโอในมือถือ ในเบราว์เซอร์ปุ่มปิด บอกว่าใช้ได้เฉพาะแอพ', await foot.page.evaluate(() => document.getElementById('locScan').disabled && /เฉพาะแอพ/.test(document.getElementById('tagLoc').textContent)));
   await finishPage(foot);
+  // วิดีโอในมือถือ (MWLocal) ในแอพ: ปลั๊กอินจำลอง → สแกน ข้ามโฟลเดอร์ที่อ่านไม่ได้ จับคู่ ชื่อ|ขนาด ได้ ไม่ล้น
+  const nat = await context.newPage(); const natErr = [];
+  nat.on('pageerror', (e) => natErr.push(e.message));
+  await nat.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, convertFileSrc: (x) => 'https://localhost/_f' + x.replace('file://', ''),
+    Plugins: { Media: { getAlbums: async () => ({ albums: [{ name: 'a', identifier: '/s/a' }, { name: 'b', identifier: '/s/bad' }] }) },
+      Filesystem: { readdir: async ({ path }) => { if (path === '/s/bad') throw new Error('EACCES'); return { files: [{ name: 'a.mp4', type: 'file', size: 100, uri: 'file:///s/a/a.mp4' }, { name: 'p.jpg', type: 'file', size: 5, uri: 'file:///s/a/p.jpg' }] }; } } } }; });
+  await nat.goto(base + '/footage.html'); await nat.waitForTimeout(1500); await nat.click('nav button[data-p="set"]'); await nat.evaluate(() => { document.getElementById('locFold').open = true; }); await nat.click('#locScan'); await nat.waitForTimeout(800);
+  const loc = await nat.evaluate(() => ({ info: document.getElementById('locInfo').textContent, a: MWLocal.urlOf({ name: 'a.mp4', size: 100 }), miss: MWLocal.urlOf({ name: 'a.mp4', size: 101 }), has: FT.ui.hasSrc({ name: 'a.mp4', size: 100 }), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+  check('หน้าฟุตเทจ (ในแอพ): สแกนวิดีโอในมือถือ จับคู่ชื่อ|ขนาด เล่นจากไฟล์ในเครื่องได้ ข้ามโฟลเดอร์ที่อ่านไม่ได้', /สแกนแล้ว 2 อัลบั้ม · วิดีโอ 1 ไฟล์/.test(loc.info) && loc.a === 'https://localhost/_f/s/a/a.mp4' && loc.miss === null && loc.has === true && !natErr.length && !loc.over, JSON.stringify(loc) + natErr.join(';'));
+  await nat.close();
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

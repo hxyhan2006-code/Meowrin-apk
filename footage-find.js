@@ -248,9 +248,11 @@
   var pf = {}, bySize = {}, bigCur = null; /* pf = ไฟล์ที่เปิดไว้ในรอบนี้ (ชื่อ|ขนาด → File) หายเมื่อปิดหน้า · bySize = สำรองจับด้วยขนาดอย่างเดียว (แอพไฟล์กับแกลเลอรีอาจตั้งชื่อไม่ตรงกัน) false = ขนาดชนกัน · bigCur = ฉากที่เปิดอยู่ */
   function pfKey(name, size){ return name + "|" + size; }
   function fileOf(c){ return c && (pf[pfKey(c.name, c.size)] || bySize[c.size]) || null; }
-  function hasSrc(c){ return !!fileOf(c) || !!(c && c.r2 && FT.cloud && FT.cloud.ready()); } /* ไฟล์ที่เปิดไว้ในเครื่อง หรืออยู่ในคลัง */
+  function localOf(c){ return window.MWLocal ? MWLocal.urlOf(c) : null; } /* ไฟล์ในมือถือที่ MWLocal สแกนเจอ (เฉพาะในแอพ APK) */
+  function hasSrc(c){ return !!fileOf(c) || !!localOf(c) || !!(c && c.r2 && FT.cloud && FT.cloud.ready()); } /* ไฟล์ที่เปิดไว้ในรอบนี้ / ไฟล์ในมือถือ / อยู่ในคลัง */
   async function srcUrl(c){ /* { url, done() } · ในเครื่องก่อน (เร็ว ไม่เปลืองเน็ต) ไม่มีค่อยสตรีมจากคลัง */
     var f = fileOf(c); if(f){ var u = URL.createObjectURL(f); return { url:u, cloud:false, done:function(){ URL.revokeObjectURL(u); } }; }
+    var l = localOf(c); if(l) return { url:l, cloud:false, done:function(){} };
     if(c && c.r2 && FT.cloud && FT.cloud.ready()) return { url:await R2.url(c.r2), cloud:true, done:function(){} };
     return null;
   }
