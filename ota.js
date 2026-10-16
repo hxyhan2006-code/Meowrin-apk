@@ -27,10 +27,11 @@
     var l = await localManifest(), r = await (await getRemote("files.json")).json(); st.remote = r;
     return { update: !!r.id && r.id !== l.id, local:l, remote:r };
   }
-  async function cleanOld(keep){ /* ลบโฟลเดอร์ชุดไฟล์ทั้งหมดใต้ ota/ ยกเว้นชุดที่กำลังใช้ (keep = ชื่อโฟลเดอร์) */
-    var fs = plug("Filesystem");
+  async function cleanOld(keep){ /* ลบโฟลเดอร์ชุดไฟล์ใต้ ota/ ยกเว้นชุดที่กำลังใช้ (keep = ชื่อโฟลเดอร์) และชุดที่ต้องใช้ครั้งต่อไป (wanted) · ไม่รู้ว่าตอนนี้ใช้ชุดไหนอยู่ = ไม่ลบอะไรเลย */
+    var fs = plug("Filesystem"), w = meta().wanted, keepW = w && w.dir ? String(w.dir).split("/").pop() : "";
+    if(PATH && PATH.indexOf("/" + DIR + "/") >= 0 && !keep) return; /* กำลังรันจากชุดดาวน์โหลดแต่ไม่รู้ชื่อโฟลเดอร์ = อย่าเสี่ยงลบชุดที่ใช้อยู่ */
     try{ var list = (await fs.readdir({ path:DIR, directory:"DATA" })).files || [];
-      for(var i = 0; i < list.length; i++){ var n = typeof list[i] === "string" ? list[i] : list[i].name; if(n && n !== keep) await fs.rmdir({ path:DIR + "/" + n, directory:"DATA", recursive:true }).catch(function(){}); } }catch(e){}
+      for(var i = 0; i < list.length; i++){ var n = typeof list[i] === "string" ? list[i] : list[i].name; if(n && n !== keep && n !== keepW) await fs.rmdir({ path:DIR + "/" + n, directory:"DATA", recursive:true }).catch(function(){}); } }catch(e){}
   }
   async function download(onProgress){ /* ดาวน์โหลดชุดไฟล์ใหม่ลงโฟลเดอร์ (ยังไม่สลับ) · ตรวจ sha1 ทุกไฟล์ ผิดแม้ไฟล์เดียว = ยกเลิกทั้งชุด */
     var fs = plug("Filesystem"), r = st.remote || (await check()).remote, m = meta();
@@ -62,7 +63,7 @@
     m.wanted = { id:st.ready.id, dir:st.ready.dir, version:st.ready.version }; m.tries = 0; note(m, "สลับไปชุด " + st.ready.id.slice(0, 8));
     await plug("WebView").setServerBasePath({ path:u });
   }
-  async function curPath(){ try{ return ((await plug("WebView").getServerBasePath()) || {}).path || ""; }catch(e){ return ""; } }
+  async function curPath(){ try{ return String(((await plug("WebView").getServerBasePath()) || {}).path || "").replace(/\/+$/, ""); }catch(e){ return ""; } } /* ตัด / ท้ายออก: เครื่องจริงคืน path ลงท้ายด้วย / ทำให้ชื่อโฟลเดอร์ว่าง แล้ว cleanOld ลบชุดที่กำลังใช้ทิ้ง (หน้า footage.html ขึ้น ERR_HTTP_RESPONSE_CODE_FAILURE) */
   async function early(){ /* เปิดแอพมาแล้วยังเป็นชุดที่ห่อมากับ APK แต่เคยดาวน์โหลดชุดใหม่ไว้ (จำไม่ติด) → สลับให้เอง */
     if(!usable()) return;
     PATH = await curPath(); var m = meta();

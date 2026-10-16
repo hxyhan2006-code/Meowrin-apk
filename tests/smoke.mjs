@@ -240,7 +240,7 @@ try {
       return route.fulfill({ status: 200, body, headers: cors });
     });
     await pg.addInitScript(({ id, bp, state, exists }) => { if (state) localStorage.setItem('ota_state_v1', JSON.stringify(state)); window.__o = { w: [], sb: [], persisted: 0, rm: [] }; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: {
-      WebView: { setServerBasePath: async (o) => { window.__o.sb.push(o.path); }, getServerBasePath: async () => ({ path: bp || '/data/user/0/app/files/ota/' + id }), persistServerBasePath: async () => { window.__o.persisted++; } },
+      WebView: { setServerBasePath: async (o) => { window.__o.sb.push(o.path); }, getServerBasePath: async () => ({ path: bp || '/data/user/0/app/files/ota/' + id + '/' }), persistServerBasePath: async () => { window.__o.persisted++; } },
       Filesystem: { writeFile: async (o) => { window.__o.w.push([o.path, o.data.length]); }, stat: async (o) => { if (!(exists || []).includes(o.path)) throw new Error('nope'); return {}; }, rmdir: async (o) => { window.__o.rm.push(o.path); }, getUri: async (o) => ({ uri: 'file:///data/user/0/app/files/' + o.path }), readdir: async () => ({ files: [{ name: 'oldid' }, { name: id }] }) } } }; }, { id: NEWID, bp: opt.bp, state: opt.state, exists: opt.exists });
     await pg.goto(base + '/index.html'); await pg.waitForFunction(() => window.MWOta && window.MW, null, { timeout: 20000 });
     return pg;
