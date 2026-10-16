@@ -62,6 +62,13 @@ jobs:
       - name: สร้าง APK
         working-directory: wrap/android
         run: ./gradlew assembleDebug --no-daemon
+      - name: ตรวจลายเซ็น/เลขเวอร์ชันของ APK (ไว้ดูว่าทำไมติดตั้งทับไม่ได้)
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APK=wrap/android/app/build/outputs/apk/debug/app-debug.apk
+          "$BT/apksigner" verify --print-certs "$APK" | grep -i "SHA-256\|DN:\|Verifies"
+          "$BT/aapt" dump badging "$APK" | grep -i "^package:\|sdkVersion\|targetSdk"
+          echo "run_number=${{ github.run_number }}"
       - uses: actions/upload-artifact@v4
         with:
           name: meowrin-apk
