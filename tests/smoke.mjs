@@ -165,6 +165,19 @@ try {
   check('บันทึกไฟล์ (ในแอพ): ชื่อเดิมเขียนไม่ได้ → ใช้ชื่อใหม่', /^Documents\/Meowrin\/blocked-\d+\.txt$/.test(nres.r2.path) && nres.w.some((x) => /^Meowrin\/blocked-\d+\.txt$/.test(x[1])), JSON.stringify(nres.r2));
   check('แชร์ไฟล์ (ในแอพ): เขียนลงแคชแล้วเปิดหน้าต่างแชร์', nres.can === true && nres.w.some((x) => x[0] === 'w' && x[2] === 'CACHE') && nres.w.some((x) => x[0] === 'share' && /^file:\/\/\/x\/share\//.test(x[1])) && !nvErr.length, JSON.stringify(nres.w.slice(-3)) + nvErr.join(';'));
   await nv.close();
+  // สำรองเป็นไฟล์แล้วแชร์ (ในแอพ ล็อกอิน Google ไม่ได้): แถบสำรองด่วนของหน้าหลักกับหน้าฟุตเทจ + ซ่อนส่วน Google Drive
+  for (const [pg, qid, nm] of [['index.html', 'gdQuick', 'meowrin-factory-backup.json'], ['footage.html', 'gdFootQuick', 'meowrin-footage-index.json']]) {
+    const bk = await context.newPage(); const bkErr = []; bk.on('pageerror', (e) => bkErr.push(e.message));
+    await bk.addInitScript(() => { window.__w = []; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true,
+      Plugins: { Filesystem: { writeFile: async (o) => { window.__w.push(['w', o.path, o.directory]); }, appendFile: async () => {}, getUri: async (o) => ({ uri: 'file:///x/' + o.path }) },
+        Share: { share: async (o) => { window.__w.push(['share', o.files[0]]); } } } }; });
+    await bk.goto(base + '/' + pg); await bk.waitForFunction(() => window.MWDrive && (window.MW || (window.FT && FT.ui)), null, { timeout: 20000 }); await bk.waitForTimeout(500);
+    await bk.click(pg === 'footage.html' ? 'nav button[data-p="set"]' : 'nav button[data-tab="settings"]');
+    await bk.click('#' + qid); await bk.waitForTimeout(1500);
+    const br = await bk.evaluate(() => ({ w: window.__w, last: (MWStore.get('mw_gdrive_v1', {}) || {}), msg: (document.querySelector('#gdQuickMsg, #gdFootQuickMsg') || {}).textContent || '', hid: !!document.getElementById('gdConnect') && document.getElementById('gdConnect').hidden || (document.getElementById('gdFold') || {}).hidden }));
+    check('สำรองเป็นไฟล์ (ในแอพ ' + pg + '): เขียนแคช ' + nm + ' แล้วเปิดหน้าต่างแชร์ + จดเวลา + ซ่อนส่วน Google Drive', br.w.some((x) => x[0] === 'w' && x[2] === 'CACHE' && x[1].endsWith(nm)) && br.w.some((x) => x[0] === 'share') && (pg === 'index.html' ? br.last.last : br.last.lastFoot) > 0 && br.hid && bkErr.length === 0, JSON.stringify(br).slice(0, 200) + bkErr.join());
+    await bk.close();
+  }
   // แกนส่งออกวิดีโอเร็ว (exporter.js): ต่อ 3 ช็อตจากคลิปจำลอง (vp9 เพราะ Chromium ที่ใช้เทสต์ไม่มี H.264) → ความยาว/ขนาด/ลำดับสีถูก
   const ex = await context.newPage(); const exErr = []; ex.on('pageerror', (e) => exErr.push(e.message));
   await ex.goto(base + '/check.html'); await ex.waitForTimeout(800);

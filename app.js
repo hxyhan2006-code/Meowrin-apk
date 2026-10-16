@@ -411,9 +411,12 @@
     if(!el.value){ toast("ช่องนี้ว่างอยู่แล้ว", true); return; }
     confirmTap(b, b.textContent, function(){ el.value = ""; fireChange(el); toast("ลบแล้ว"); });
   });
-  $("exportBtn").addEventListener("click", async function(){
-    var blob = new Blob([JSON.stringify({ v:3, channels:data.channels, made:data.made, saved:data.saved, history: MW.history ? MW.history.all() : [],
+  function backupBlob(){ /* ไฟล์สำรองข้อมูลแอพ (ปุ่ม โหลดไฟล์สำรอง และปุ่ม สำรองตอนนี้ ในแอพ APK ใช้ไฟล์เดียวกัน · นำเข้าด้วยปุ่ม นำเข้า) */
+    return new Blob([JSON.stringify({ v:3, channels:data.channels, made:data.made, saved:data.saved, history: MW.history ? MW.history.all() : [],
                                     ai: MW.aiCfg ? MW.aiCfg.get() : null, tts: MW.ttsCfg ? MW.ttsCfg.get() : null }, null, 2)], { type:"application/json" });
+  }
+  $("exportBtn").addEventListener("click", async function(){
+    var blob = backupBlob();
     try{ var r = await MWNative.save(blob, "meowrin-factory-backup.json"); if(!r.web) toast("บันทึกแล้วที่ " + r.path); } /* ในแอพเซฟลง Documents/Meowrin (ลิงก์ดาวน์โหลดแบบเว็บไม่เซฟ) */
     catch(err){ toast("บันทึกไฟล์สำรองไม่ได้: " + err.message, true); }
   });
@@ -440,7 +443,7 @@
     r.readAsText(f);
   });
 
-  window.MW = { syncSelects: function(){ sheetSels.forEach(syncSel); }, toast: toast, data: data, persist: persist, esc: esc, showTab: showTab, videoId: videoId, onMadeChange: render,
+  window.MW = { backupBlob: backupBlob, syncSelects: function(){ sheetSels.forEach(syncSel); }, toast: toast, data: data, persist: persist, esc: esc, showTab: showTab, videoId: videoId, onMadeChange: render,
                 setPick: setPick, ago: ago, thumbUrl: thumbUrl, openModal: openModal, closeModal: closeModal, confirmTap: confirmTap, openPlayer: openPlayer };
   /* ป้ายสถานะบนหัวข้อที่พับอยู่ในตั้งค่า (อ่านจาก MWStore เปลี่ยนเมื่อไหร่อัปเดตเอง ไม่ต้องให้แต่ละไฟล์ตั้งเอง) */
   function stTag(id, kind, text){ var el = $(id); if(el){ el.className = "state " + kind; el.textContent = text; } }

@@ -11,6 +11,7 @@
   var $ = function(id){ return document.getElementById(id); };
   var cfg = MWStore.get(KEY, {}) || {}, tok = null, tokExp = 0, tc = null, folders = {}, dirty = false, timer = 0, busy = false, lastErr = "";
   function saveCfg(){ MWStore.set(KEY, cfg); }
+  var NATIVE = !!(window.MWNative && MWNative.isNative()); /* ในแอพ APK ล็อกอิน Google ในหน้าเว็บไม่ได้ → สำรองเป็นไฟล์แล้วแชร์ไปเก็บ (เช่น Drive) แทน · ใช้ cfg.last / cfg.lastFoot เก็บเวลาสำรองล่าสุดเหมือนเดิม */
 
   /* ---------- ล็อกอิน ---------- */
   function gis(){
@@ -169,15 +170,16 @@
   function render(){
     ["gdNow", "gdQuick", "gdRestore", "gdFootNow", "gdFootQuick", "gdFootRestore"].forEach(function(id){ if($(id)) $(id).disabled = busy; });
     if($("gdConnect")) $("gdConnect").innerHTML = ready() ? MWIcon("check") + "เชื่อมแล้ว" : "เชื่อม Google Drive";
-    var d = driveStatus(), kd = ageKind(cfg.last), kf = ageKind(cfg.lastFoot);
+    var d = NATIVE ? { kind:"ok", text:"สำรองเป็นไฟล์", why:"สำรองแล้วแชร์ไปเก็บใน Drive/ที่อื่น" } : driveStatus(), kd = ageKind(cfg.last), kf = ageKind(cfg.lastFoot);
+    if(NATIVE && kd === "idle") kd = "warn";
     tag("gdTag", d.kind === "ok" && kd === "warn" ? "warn" : d.kind, d.kind === "ok" && kd === "warn" ? "สำรองนานแล้ว" : d.text);
     var st = $("gdState");
     if(st) st.innerHTML = row("การเชื่อมต่อ", d.kind, d.text, d.why) + row("ข้อมูลแอพ", kd, ageText(cfg.last))
       + row("ดัชนีฟุตเทจ", kf, ageText(cfg.lastFoot), kf === "idle" ? "สำรองที่หน้าฟุตเทจ" : "");
     var qi = $("gdQuickInfo"); /* แถบสำรองด่วนในหน้าตั้งค่า */
-    if(qi) qi.textContent = !cfg.client ? "ยังไม่ได้ตั้ง Client ID (ตั้งที่ ระบบ > สำรองข้อมูล)" : "ล่าสุด " + ageText(cfg.last) + (ready() ? "" : " · แตะแล้วจะเชื่อมให้ก่อน");
+    if(qi && NATIVE) qi.textContent = "ล่าสุด " + ageText(cfg.last) + " · สำรองแล้วเลือกที่เก็บ (เช่น Drive)"; else if(qi) qi.textContent = !cfg.client ? "ยังไม่ได้ตั้ง Client ID (ตั้งที่ ระบบ > สำรองข้อมูล)" : "ล่าสุด " + ageText(cfg.last) + (ready() ? "" : " · แตะแล้วจะเชื่อมให้ก่อน");
     var fi = $("gdFootQuickInfo"); /* แถบสำรองด่วนของหน้าฟุตเทจ (สำรองดัชนีคลิป) */
-    if(fi) fi.textContent = !cfg.client ? "ยังไม่ได้ตั้ง Client ID (ตั้งที่ตั้งค่า > สำรอง / กู้คืนดัชนี)" : "ดัชนีฟุตเทจ ล่าสุด " + ageText(cfg.lastFoot) + (ready() ? "" : " · แตะแล้วจะเชื่อมให้ก่อน");
+    if(fi && NATIVE) fi.textContent = "ดัชนีฟุตเทจ ล่าสุด " + ageText(cfg.lastFoot) + " · สำรองแล้วเลือกที่เก็บ (เช่น Drive)"; else if(fi) fi.textContent = !cfg.client ? "ยังไม่ได้ตั้ง Client ID (ตั้งที่ตั้งค่า > สำรอง / กู้คืนดัชนี)" : "ดัชนีฟุตเทจ ล่าสุด " + ageText(cfg.lastFoot) + (ready() ? "" : " · แตะแล้วจะเชื่อมให้ก่อน");
     renderStorage(d, kd);
   }
   function renderStorage(d, kd){
@@ -196,7 +198,7 @@
   }
   async function act(btn, fn){
     if(busy) return; busy = true; render(); var t = btn.textContent;
-    try{ if(!ready()) await connect(); show(await fn(), "ok"); lastErr = ""; }catch(err){ lastErr = err.message; show(err.message, "err"); }
+    try{ if(!NATIVE && !ready()) await connect(); show(await fn(), "ok"); lastErr = ""; }catch(err){ lastErr = err.message; show(err.message, "err"); }
     busy = false; render(); btn.textContent = t;
   }
   function bind(id, fn){ var el = $(id); if(el) el.addEventListener("click", function(){ act(el, fn); }); }
@@ -205,14 +207,23 @@
     $("gdClient").addEventListener("change", function(){ cfg.client = this.value.trim(); cfg.ok = false; tok = null; saveCfg(); render(); if(cfg.client) gis().catch(function(){}); });
   }
   if($("gdConnect")) $("gdConnect").addEventListener("click", function(){ connect().then(function(){ show("เชื่อมแล้ว", "ok"); }, function(err){ show(err.message, "err"); }); });
-  var backupNow = async function(){ var r = await backupData(); return "สำรองขึ้น Drive แล้ว (" + r.keys + " รายการ · " + r.kb.toFixed(0) + " KB)"; };
+  var backupNow = NATIVE ? async function(){
+    var blob = MW.backupBlob();
+    await MWNative.share(blob, "meowrin-factory-backup.json", "สำรองข้อมูล Meowrin"); /* ผู้ใช้เลือกที่เก็บเอง (แตะ Drive) · ถ้ายกเลิกจะโยน error ไม่นับว่าสำรองแล้ว */
+    cfg.last = Date.now(); saveCfg(); return "ส่งไฟล์สำรองออกไปแล้ว (" + (blob.size / 1024).toFixed(0) + " KB) ถ้าเลือก Drive ให้รอให้อัปโหลดเสร็จ";
+  } : async function(){ var r = await backupData(); return "สำรองขึ้น Drive แล้ว (" + r.keys + " รายการ · " + r.kb.toFixed(0) + " KB)"; };
   bind("gdNow", backupNow); bind("gdQuick", backupNow);
   bind("gdRestore", async function(){
     if(!await MWDialog.confirm("กู้คืนจาก Drive? ข้อมูลในเครื่อง (ประวัติ/prompt/ช่อง/ตั้งค่า) จะถูกแทนด้วยของบน Drive · API key ไม่ถูกแตะ", { ok:"กู้คืน" })) return "ยกเลิก";
     var r = await restoreData(); setTimeout(function(){ location.reload(); }, 1200);
     return "กู้คืนแล้ว " + r.keys + " รายการ (สำรองเมื่อ " + new Date(r.at).toLocaleString("th-TH") + ") กำลังโหลดใหม่...";
   });
-  var footNow = async function(){
+  var footNow = NATIVE ? async function(){
+    if(!window.FT || !FT.ui) throw new Error("ดัชนียังโหลดไม่เสร็จ");
+    var blob = new Blob([JSON.stringify({ v:1, at:Date.now(), clips:FT.ui.lib() })], { type:"application/json" }); /* ไฟล์เดียวกับปุ่ม โหลดไฟล์สำรอง (กู้คืนด้วยปุ่ม กู้คืน) */
+    await MWNative.share(blob, "meowrin-footage-index.json", "สำรองดัชนีฟุตเทจ");
+    cfg.lastFoot = Date.now(); saveCfg(); return "ส่งไฟล์ดัชนีออกไปแล้ว (" + (blob.size / 1048576).toFixed(1) + " MB) ถ้าเลือก Drive ให้รอให้อัปโหลดเสร็จ";
+  } : async function(){
     if(!window.FT || !FT.ui) throw new Error("ดัชนียังโหลดไม่เสร็จ");
     var r = await backupFootage(FT.ui.lib(), function(d, n, p){ show("กำลังอัปดัชนี " + d + "/" + n + " คลิป · " + whyText(p)); });
     return r.up ? "อัปขึ้น Drive แล้ว " + r.up + " คลิป (" + whyText(r) + ") · บน Drive มีทั้งหมด " + r.total : "บน Drive ครบแล้ว ไม่มีคลิปใหม่";
@@ -224,7 +235,13 @@
     if(r.n) setTimeout(function(){ location.reload(); }, 1200);
     return r.n ? "ดึงกลับมาแล้ว " + r.n + " คลิป กำลังโหลดใหม่..." : "ในเครื่องมีครบแล้ว";
   });
-  if(cfg.client) gis().catch(function(){}); /* โหลดไว้ก่อน ให้ปุ่มเชื่อมเปิดป๊อปอัปได้ทันทีตอนแตะ */
+  if(NATIVE){ /* ซ่อนส่วน Google Drive ที่ใช้ในแอพไม่ได้ + ปรับชื่อแถบสำรองด่วน */
+    ["gdFold", "gdConnect", "gdDriveHint"].forEach(function(id){ if($(id)) $(id).hidden = true; });
+    if($("gdFootNow")) $("gdFootNow").parentNode.hidden = true;
+    document.querySelectorAll("h2").forEach(function(h){ if(h.textContent.trim() === "Google Drive") h.hidden = true; });
+    document.querySelectorAll(".qbk b").forEach(function(b){ b.textContent = b.textContent.replace(/ขึ้น (Google )?Drive/, "เป็นไฟล์"); });
+  }
+  if(cfg.client && !NATIVE) gis().catch(function(){}); /* โหลดไว้ก่อน ให้ปุ่มเชื่อมเปิดป๊อปอัปได้ทันทีตอนแตะ */
   render(); setInterval(render, 60000);
 
   window.MWDrive = {
