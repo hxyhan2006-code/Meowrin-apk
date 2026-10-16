@@ -145,6 +145,25 @@ try {
   const loc = await nat.evaluate(() => ({ info: document.getElementById('locInfo').textContent, a: MWLocal.urlOf({ name: 'a.mp4', size: 100 }), miss: MWLocal.urlOf({ name: 'a.mp4', size: 101 }), has: FT.ui.hasSrc({ name: 'a.mp4', size: 100 }), over: document.documentElement.scrollWidth > innerWidth + 1 }));
   check('หน้าฟุตเทจ (ในแอพ): สแกนวิดีโอในมือถือ จับคู่ชื่อ|ขนาด เล่นจากไฟล์ในเครื่องได้ ข้ามโฟลเดอร์ที่อ่านไม่ได้', /สแกนแล้ว 2 อัลบั้ม · วิดีโอ 1 ไฟล์/.test(loc.info) && loc.a === 'https://localhost/_f/s/a/a.mp4' && loc.miss === null && loc.has === true && !natErr.length && !loc.over, JSON.stringify(loc) + natErr.join(';'));
   await nat.close();
+  // บันทึก/แชร์ไฟล์ (MWNative): เบราว์เซอร์ = ดาวน์โหลดตามเดิม · ในแอพ = Filesystem เขียนทีละก้อน (ชื่อเดิมเขียนไม่ได้ → ชื่อใหม่) + Share ผ่านแคช
+  const [webDl] = await Promise.all([foot.page.waitForEvent('download', { timeout: 5000 }).catch(() => null), foot.page.evaluate(() => MWNative.save(new Blob(['x']), 't.txt'))]);
+  check('บันทึกไฟล์ (เบราว์เซอร์): ดาวน์โหลดตามเดิม', !!webDl && webDl.suggestedFilename() === 't.txt');
+  const nv = await context.newPage(); const nvErr = [];
+  nv.on('pageerror', (e) => nvErr.push(e.message));
+  await nv.addInitScript(() => { window.__w = []; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true,
+    Plugins: { Filesystem: { writeFile: async (o) => { if (o.path === 'Meowrin/blocked.txt') throw new Error('EACCES'); window.__w.push(['w', o.path, o.directory, o.data.length]); },
+      appendFile: async (o) => { window.__w.push(['a', o.path, o.directory, o.data.length]); }, getUri: async (o) => ({ uri: 'file:///x/' + o.path }) },
+      Share: { share: async (o) => { window.__w.push(['share', o.files[0]]); } } } }; });
+  await nv.goto(base + '/footage.html'); await nv.waitForTimeout(1200);
+  const nres = await nv.evaluate(async () => {
+    const r1 = await MWNative.save(new Blob([new Uint8Array(13 * 1024 * 1024)]), 'big.mp4'), r2 = await MWNative.save(new Blob(['x']), 'blocked.txt');
+    await MWNative.share(new Blob(['y']), 'a.mp3', 'a'); return { r1, r2, w: window.__w, can: MWNative.canShare() };
+  });
+  const big = nres.w.filter((x) => x[1] === 'Meowrin/big.mp4');
+  check('บันทึกไฟล์ (ในแอพ): เขียน 13 MB เป็น 3 ก้อน ลง Documents/Meowrin ต่อกันได้', big.length === 3 && big[0][0] === 'w' && big[1][0] === 'a' && big[2][0] === 'a' && big[0][3] === 8388608 && big[0][2] === 'DOCUMENTS' && nres.r1.path === 'Documents/Meowrin/big.mp4', JSON.stringify(nres.r1) + JSON.stringify(big));
+  check('บันทึกไฟล์ (ในแอพ): ชื่อเดิมเขียนไม่ได้ → ใช้ชื่อใหม่', /^Documents\/Meowrin\/blocked-\d+\.txt$/.test(nres.r2.path) && nres.w.some((x) => /^Meowrin\/blocked-\d+\.txt$/.test(x[1])), JSON.stringify(nres.r2));
+  check('แชร์ไฟล์ (ในแอพ): เขียนลงแคชแล้วเปิดหน้าต่างแชร์', nres.can === true && nres.w.some((x) => x[0] === 'w' && x[2] === 'CACHE') && nres.w.some((x) => x[0] === 'share' && /^file:\/\/\/x\/share\//.test(x[1])) && !nvErr.length, JSON.stringify(nres.w.slice(-3)) + nvErr.join(';'));
+  await nv.close();
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

@@ -171,7 +171,7 @@
     var c = MW.data.picked, t = c ? String(c.title).replace(/[^A-Za-z0-9ก-๙]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40) : "";
     return "meowrin_" + (c ? c.id : Date.now()) + (t ? "_" + t : "") + (n > 1 ? "_take" + n : "") + ".mp3";
   }
-  function canShareFile(f){ try{ return !!(navigator.canShare && navigator.canShare({ files:[f] })); }catch(e){ return false; } }
+  function canShareFile(f){ return window.MWNative ? MWNative.canShare(f) : false; } /* ในแอพ = ปลั๊กอิน Share · เบราว์เซอร์ = navigator.canShare */
   function dropEntry(x){ x.takes.forEach(function(k){ URL.revokeObjectURL(k.url); if(k.rawUrl) URL.revokeObjectURL(k.rawUrl); }); }
 
   function note(text, err){ $("ttsMsg").innerHTML = text ? '<div class="msg'+(err?' err':'')+'">'+MW.esc(text)+'</div>' : ""; }
@@ -349,10 +349,17 @@
   $("ttsBtn").addEventListener("click", generate);
   $("ttsMore").addEventListener("click", generate); /* อีกเทค = เสียเครดิตอีกรอบ */
 
+  ["ttsDl", "ttsRaw"].forEach(function(id){ /* ในแอพ ลิงก์ดาวน์โหลดแบบเว็บไม่เซฟ → เซฟลง Documents/Meowrin ด้วยปลั๊กอิน (เบราว์เซอร์ทำตามเดิม) */
+    $(id).addEventListener("click", function(e){
+      if(!(window.MWNative && MWNative.isNative())) return; e.preventDefault();
+      var a = found(scriptText()); if(!a) return; var k = a.takes[a.sel], raw = id === "ttsRaw";
+      MWNative.save(raw ? k.raw : k.blob, raw ? k.name.replace(/\.mp3$/, "_full.mp3") : k.name).then(function(r){ note("บันทึกแล้วที่ " + r.path); }, function(err){ note("บันทึกไม่ได้: " + err.message, true); });
+    });
+  });
   $("ttsShare").addEventListener("click", async function(){
     var a = found(scriptText()); if(!a) return;
     var k = a.takes[a.sel];
-    try{ await navigator.share({ files:[new File([k.blob], k.name, { type:"audio/mpeg" })], title:k.name }); }
+    try{ await MWNative.share(k.blob, k.name, k.name); }
     catch(err){ if(err && err.name !== "AbortError") note("แชร์ไม่ได้ ใช้ปุ่มดาวน์โหลดแทน (" + err.message + ")", true); }
   });
 

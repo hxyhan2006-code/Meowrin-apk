@@ -4,6 +4,8 @@
 
 > **`local.js` (`window.MWLocal`, v5.8)** วิดีโอในมือถือ (เฉพาะในแอพ APK): สแกนทุกอัลบั้มด้วย Media.getAlbums (ตั้ง `androidGalleryMode:true` ใน workflow ให้ขอสิทธิ์ดูรูป/วิดีโอ + ได้ที่อยู่โฟลเดอร์) + Filesystem.readdir → จับคู่ `ชื่อ|ขนาด` กับดัชนี · `footage-find.js` `hasSrc/srcUrl` ลำดับ: ไฟล์ที่เลือกในรอบนี้ > MWLocal > R2 · แผงอยู่ footage.html แท็บตั้งค่า "วิดีโอในมือถือ" · ผลตรวจบนมือถือจริง (v5.7): อ่านโฟลเดอร์ luffy 125 ไฟล์ 8.4 GB ใช้ ~58 ms เล่นจากไฟล์ตรงได้ · **ข้อจำกัดที่ยืนยันแล้วในแอพ**: ดาวน์โหลดแบบ `<a download>` ไม่เซฟ (ต้องใช้ Filesystem), `navigator.share` ไม่มี (ใช้ปลั๊กอิน Share), อ่าน clipboard ไม่ได้ (เขียนได้), ล็อกอิน Google (GIS popup) ไม่ทำงาน · ปลั๊กอิน Media `getMedias` ใช้ไม่ได้บน Android
 
+> **`native.js` (`window.MWNative`, v5.9)** บันทึก/แชร์ไฟล์ทั้งในแอพและเบราว์เซอร์: `save(blob,name)` ในแอพเขียนลง `Documents/Meowrin/` ด้วย Filesystem ทีละก้อน 6 MB (ชื่อเดิมเขียนทับไม่ได้ = ใช้ชื่อ+เวลา) · `share(blob,name)` เขียนลงแคชแล้วเปิด Share · ใช้ที่: ไฟล์สำรอง (app.js), ไฟล์สำรองดัชนี (footage.js), คลิปตัดต่อ (footage-stitch.js), เสียง mp3 บันทึก/แชร์ (tts.js), คลิปซับ/srt (sub/app.js) · **ห้ามใช้ `<a download>`/`navigator.share` ตรงๆ ในโค้ดใหม่ ใช้ MWNative** · workflow ตั้ง `android.adjustMarginsForEdgeToEdge:"force"` กันหัวหน้าชนแถบสถานะ (ยังไม่ยืนยันบนมือถือจริง)
+
 # Meowrin factory
 
 แอพส่วนตัวของ Han สำหรับช่อง YouTube Shorts วันพีซภาษาไทย "meowrin"

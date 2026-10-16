@@ -124,7 +124,12 @@
       return { file:file, marks:r.marks, rate:r.rate, mime:mime };
     }finally{ ac.close(); await U.wake(false); }
   }
-  function save(file, say){ /* บันทึกลงโฟลเดอร์ Download แล้วเปิดจากแกลเลอรีใน CapCut */
+  function save(file, say){ /* บันทึกลงโฟลเดอร์ Download แล้วเปิดจากแกลเลอรีใน CapCut · ในแอพ APK เซฟลง Documents/Meowrin ด้วยปลั๊กอิน */
+    if(window.MWNative && MWNative.isNative()){
+      MWNative.save(file, file.name).then(function(r){ say("บันทึกแล้วที่ " + r.path + " (" + r.name + ") เปิด CapCut → โปรเจกต์ใหม่ → เลือกไฟล์จากโฟลเดอร์ Documents/Meowrin ได้เลย"); },
+                                          function(e){ say("บันทึกไม่ได้: " + e.message); });
+      return;
+    }
     var url = URL.createObjectURL(file), a = document.createElement("a"); a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
     say("สั่งบันทึกแล้ว ดูในโฟลเดอร์ Download ของมือถือ (" + file.name + ") แล้วเปิด CapCut → โปรเจกต์ใหม่ → เลือกจากแกลเลอรี", "ok");

@@ -34,6 +34,7 @@ jobs:
             "appName": "Meowrin",
             "webDir": "www",
             "backgroundColor": "#0b0e0d",
+            "android": { "adjustMarginsForEdgeToEdge": "force" },
             "plugins": { "Media": { "androidGalleryMode": true } }
           }
           JSON

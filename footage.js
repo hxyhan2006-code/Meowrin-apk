@@ -403,10 +403,10 @@
   function mergeDupes(d){ return FT.store.putMany(d.fix).then(function(){ return FT.store.del(d.del); }).then(refreshLib); }
 
   /* ---------- สำรอง/กู้คืน ---------- */
-  $("exportBtn").addEventListener("click", function(){
+  $("exportBtn").addEventListener("click", async function(){
     var blob = new Blob([JSON.stringify({ v:1, at:Date.now(), clips:lib })], { type:"application/json" });
-    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "meowrin-footage-index.json"; a.click();
-    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+    try{ var r = await MWNative.save(blob, "meowrin-footage-index.json"); if(!r.web) await MWDialog.alert("บันทึกแล้วที่ " + r.path); }
+    catch(err){ await MWDialog.alert("บันทึกไฟล์ดัชนีไม่ได้: " + err.message); }
   });
   $("importBtn").addEventListener("click", function(){ $("importFile").click(); });
   $("importFile").addEventListener("change", function(){

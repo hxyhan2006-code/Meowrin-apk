@@ -411,11 +411,11 @@
     if(!el.value){ toast("ช่องนี้ว่างอยู่แล้ว", true); return; }
     confirmTap(b, b.textContent, function(){ el.value = ""; fireChange(el); toast("ลบแล้ว"); });
   });
-  $("exportBtn").addEventListener("click", function(){
+  $("exportBtn").addEventListener("click", async function(){
     var blob = new Blob([JSON.stringify({ v:3, channels:data.channels, made:data.made, saved:data.saved, history: MW.history ? MW.history.all() : [],
                                     ai: MW.aiCfg ? MW.aiCfg.get() : null, tts: MW.ttsCfg ? MW.ttsCfg.get() : null }, null, 2)], { type:"application/json" });
-    var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "meowrin-factory-backup.json"; a.click();
-    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    try{ var r = await MWNative.save(blob, "meowrin-factory-backup.json"); if(!r.web) toast("บันทึกแล้วที่ " + r.path); } /* ในแอพเซฟลง Documents/Meowrin (ลิงก์ดาวน์โหลดแบบเว็บไม่เซฟ) */
+    catch(err){ toast("บันทึกไฟล์สำรองไม่ได้: " + err.message, true); }
   });
   $("importBtn").addEventListener("click", function(){ $("importFile").click(); });
   $("importFile").addEventListener("change", function(){
