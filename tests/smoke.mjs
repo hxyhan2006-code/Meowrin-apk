@@ -165,6 +165,22 @@ try {
   check('บันทึกไฟล์ (ในแอพ): ชื่อเดิมเขียนไม่ได้ → ใช้ชื่อใหม่', /^Documents\/Meowrin\/blocked-\d+\.txt$/.test(nres.r2.path) && nres.w.some((x) => /^Meowrin\/blocked-\d+\.txt$/.test(x[1])), JSON.stringify(nres.r2));
   check('แชร์ไฟล์ (ในแอพ): เขียนลงแคชแล้วเปิดหน้าต่างแชร์', nres.can === true && nres.w.some((x) => x[0] === 'w' && x[2] === 'CACHE') && nres.w.some((x) => x[0] === 'share' && /^file:\/\/\/x\/share\//.test(x[1])) && !nvErr.length, JSON.stringify(nres.w.slice(-3)) + nvErr.join(';'));
   await nv.close();
+  // แกนส่งออกวิดีโอเร็ว (exporter.js): ต่อ 3 ช็อตจากคลิปจำลอง (vp9 เพราะ Chromium ที่ใช้เทสต์ไม่มี H.264) → ความยาว/ขนาด/ลำดับสีถูก
+  const ex = await context.newPage(); const exErr = []; ex.on('pageerror', (e) => exErr.push(e.message));
+  await ex.goto(base + '/check.html'); await ex.waitForTimeout(800);
+  const exr = await ex.evaluate(async () => {
+    const mb = await import('/sub/vendor/mediabunny.min.js');
+    async function make(color){ const c = document.createElement('canvas'); c.width = 320; c.height = 180; const x = c.getContext('2d'); const o = new mb.Output({ format: new mb.Mp4OutputFormat(), target: new mb.BufferTarget() }); const v = new mb.CanvasSource(c, { codec: 'vp9', quality: mb.QUALITY_HIGH }); o.addVideoTrack(v); await o.start(); for (let i = 0; i < 60; i++){ x.fillStyle = color; x.fillRect(0, 0, 320, 180); await v.add(i / 30, 1 / 30); } await o.finalize(); return URL.createObjectURL(new Blob([o.target.buffer], { type: 'video/mp4' })); }
+    const red = await make('#c00'), blue = await make('#00c'), { exportShots } = await import('/exporter.js');
+    const res = await exportShots({ shots: [{ url: red, start: 0.2, dur: 0.5 }, { url: blue, start: 0.5, dur: 0.5 }, { url: red, start: 0, dur: 0.5 }], width: 270, height: 480, fps: 30, codec: 'vp9' });
+    const v = document.createElement('video'); v.muted = true; v.src = URL.createObjectURL(res.blob); document.body.appendChild(v);
+    await new Promise((ok, no) => { v.onloadedmetadata = ok; v.onerror = () => no(new Error('เล่นไม่ได้')); });
+    const cv = document.createElement('canvas'); cv.width = 27; cv.height = 48; const cx = cv.getContext('2d');
+    const at = async (t) => { v.currentTime = t; await new Promise((ok) => v.onseeked = ok); cx.drawImage(v, 0, 0, 27, 48); const d = cx.getImageData(1, 1, 1, 1).data; return d[0] > d[2] ? 'R' : 'B'; };
+    return { frames: res.frames, dur: v.duration, size: res.blob.size, w: v.videoWidth, h: v.videoHeight, order: (await at(0.2)) + (await at(0.7)) + (await at(1.2)) };
+  });
+  check('ส่งออกวิดีโอเร็ว (exporter.js): ต่อ 3 ช็อต ยาว 1.5 วิ ขนาด 270x480 ลำดับสีถูก', exr.frames === 45 && Math.abs(exr.dur - 1.5) < 0.1 && exr.w === 270 && exr.h === 480 && exr.order === 'RBR' && exr.size > 500 && !exErr.length, JSON.stringify(exr) + exErr.join(';'));
+  await ex.close();
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

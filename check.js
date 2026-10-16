@@ -246,6 +246,28 @@
     return probeFolder(fs, p, abs);
   } });
 
+  TESTS.push({ id:"export", title:"ส่งออกวิดีโอเร็ว: ต่อคลิปจริงจากมือถือ (ตัวตัดต่อใหม่) — สำคัญ", desc:"ดึงวิดีโอ 5 ไฟล์แรกในอัลบั้มที่พิมพ์ (เช่น Pictures/Gallery/owner/luffy) มาต่อกัน ช็อตละ 3 วิ ส่งออกเป็น mp4 แนวตั้ง 1080x1920 แล้ววัดความเร็ว · ยังไม่มีเสียง · ไฟล์เซฟที่ Documents/Meowrin/meowrin-export-test.mp4 เปิดดูว่าภาพต่อกันถูกไหม", input:"expPath", ph:"Pictures/Gallery/owner/luffy", run: async function(){
+    var fs = plug("Filesystem"); if(!fs) return bad("ไม่มีปลั๊กอิน Filesystem (ต้องอยู่ในแอพ)");
+    var el = ui.export.out, p = ($("expPath").value || "").trim().replace(/^\/+|\/+$/g, "") || "Pictures/Gallery/owner/luffy", out = [], r;
+    try{ r = await fs.readdir({ path:p, directory:"EXTERNAL_STORAGE" }); }catch(e){ return bad("อ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
+    var vids = (r.files || []).filter(function(f){ return f.type !== "directory" && VEXT.test(f.name) && f.uri; }).slice(0, 5);
+    if(vids.length < 2) return bad("ในโฟลเดอร์ " + p + " มีวิดีโอไม่ถึง 2 ไฟล์ (เจอ " + vids.length + ")");
+    var urls = vids.map(function(v){ return MWLocal.fileUrl(v.uri); });
+    out.push("ใช้วิดีโอ " + vids.length + " ไฟล์: " + vids.map(function(v){ return v.name + " (" + mb(v.size || 0) + ")"; }).join(", "));
+    try{ var pr0 = await fetch(urls[0], { headers:{ Range:"bytes=0-1023" } }); out.push("อ่านไฟล์ด้วย fetch ข้ามโดเมน: HTTP " + pr0.status + " ได้ " + (await pr0.arrayBuffer()).byteLength + " ไบต์ (รองรับ Range: " + (pr0.status === 206) + ")"); }
+    catch(e){ return bad(out.join("\n") + "\nอ่านไฟล์ผ่าน fetch ไม่ได้ (น่าจะติด CORS ข้ามโดเมนในโหมด live): " + errText(e)); }
+    var res;
+    try{
+      var mod = await import("./exporter.js");
+      res = await mod.exportShots({ shots:urls.map(function(u){ return { url:u, start:0.5, dur:3 }; }), width:1080, height:1920, fps:30,
+        onLog:function(t){ out.push(t); }, onProgress:function(x){ el.textContent = out.join("\n") + "\nกำลังส่งออก " + Math.round(x * 100) + "%"; } });
+    }catch(e){ return bad(out.join("\n") + "\nส่งออกไม่สำเร็จ: " + errText(e)); }
+    out.push("ส่งออกเสร็จ: ยาว " + res.seconds.toFixed(1) + " วิ · " + res.frames + " เฟรม · ใช้เวลา " + (res.ms / 1000).toFixed(1) + " วิ · เร็วกว่าเวลาจริง " + (res.seconds * 1000 / res.ms).toFixed(1) + " เท่า · ไฟล์ " + mb(res.blob.size));
+    try{ var sv = await MWNative.save(res.blob, "meowrin-export-test.mp4"); out.push("เซฟแล้วที่ " + sv.path); }catch(e){ out.push("เซฟไม่ได้: " + errText(e)); }
+    var pr = await playTest(URL.createObjectURL(res.blob), "เล่นไฟล์ที่ส่งออก"); out.push(pr.t);
+    return ask(out.join("\n") + "\nเปิดไฟล์ดู: ภาพ 5 ช็อตต่อกันถูกต้อง ไม่ค้าง ไม่เพี้ยนไหม");
+  } });
+
   /* ---------------- วาดหน้า ---------------- */
   var LABEL = { ok:"ได้", bad:"ไม่ได้", info:"ข้อมูล", ask:"รอคุณตอบ", run:"กำลังทดสอบ", idle:"ยังไม่ได้ลอง" };
   function render(t){
@@ -256,7 +278,7 @@
   function setRes(t, r){ res[t.id] = r; render(t); }
   async function runOne(t){
     setRes(t, { s:"run", t:"" });
-    var card = ui[t.id].card; if($("tcVid") && t.id !== "pick" && t.id !== "media" && t.id !== "fsdir") $("tcVid").hidden = true; else card.appendChild($("tcVid"));
+    var card = ui[t.id].card; if($("tcVid") && t.id !== "pick" && t.id !== "media" && t.id !== "fsdir" && t.id !== "export") $("tcVid").hidden = true; else card.appendChild($("tcVid"));
     try{ setRes(t, await t.run()); }catch(e){ setRes(t, bad("พังกลางทาง: " + errText(e))); }
   }
   function build(){

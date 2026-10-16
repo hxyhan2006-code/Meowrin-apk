@@ -8,6 +8,8 @@
 
 > **โหมด live (ตั้งแต่ 2026-10-17)**: workflow `build-apk` มีตัวเลือก `mode` ค่าเริ่ม `live` = APK เป็นเปลือก โหลดโค้ดจาก GitHub Pages `https://hxyhan2006-code.github.io/Meowrin-apk/` (Capacitor `server.url`) → แก้โค้ด push main แล้วเปิดแอพได้ของใหม่เลย (Pages อัปเดต ~1 นาที, `sw.js` สั่ง `cache:"no-cache"` กับไฟล์โดเมนเดียวกัน = ถามเซิร์ฟเวอร์ทุกครั้ง ไม่ต้องรอแคช ~10 นาที (เริ่มได้ผลหลังเปิดแอพครั้งแรกที่ได้ sw ตัวใหม่) · ต้องสร้าง APK ใหม่เฉพาะเมื่อเปลี่ยนปลั๊กอิน/สิทธิ์/config เนทีฟ · ต้องมีเน็ตตอนเปิดแอพ · origin เปลี่ยนจาก `https://localhost` เป็นโดเมน Pages (ข้อมูลในแอพแยกจากแบบ bundled) · `bundled` = ห่อโค้ดไว้ใน APK แบบเดิม · repo นี้เป็น Public เพื่อใช้ Pages (ห้ามใส่ความลับ/คีย์ในโค้ด) · **ยืนยันบนมือถือจริงแล้ว (v6.0)**: ปลั๊กอินครบ อ่านโฟลเดอร์ได้ แต่ `convertFileSrc` ใช้เล่นไฟล์ไม่ได้ในโหมด live (ชี้ไป github.io) → `MWLocal.fileUrl` ใช้ `https://localhost/_capacitor_file_/<path เข้ารหัส>` แทน (เล่น/กรอได้) · ไอคอนแอพ Android สร้างจาก `icon-512.png` ด้วย `tools/android-icons.py` ตอนสร้าง APK · ชื่อแอพ "Meowrin App" (แยกจากเว็บแอป) · `largeHeap` เปิดไว้
 
+> **`exporter.js` (v6.2, แกนตัวตัดต่อใหม่)** `exportShots({shots:[{url,start,dur}],width,height,fps,codec})` ถอดรหัสเฟรมจากคลิปต้นทางด้วย mediabunny (UrlSource + CanvasSink) วาดลง canvas แล้วเข้ารหัสเป็น mp4 (CanvasSource) **ไม่อัดเวลาจริง** · ตอนนี้ยังไม่มีเสียง · เทสต์ใน smoke ใช้ vp9 (Chromium ที่ใช้เทสต์ไม่มี H.264) · หน้า ตรวจระบบแอพ มีข้อ "ส่งออกวิดีโอเร็ว" วัดความเร็วบนมือถือจริง (ต้องอ่านไฟล์ผ่าน `https://localhost/_capacitor_file_` ด้วย fetch ข้ามโดเมน → ต้องมี CORS จากตัวช่วยไฟล์ของแอพ **ยังไม่ยืนยัน**) · ตัวตัดต่อเดิม `footage-stitch.js` (อัดเวลาจริง) จะถูกแทนที่
+
 # Meowrin factory
 
 แอพส่วนตัวของ Han สำหรับช่อง YouTube Shorts วันพีซภาษาไทย "meowrin"
