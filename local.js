@@ -10,7 +10,11 @@
   function plug(n){ var c = cap(); return c && c.isNativePlatform && c.isNativePlatform() && c.Plugins && c.Plugins[n] && (!c.isPluginAvailable || c.isPluginAvailable(n)) ? c.Plugins[n] : null; }
   function native(){ return !!(plug("Media") && plug("Filesystem")); }
   function key(name, size){ return name + "|" + size; }
-  function urlOf(c){ var u = c && map[key(c.name, c.size)]; return u ? cap().convertFileSrc(u) : null; } /* ที่อยู่ที่ <video> เล่นได้ หรือ null */
+  function fileUrl(uri){ /* convertFileSrc ใช้ได้เมื่อหน้าอยู่ที่ https://localhost (แบบห่อโค้ด) · โหมด live หน้าอยู่ที่ github.io → ต้องชี้ตัวช่วยไฟล์ของแอพตรงๆ */
+    if(location.hostname === "localhost") return cap().convertFileSrc(uri);
+    return "https://localhost/_capacitor_file_" + uri.replace(/^file:\/\//, "").split("/").map(encodeURIComponent).join("/");
+  }
+  function urlOf(c){ var u = c && map[key(c.name, c.size)]; return u ? fileUrl(u) : null; } /* ที่อยู่ที่ <video> เล่นได้ หรือ null */
   async function scan(onStep){
     var M = plug("Media"), F = plug("Filesystem"); if(!M || !F) throw new Error("ใช้ได้เฉพาะในแอพ APK");
     var albums = (await M.getAlbums()).albums || [], next = {}, seen = {}, files = 0, n = 0;
@@ -39,7 +43,7 @@
     try{ await scan(function(i, n){ render("กำลังสแกนอัลบั้ม " + i + "/" + n + "..."); }); busy = false; render(); }
     catch(e){ busy = false; render("สแกนไม่ได้: " + (e && (e.message || e.errorMessage) || e) + " · ถ้าเคยกดไม่อนุญาต ให้เปิดสิทธิ์ที่ ตั้งค่ามือถือ > แอป > Meowrin > สิทธิ์ แล้วลองใหม่", true); }
   }
-  window.MWLocal = { native:native, scan:scan, urlOf:urlOf, count:function(){ return st.files; } };
+  window.MWLocal = { native:native, scan:scan, urlOf:urlOf, fileUrl:fileUrl, count:function(){ return st.files; } };
   if($("locScan")){
     $("locScan").addEventListener("click", run);
     $("locFold").addEventListener("toggle", function(){ if(this.open) render(); }); /* ดัชนีโหลดทีหลัง ตัวเลขจับคู่อัปเดตตอนเปิดแผง */

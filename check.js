@@ -37,7 +37,7 @@
   /* ---------------- รายการทดสอบ ---------------- */
   TESTS.push({ id:"env", auto:true, title:"ข้อมูลเครื่อง/แอพ", run: async function(){
     var c = cap(), m = /Chrome\/([\d.]+)/.exec(navigator.userAgent);
-    return info("แพลตฟอร์ม: " + (c && c.getPlatform ? c.getPlatform() : "เว็บล้วน (ไม่มี Capacitor)") + " · อยู่ในแอพ: " + (c && c.isNativePlatform ? c.isNativePlatform() : false)
+    return info("WEBVIEW_SERVER_URL: " + (window.WEBVIEW_SERVER_URL || "-") + "\nแพลตฟอร์ม: " + (c && c.getPlatform ? c.getPlatform() : "เว็บล้วน (ไม่มี Capacitor)") + " · อยู่ในแอพ: " + (c && c.isNativePlatform ? c.isNativePlatform() : false)
       + "\nที่อยู่หน้า (origin): " + location.origin + "\nเบราว์เซอร์/WebView: Chrome " + (m ? m[1] : "?") + "\nจอ: " + innerWidth + "x" + innerHeight + " · dpr " + devicePixelRatio);
   } });
 
@@ -218,8 +218,13 @@
     out.push("วิดีโอ " + vids.length + " ไฟล์ รวม " + (tot >= 1073741824 ? gb(tot) : mb(tot)) + " · ตัวอย่าง: " + vids.slice(0, 5).map(function(f){ return f.name + " (" + mb(f.size || 0) + ")"; }).join(", "));
     if(!uri){ try{ uri = (await (abs ? fs.getUri({ path:p + "/" + v.name }) : fs.getUri({ path:p + "/" + v.name, directory:"EXTERNAL_STORAGE" }))).uri; }catch(e){ return bad(out.join("\n") + "\nขอที่อยู่ไฟล์ไม่ได้: " + errText(e)); } }
     out.push("ที่อยู่ไฟล์: " + uri);
-    var src = cap() && cap().convertFileSrc ? cap().convertFileSrc(uri) : uri, pr = await playTest(src, "เล่น " + v.name + " จากที่อยู่ไฟล์โดยตรง");
-    return { s:pr.s, t:out.join("\n") + "\n" + pr.t };
+    var enc = uri.replace(/^file:\/\//, "").split("/").map(encodeURIComponent).join("/");
+    var tries = [["convertFileSrc", cap() && cap().convertFileSrc ? cap().convertFileSrc(uri) : uri], ["https://localhost/_capacitor_file_", "https://localhost/_capacitor_file_" + enc], ["http://localhost/_capacitor_file_", "http://localhost/_capacitor_file_" + enc]], pr;
+    for(var t = 0; t < tries.length; t++){
+      pr = await playTest(tries[t][1], "เล่น " + v.name + " ผ่าน " + tries[t][0]); out.push(pr.t);
+      if(pr.s === "ok") break;
+    }
+    return { s:pr.s, t:out.join("\n") };
   }
 
   TESTS.push({ id:"media", title:"ขอสิทธิ์ดูวิดีโอ + หาอัลบั้มจากชื่อ แล้วเล่นจากโฟลเดอร์ — สำคัญที่สุด", desc:"ครั้งแรกจะมีหน้าต่างขออนุญาตดูรูปและวิดีโอ ให้กดอนุญาต · เว้นช่องว่างไว้ = ดูรายชื่ออัลบั้มทั้งหมด · พิมพ์ชื่ออัลบั้ม (เช่น luffy) = หาโฟลเดอร์ของอัลบั้มนั้นแล้วลองเล่นคลิปแรก", input:"mediaAlbum", ph:"ชื่ออัลบั้ม (เว้นว่างเพื่อดูรายชื่อ)", run: async function(){
