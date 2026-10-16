@@ -271,13 +271,14 @@
     try{
       var vb = null;
       if(!isLong() && plan.voice){ var vr = window.MWVoice ? await MWVoice.get(plan.voice.id) : null; if(!vr) throw new Error("ไม่เจอเสียงพากย์ที่เลือกไว้แล้ว (ถูกลบ) ให้กำกับใหม่อีกครั้ง"); vb = vr.blob; }
+      var fast = !!vb && FT.stitch.fastOk(); /* มีเสียงพากย์ + เครื่องรองรับ = ตัดต่อแบบเร็ว (ไม่อัดเวลาจริง) · ไม่ได้ก็ถอยไปแบบเดิม (ข้อความจะบอก) */
       var r = await FT.stitch.make(list, function(i, x){
-        say("กำลังอัดช็อต " + (i + 1) + "/" + list.length + " · " + x.t + " · อย่าสลับแอพ");
+        say(fast ? "กำลังตัดต่อช็อต " + (i + 1) + "/" + list.length + " · " + x.t : "กำลังอัดช็อต " + (i + 1) + "/" + list.length + " · " + x.t + " · อย่าสลับแอพ");
         $("plBar").style.width = (i / list.length * 100) + "%";
       }, say, { sep:isLong() ? SEP : 0, voice:vb });
       cuts = { sig:sig(list), file:r.file, url:URL.createObjectURL(r.file), marks:r.marks };
       cutting = false; renderShare();
-      say("เสร็จแล้ว " + r.marks.length + " ช็อต · " + (r.file.size / 1048576).toFixed(1) + " MB · ดูตัวอย่างด้านล่าง แล้วกดปุ่มบันทึก", "ok");
+      say("เสร็จแล้ว " + r.marks.length + " ช็อต · " + (r.fast ? "ตัดต่อแบบเร็ว ใช้ " + (r.ms / 1000).toFixed(1) + " วิ · " : "แบบอัดเวลาจริง · ") + (r.file.size / 1048576).toFixed(1) + " MB · ดูตัวอย่างด้านล่าง แล้วกดปุ่มบันทึก", "ok");
     }catch(err){ cutting = false; renderShare(); say("อัดไม่ได้: " + err.message + (document.hidden ? " (สลับแอพระหว่างอัด?)" : ""), "err"); }
     $("plProg").hidden = true;
   });

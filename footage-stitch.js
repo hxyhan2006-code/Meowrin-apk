@@ -111,17 +111,36 @@
     }
     return { blob:new Blob(parts, { type:mime.split(";")[0] }), marks:marks, rate:RATE };
   }
-  function ok(){ var AC = window.AudioContext || window.webkitAudioContext; return !!(recMime() && AC && HTMLCanvasElement.prototype.captureStream); }
+  async function makeFast(list, onStep, onMsg, voice){ /* ตัดต่อแบบเร็ว (ไม่อัดเวลาจริง): ถอดรหัสเฟรมจากไฟล์ต้นทางด้วย WebCodecs ผ่าน exporter.js แล้วใส่เสียงพากย์ · list แบบเดียวกับ recordVoice */
+    var mod = await import("./exporter.js?v=" + (window.MW_VERSION || "0")), shots = [], dones = [], DEFAULT_DUR = 1;
+    try{
+      for(var i = 0; i < list.length; i++){
+        var x = list[i], sh = { at:x.at, start:x.from, dur:DEFAULT_DUR, url:null };
+        if(x.c){ var s = await U.srcUrl(x.c); if(!s) throw new Error("ไม่มีไฟล์ " + x.c.name); sh.url = s.url; if(s.done) dones.push(s.done); }
+        shots.push(sh);
+      }
+      var r = await mod.exportShots({ shots:shots, voice:voice, width:1080, height:1920, fps:30, onLog:function(t){ if(onMsg) onMsg(t); }, onShot:function(i){ onStep(i, list[i]); } });
+      var marks = list.map(function(x, i){ return { i:i, at:x.at, len:r.durs[i], x:x }; });
+      return { blob:r.blob, marks:marks, rate:0, ms:r.ms, codec:r.codec + "/" + r.audio };
+    }finally{ dones.forEach(function(d){ try{ d(); }catch(e){} }); }
+  }
+  function fastOk(){ return !!(window.VideoEncoder && window.AudioEncoder && window.AudioContext && window.fetch); }
+  function ok(){ var AC = window.AudioContext || window.webkitAudioContext; return fastOk() || !!(recMime() && AC && HTMLCanvasElement.prototype.captureStream); }
   async function make(list, onStep, onMsg, opt){ /* เรียกตรงจากการแตะปุ่ม (ต้องสร้าง AudioContext ตอนมีการแตะ) */
     var mime = recMime(), AC = window.AudioContext || window.webkitAudioContext, ac = new AC(); ac.resume();
     await U.wake(true);
     try{
-      var r = opt && opt.voice ? await recordVoice(list, mime, ac, opt.voice, onStep) : await record(list, mime, ac, onStep, (opt && opt.sep) || 0);
+      var r = null;
+      if(opt && opt.voice && fastOk()){
+        try{ r = await makeFast(list, onStep, onMsg, opt.voice); r.fast = true; }
+        catch(err){ if(onMsg) onMsg("ตัดแบบเร็วไม่ได้ (" + err.message + ") ใช้แบบอัดเวลาจริงแทน"); r = null; } /* ถอยไปแบบเดิม ไม่เงียบ */
+      }
+      if(!r) r = opt && opt.voice ? await recordVoice(list, mime, ac, opt.voice, onStep) : await record(list, mime, ac, onStep, (opt && opt.sep) || 0);
       if(!r.blob.size) throw new Error("อัดได้ไฟล์ว่าง");
-      var d = new Date(), ext = mime.indexOf("mp4") >= 0 ? "mp4" : "webm", out = r.blob;
-      if(ext === "mp4" && window.MP4Fix){ if(onMsg) onMsg("กำลังจัดไฟล์ให้ CapCut อ่านได้..."); out = await MP4Fix.remux(r.blob); } /* MediaRecorder ให้ fragmented MP4 ซึ่ง CapCut ไม่รับ */
+      var d = new Date(), ext = r.fast || mime.indexOf("mp4") >= 0 ? "mp4" : "webm", out = r.blob;
+      if(!r.fast && ext === "mp4" && window.MP4Fix){ if(onMsg) onMsg("กำลังจัดไฟล์ให้ CapCut อ่านได้..."); out = await MP4Fix.remux(r.blob); } /* MediaRecorder ให้ fragmented MP4 ซึ่ง CapCut ไม่รับ */
       var file = new File([out], "meowrin_" + String(d.getHours()).padStart(2, "0") + String(d.getMinutes()).padStart(2, "0") + "." + ext, { type:out.type || r.blob.type });
-      return { file:file, marks:r.marks, rate:r.rate, mime:mime };
+      return { file:file, marks:r.marks, rate:r.rate, mime:r.fast ? "video/mp4" : mime, fast:!!r.fast, ms:r.ms };
     }finally{ ac.close(); await U.wake(false); }
   }
   function save(file, say){ /* บันทึกลงโฟลเดอร์ Download แล้วเปิดจากแกลเลอรีใน CapCut · ในแอพ APK เซฟลง Documents/Meowrin ด้วยปลั๊กอิน */
@@ -134,5 +153,5 @@
     setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
     say("สั่งบันทึกแล้ว ดูในโฟลเดอร์ Download ของมือถือ (" + file.name + ") แล้วเปิด CapCut → โปรเจกต์ใหม่ → เลือกจากแกลเลอรี", "ok");
   }
-  FT.stitch = { ok:ok, make:make, save:save };
+  FT.stitch = { ok:ok, fastOk:fastOk, make:make, save:save };
 })();

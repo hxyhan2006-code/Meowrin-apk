@@ -190,10 +190,42 @@ try {
     await new Promise((ok, no) => { v.onloadedmetadata = ok; v.onerror = () => no(new Error('เล่นไม่ได้')); });
     const cv = document.createElement('canvas'); cv.width = 27; cv.height = 48; const cx = cv.getContext('2d');
     const at = async (t) => { v.currentTime = t; await new Promise((ok) => v.onseeked = ok); cx.drawImage(v, 0, 0, 27, 48); const d = cx.getImageData(1, 1, 1, 1).data; return d[0] > d[2] ? 'R' : 'B'; };
-    return { frames: res.frames, dur: v.duration, size: res.blob.size, w: v.videoWidth, h: v.videoHeight, order: (await at(0.2)) + (await at(0.7)) + (await at(1.2)) };
+    const out = { frames: res.frames, dur: v.duration, size: res.blob.size, w: v.videoWidth, h: v.videoHeight, order: (await at(0.2)) + (await at(0.7)) + (await at(1.2)) };
+    /* ใส่เสียงพากย์: เสียงสังเคราะห์ 2 วิ (WAV) → ช็อตกำหนดด้วย at · ช็อตที่ 2 ไม่มี url = ค้างภาพแดง · ไฟล์ต้องยาว 2 วิ มีแทร็กเสียง */
+    const sr = 22050, n = sr * 2, wav = new DataView(new ArrayBuffer(44 + n * 2)); const W = (o, t) => { for (let i = 0; i < t.length; i++) wav.setUint8(o + i, t.charCodeAt(i)); };
+    W(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); W(8, 'WAVEfmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true); W(36, 'data'); wav.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) wav.setInt16(44 + i * 2, Math.round(Math.sin(i / sr * 2 * Math.PI * 440) * 8000), true);
+    const r2 = await exportShots({ voice: new Blob([wav], { type: 'audio/wav' }), shots: [{ url: red, start: 0, at: 0 }, { url: null, at: 0.8 }, { url: blue, start: 0.2, at: 1.2 }], width: 270, height: 480, fps: 30 });
+    const inp = new mb.Input({ source: new mb.BlobSource(r2.blob), formats: mb.ALL_FORMATS }), at2 = await inp.getPrimaryAudioTrack(), vt = await inp.getPrimaryVideoTrack();
+    out.v2 = { frames: r2.frames, audio: !!at2, ad: at2 ? await at2.computeDuration() : 0, vd: vt ? await vt.computeDuration() : 0, codec: r2.codec, ac: r2.audio };
+    return out;
   });
+  check('ส่งออกวิดีโอเร็ว (exporter.js): ใส่เสียงพากย์ 2 วิ ช็อตตามเวลา at + ค้างภาพ ได้ไฟล์มีทั้งภาพและเสียงยาว 2 วิ', exr.v2.frames === 60 && exr.v2.audio && Math.abs(exr.v2.ad - 2) < 0.15 && Math.abs(exr.v2.vd - 2) < 0.1, JSON.stringify(exr.v2));
   check('ส่งออกวิดีโอเร็ว (exporter.js): ต่อ 3 ช็อต ยาว 1.5 วิ ขนาด 270x480 ลำดับสีถูก', exr.frames === 45 && Math.abs(exr.dur - 1.5) < 0.1 && exr.w === 270 && exr.h === 480 && exr.order === 'RBR' && exr.size > 500 && !exErr.length, JSON.stringify(exr) + exErr.join(';'));
   await ex.close();
+  // ตัวต่อวิดีโอในแท็บผู้กำกับ (FT.stitch.make โหมดมีเสียงพากย์) → ใช้ทางเร็ว (exporter) ได้ไฟล์ mp4 ถูกต้อง · ไฟล์ต้นทางหายก็ต้องถอยแบบเดิมแล้วบอกในข้อความ ไม่เงียบ
+  const sf = await context.newPage(); const sfErr = []; sf.on('pageerror', (e) => sfErr.push(e.message));
+  await sf.goto(base + '/footage.html'); await sf.waitForFunction(() => window.FT && FT.ui && FT.stitch, null, { timeout: 20000 });
+  const sfr = await sf.evaluate(async () => {
+    const mb = await import('/sub/vendor/mediabunny.min.js');
+    const c = document.createElement('canvas'); c.width = 320; c.height = 180; const x = c.getContext('2d'); const o = new mb.Output({ format: new mb.Mp4OutputFormat(), target: new mb.BufferTarget() }); const v = new mb.CanvasSource(c, { codec: 'vp9', quality: mb.QUALITY_HIGH }); o.addVideoTrack(v); await o.start();
+    for (let i = 0; i < 30; i++) { x.fillStyle = '#c00'; x.fillRect(0, 0, 320, 180); await v.add(i / 30, 1 / 30); } await o.finalize();
+    const clip = URL.createObjectURL(new Blob([o.target.buffer], { type: 'video/mp4' }));
+    const sr = 22050, n = sr * 2, wav = new DataView(new ArrayBuffer(44 + n * 2)); const W = (p, t) => { for (let i = 0; i < t.length; i++) wav.setUint8(p + i, t.charCodeAt(i)); };
+    W(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); W(8, 'WAVEfmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true); W(36, 'data'); wav.setUint32(40, n * 2, true);
+    const voice = new Blob([wav], { type: 'audio/wav' }), msgs = [], steps = [];
+    FT.ui.srcUrl = async () => ({ url: clip });
+    const list = [{ c: { name: 'a.mp4' }, from: 0, to: 1, at: 0, k: 0, t: 'a' }, { c: null, from: 0, to: 0, at: 1, k: 1, t: 'b' }];
+    const r = await FT.stitch.make(list, (i) => steps.push(i), (m) => msgs.push(m), { voice });
+    const inp = new mb.Input({ source: new mb.BlobSource(r.file), formats: mb.ALL_FORMATS });
+    const out = { fast: r.fast, name: r.file.name, type: r.file.type, steps, marks: r.marks.map((m) => [m.at, +m.len.toFixed(2)]), ad: await (await inp.getPrimaryAudioTrack()).computeDuration(), vd: await (await inp.getPrimaryVideoTrack()).computeDuration() };
+    FT.ui.srcUrl = async () => ({ url: '/ไม่มีไฟล์นี้.mp4' });
+    try { const r2 = await FT.stitch.make(list, () => {}, (m) => msgs.push(m), { voice }); out.fb = { fast: !!r2.fast, msgs }; } catch (e) { out.fb = { err: e.message, msgs }; }
+    return out;
+  });
+  check('ตัดต่อในแท็บผู้กำกับ (มีเสียงพากย์): ใช้ทางเร็ว ได้ mp4 ยาว 2 วิ มีเสียง ลำดับช็อตถูก', sfr.fast === true && /\.mp4$/.test(sfr.name) && sfr.steps.join() === '0,1' && Math.abs(sfr.ad - 2) < 0.15 && Math.abs(sfr.vd - 2) < 0.1 && sfr.marks.length === 2 && sfr.marks[0][1] === 1, JSON.stringify(sfr).slice(0, 400));
+  check('ตัดต่อในแท็บผู้กำกับ: ไฟล์ต้นทางเปิดไม่ได้ → บอกข้อความว่าตัดแบบเร็วไม่ได้ แล้วถอยไปแบบเดิม (ไม่เงียบ)', !!sfr.fb && sfr.fb.msgs.some((m) => /ตัดแบบเร็วไม่ได้/.test(m)) && sfr.fb.fast !== true, JSON.stringify(sfr.fb).slice(0, 300));
+  await sf.close();
   // อัปเดตแอพเอง (ota.js): เช็ก files.json → ดาวน์โหลดลงโฟลเดอร์ + ตรวจ sha1 → สลับ · ไฟล์ถูกแก้ = ยกเลิกทั้งชุดไม่สลับ · บูตสำเร็จ = จำชุดใหม่ + ลบชุดเก่า
   const { createHash } = await import('node:crypto'); const sha = (b) => createHash('sha1').update(b).digest('hex');
   const REM = 'https://hxyhan2006-code.github.io/Meowrin-apk/', NEWID = 'newid1234567890abcdef';
