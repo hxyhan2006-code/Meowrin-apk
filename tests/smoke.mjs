@@ -202,7 +202,7 @@ try {
   }
   const o1p = await otaPage(false);
   const o1 = await o1p.evaluate(async () => { const c = await MWOta.check(); const d = await MWOta.download(); await MWOta.apply(); return { update: c.update, w: window.__o.w, sb: window.__o.sb }; });
-  check('อัปเดตแอพ (ota.js): เจอเวอร์ชันใหม่ → ดาวน์โหลดครบ (ไฟล์+files.json) ตรวจ sha1 → สลับชุดไฟล์', o1.update && o1.w.length === 4 && o1.w.some(([p]) => p === 'ota/' + NEWID + '/files.json') && o1.sb.length === 1 && o1.sb[0] === '/data/user/0/app/files/ota/' + NEWID, JSON.stringify(o1));
+  check('อัปเดตแอพ (ota.js): เจอเวอร์ชันใหม่ → ดาวน์โหลดครบ (ไฟล์+files.json) ตรวจ sha1 → สลับชุดไฟล์ (โฟลเดอร์ชื่อไม่ซ้ำ)', o1.update && o1.w.length === 4 && o1.w.every(([p]) => /^ota\/newid1234567-[a-z0-9]+\//.test(p)) && o1.w.some(([p]) => /\/files\.json$/.test(p)) && o1.sb.length === 1 && /^\/data\/user\/0\/app\/files\/ota\/newid1234567-[a-z0-9]+$/.test(o1.sb[0]), JSON.stringify(o1));
   await o1p.close();
   const o2p = await otaPage(true);
   const o2 = await o2p.evaluate(async () => { try { await MWOta.check(); await MWOta.download(); return { err: null, sb: window.__o.sb.length }; } catch (e) { return { err: e.message, sb: window.__o.sb.length, rm: window.__o.rm.length }; } });

@@ -27,18 +27,26 @@
     var l = await localManifest(), r = await (await getRemote("files.json")).json(); st.remote = r;
     return { update: !!r.id && r.id !== l.id, local:l, remote:r };
   }
+  async function cleanOld(keep){ /* ลบโฟลเดอร์ชุดไฟล์ทั้งหมดใต้ ota/ ยกเว้นชุดที่กำลังใช้ (keep = ชื่อโฟลเดอร์) */
+    var fs = plug("Filesystem");
+    try{ var list = (await fs.readdir({ path:DIR, directory:"DATA" })).files || [];
+      for(var i = 0; i < list.length; i++){ var n = typeof list[i] === "string" ? list[i] : list[i].name; if(n && n !== keep) await fs.rmdir({ path:DIR + "/" + n, directory:"DATA", recursive:true }).catch(function(){}); } }catch(e){}
+  }
   async function download(onProgress){ /* ดาวน์โหลดชุดไฟล์ใหม่ลงโฟลเดอร์ (ยังไม่สลับ) · ตรวจ sha1 ทุกไฟล์ ผิดแม้ไฟล์เดียว = ยกเลิกทั้งชุด */
-    var fs = plug("Filesystem"), r = st.remote || (await check()).remote, dir = DIR + "/" + r.id;
-    try{ await fs.stat({ path:dir + "/files.json", directory:"DATA" }); st.ready = { id:r.id, dir:dir, version:r.version }; return st.ready; }catch(e){} /* โหลดครบไว้แล้ว (files.json เขียนเป็นไฟล์สุดท้าย) */
-    try{ await fs.rmdir({ path:dir, directory:"DATA", recursive:true }); }catch(e){} /* เคลียร์ของค้างครึ่งๆกลางๆ */
-    var q = r.files.slice(), done = 0, fail = null;
-    async function worker(){
+    var fs = plug("Filesystem"), r = st.remote || (await check()).remote, m = meta();
+    if(m.ready && m.ready.id === r.id){ try{ await fs.stat({ path:m.ready.dir + "/files.json", directory:"DATA" }); st.ready = m.ready; return st.ready; }catch(e){} } /* โหลดครบไว้แล้ว (files.json เขียนเป็นไฟล์สุดท้าย) */
+    var cur = (PATH || (await curPath())).split("/").pop(); await cleanOld(PATH.indexOf("/" + DIR + "/") >= 0 ? cur : "");
+    var dir = DIR + "/" + r.id.slice(0, 12) + "-" + Date.now().toString(36); /* ชื่อไม่ซ้ำทุกรอบ ไม่ชนของค้าง */
+    var q = r.files.slice(), done = 0, fail = null, chain = Promise.resolve();
+    function serial(fn){ var p = chain.then(fn); chain = p.catch(function(){}); return p; } /* เขียนไฟล์ทีละไฟล์ (เขียนขนานทำให้สร้างโฟลเดอร์แย่งกัน) */
+    async function worker(){ /* ดึงจากเว็บ+ตรวจ sha1 ขนานกันได้ */
       while(q.length && !fail){
         var f = q.shift();
         try{
           var buf = await (await getRemote(f.p + "?v=" + r.id.slice(0, 8))).arrayBuffer();
           if((await sha1(buf)) !== f.h) throw new Error("ไฟล์ " + f.p + " ไม่ตรงกับรายการ (sha1 ผิด)");
-          await fs.writeFile({ path:dir + "/" + f.p, data:await b64(new Blob([buf])), directory:"DATA", recursive:true });
+          var data = await b64(new Blob([buf]));
+          await serial(function(){ return fs.writeFile({ path:dir + "/" + f.p, data:data, directory:"DATA", recursive:true }); });
           done++; if(onProgress) onProgress(done / r.files.length);
         }catch(e){ fail = e; }
       }
@@ -46,7 +54,7 @@
     await Promise.all([worker(), worker(), worker(), worker()]);
     if(fail){ try{ await fs.rmdir({ path:dir, directory:"DATA", recursive:true }); }catch(e){} throw fail; }
     await fs.writeFile({ path:dir + "/files.json", data:await b64(new Blob([JSON.stringify(r) + "\n"])), directory:"DATA", recursive:true });
-    st.ready = { id:r.id, dir:dir, version:r.version }; return st.ready;
+    st.ready = { id:r.id, dir:dir, version:r.version }; m = meta(); m.ready = st.ready; saveMeta(m); return st.ready;
   }
   async function apply(){ /* สลับไปใช้ชุดไฟล์ที่ดาวน์โหลดไว้ · หน้าโหลดใหม่ทันที */
     if(!st.ready) throw new Error("ยังไม่ได้ดาวน์โหลดชุดไฟล์ใหม่");
@@ -75,8 +83,7 @@
       try{ await wv.persistServerBasePath(); m.persisted = p; m.tries = 0; note(m, "บูตจากชุด " + id.slice(0, 8) + " สำเร็จ จำไว้แล้ว"); }
       catch(e){ note(m, "จำชุดไม่สำเร็จ: " + (e && e.message || e)); return; }
     }
-    try{ var cur = p.split("/").pop(), list = ((await fs.readdir({ path:DIR, directory:"DATA" })).files || []);
-      for(var i = 0; i < list.length; i++){ var n = typeof list[i] === "string" ? list[i] : list[i].name; if(n && n !== cur) await fs.rmdir({ path:DIR + "/" + n, directory:"DATA", recursive:true }).catch(function(){}); } }catch(e){}
+    await cleanOld(p.split("/").pop()); render();
   }
 
   /* ---------- ส่วนหน้าจอ ---------- */
@@ -114,7 +121,8 @@
     localManifest().then(function(){ return usable() ? curPath() : ""; }).then(function(p){ PATH = p; render(); });
     var b = document.getElementById("otaBtn"); if(b) b.addEventListener("click", manual);
     if(!usable()) return;
-    setTimeout(function(){ bootOk().catch(function(){}); }, 2500);
+    setTimeout(function(){ bootOk().catch(function(){}); }, 700); /* จำชุดไฟล์ให้เร็ว (ผู้ใช้ปิดแอพเร็วก็ยังจำทัน) */
+    setTimeout(function(){ bootOk().catch(function(){}); }, 4000); /* รอบสำรอง เผื่อรอบแรกแอพยังบูตไม่เสร็จ */
     setTimeout(auto, 5000);
   }
   if(document.readyState === "complete") init(); else window.addEventListener("load", init);
