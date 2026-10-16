@@ -197,10 +197,12 @@
     return { s:r.s, t:"เลือกได้ " + fl.length + " ไฟล์ รวม " + mb(tot) + "\n" + r.t };
   } });
 
+  async function askMedia(){ var m = plug("Media"); if(m){ try{ await m.getAlbums(); }catch(e){} } } /* ติดตั้งใหม่ยังไม่มีสิทธิ์ดูวิดีโอ → อ่านโฟลเดอร์ได้ 0 ไฟล์ · เรียกก่อนอ่านโฟลเดอร์ทุกครั้ง (มีสิทธิ์แล้ว = ไม่ถามซ้ำ) */
   var VEXT = /\.(mp4|mov|m4v|mkv|webm|3gp)$/i;
   /* อ่านโฟลเดอร์ด้วย Filesystem แล้วลองเล่นวิดีโอคลิปแรก · abs = ที่อยู่เต็ม (/storage/...) ไม่งั้นนับจากที่เก็บของเครื่อง */
   async function probeFolder(fs, p, abs){
     function rd(path){ return abs ? fs.readdir({ path:path }) : fs.readdir({ path:path, directory:"EXTERNAL_STORAGE" }); }
+    await askMedia();
     var out = [], t0 = Date.now(), r;
     try{ r = await rd(p); }catch(e){ return bad("อ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
     var fl = r.files || [], dirs = fl.filter(function(f){ return f.type === "directory"; }), vids = fl.filter(function(f){ return f.type !== "directory" && VEXT.test(f.name); });
@@ -248,6 +250,7 @@
 
   TESTS.push({ id:"export", title:"ส่งออกวิดีโอเร็ว: ต่อคลิปจริงจากมือถือ (ตัวตัดต่อใหม่) — สำคัญ", desc:"ดึงวิดีโอ 5 ไฟล์แรกในอัลบั้มที่พิมพ์ (เช่น Pictures/Gallery/owner/luffy) มาต่อกัน ช็อตละ 3 วิ ส่งออกเป็น mp4 แนวตั้ง 1080x1920 แล้ววัดความเร็ว · ยังไม่มีเสียง · ไฟล์เซฟที่ Documents/Meowrin/meowrin-export-test.mp4 เปิดดูว่าภาพต่อกันถูกไหม", input:"expPath", ph:"Pictures/Gallery/owner/luffy", run: async function(){
     var fs = plug("Filesystem"); if(!fs) return bad("ไม่มีปลั๊กอิน Filesystem (ต้องอยู่ในแอพ)");
+    await askMedia();
     var el = ui.export.out, p = ($("expPath").value || "").trim().replace(/^\/+|\/+$/g, "") || "Pictures/Gallery/owner/luffy", out = [], r;
     try{ r = await fs.readdir({ path:p, directory:"EXTERNAL_STORAGE" }); }catch(e){ return bad("อ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
     var vids = (r.files || []).filter(function(f){ return f.type !== "directory" && VEXT.test(f.name) && f.uri; }).slice(0, 5);
