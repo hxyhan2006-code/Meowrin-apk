@@ -197,7 +197,11 @@
     return { s:r.s, t:"เลือกได้ " + fl.length + " ไฟล์ รวม " + mb(tot) + "\n" + r.t };
   } });
 
-  async function askMedia(){ var m = plug("Media"); if(m){ try{ await m.getAlbums(); }catch(e){} } } /* ติดตั้งใหม่ยังไม่มีสิทธิ์ดูวิดีโอ → อ่านโฟลเดอร์ได้ 0 ไฟล์ · เรียกก่อนอ่านโฟลเดอร์ทุกครั้ง (มีสิทธิ์แล้ว = ไม่ถามซ้ำ) */
+  async function askMedia(){ /* คืน { t:ข้อความบอกผลสิทธิ์, albums:รายการอัลบั้ม } */
+    var m = plug("Media"); if(!m) return { t:"สิทธิ์ดูรูป/วิดีโอ: ไม่มีปลั๊กอิน Media", albums:[] };
+    try{ var a = (await m.getAlbums()).albums || []; return { t:"สิทธิ์ดูรูป/วิดีโอ: ได้ (พบ " + a.length + " อัลบั้ม)", albums:a }; }
+    catch(e){ return { t:"สิทธิ์ดูรูป/วิดีโอ: ไม่ได้ (" + errText(e) + ")", albums:[] }; }
+  } /* ติดตั้งใหม่ยังไม่มีสิทธิ์ดูวิดีโอ → อ่านโฟลเดอร์ได้ 0 ไฟล์ · เรียกก่อนอ่านโฟลเดอร์ทุกครั้ง (มีสิทธิ์แล้ว = ไม่ถามซ้ำ) */
   var VEXT = /\.(mp4|mov|m4v|mkv|webm|3gp)$/i;
   /* อ่านโฟลเดอร์ด้วย Filesystem แล้วลองเล่นวิดีโอคลิปแรก · abs = ที่อยู่เต็ม (/storage/...) ไม่งั้นนับจากที่เก็บของเครื่อง */
   async function probeFolder(fs, p, abs){
@@ -250,11 +254,18 @@
 
   TESTS.push({ id:"export", title:"ส่งออกวิดีโอเร็ว: ต่อคลิปจริงจากมือถือ (ตัวตัดต่อใหม่) — สำคัญ", desc:"ดึงวิดีโอ 5 ไฟล์แรกในอัลบั้มที่พิมพ์ (เช่น Pictures/Gallery/owner/luffy) มาต่อกัน ช็อตละ 3 วิ ส่งออกเป็น mp4 แนวตั้ง 1080x1920 แล้ววัดความเร็ว · ยังไม่มีเสียง · ไฟล์เซฟที่ Documents/Meowrin/meowrin-export-test.mp4 เปิดดูว่าภาพต่อกันถูกไหม", input:"expPath", ph:"Pictures/Gallery/owner/luffy", run: async function(){
     var fs = plug("Filesystem"); if(!fs) return bad("ไม่มีปลั๊กอิน Filesystem (ต้องอยู่ในแอพ)");
-    await askMedia();
-    var el = ui.export.out, p = ($("expPath").value || "").trim().replace(/^\/+|\/+$/g, "") || "Pictures/Gallery/owner/luffy", out = [], r;
-    try{ r = await fs.readdir({ path:p, directory:"EXTERNAL_STORAGE" }); }catch(e){ return bad("อ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
-    var vids = (r.files || []).filter(function(f){ return f.type !== "directory" && VEXT.test(f.name) && f.uri; }).slice(0, 5);
-    if(vids.length < 2) return bad("ในโฟลเดอร์ " + p + " มีวิดีโอไม่ถึง 2 ไฟล์ (เจอ " + vids.length + ")");
+    var perm = await askMedia();
+    var el = ui.export.out, p = ($("expPath").value || "").trim().replace(/^\/+|\/+$/g, "") || "Pictures/Gallery/owner/luffy", out = [perm.t], r;
+    function pick(x){ return (x.files || []).filter(function(f){ return f.type !== "directory" && VEXT.test(f.name) && f.uri; }); }
+    try{ r = await fs.readdir({ path:p, directory:"EXTERNAL_STORAGE" }); }catch(e){ return bad(out.join("\n") + "\nอ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
+    var vids = pick(r); out.push("อ่านด้วยที่อยู่สั้น " + p + ": " + (r.files || []).length + " รายการ (วิดีโอ " + vids.length + ")");
+    if(vids.length < 2){ /* ลองที่อยู่เต็มของอัลบั้มชื่อเดียวกัน (ที่ได้จาก Media) */
+      var nm = p.split("/").pop(), al = perm.albums.filter(function(a){ return a.name === nm; })[0];
+      if(al){ try{ r = await fs.readdir({ path:al.identifier }); vids = pick(r); out.push("อ่านด้วยที่อยู่เต็ม " + al.identifier + ": " + (r.files || []).length + " รายการ (วิดีโอ " + vids.length + ")"); }catch(e){ out.push("อ่านด้วยที่อยู่เต็มไม่ได้: " + errText(e)); } }
+      else out.push("ไม่เจออัลบั้มชื่อ \"" + nm + "\" ในรายการอัลบั้ม");
+    }
+    vids = vids.slice(0, 5);
+    if(vids.length < 2) return bad(out.join("\n") + "\nมีวิดีโอไม่ถึง 2 ไฟล์ (เจอ " + vids.length + ")");
     var urls = vids.map(function(v){ return MWLocal.fileUrl(v.uri); });
     out.push("ใช้วิดีโอ " + vids.length + " ไฟล์: " + vids.map(function(v){ return v.name + " (" + mb(v.size || 0) + ")"; }).join(", "));
     try{ var pr0 = await fetch(urls[0], { headers:{ Range:"bytes=0-1023" } }); out.push("อ่านไฟล์ด้วย fetch ข้ามโดเมน: HTTP " + pr0.status + " ได้ " + (await pr0.arrayBuffer()).byteLength + " ไบต์ (รองรับ Range: " + (pr0.status === 206) + ")"); }
