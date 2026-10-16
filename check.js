@@ -106,8 +106,8 @@
 
   TESTS.push({ id:"dl2", title:"เซฟไฟล์ด้วยปลั๊กอินแอพ (Filesystem)", desc:"ใช้แทนข้อบน ถ้าข้อบนไม่ทำงาน · เซฟลงโฟลเดอร์ Documents", run: async function(){
     var fs = plug("Filesystem"); if(!fs) return bad("ไม่มีปลั๊กอิน Filesystem (ต้องอยู่ในแอพ APK)");
-    var r = await fs.writeFile({ path:"meowrin-test.txt", data:"ทดสอบ meowrin " + Date.now(), directory:"DOCUMENTS", encoding:"utf8", recursive:true });
-    return ask("เซฟแล้วที่ " + (r && r.uri) + "\nเปิดแอพไฟล์ดูโฟลเดอร์ Documents มีไฟล์ meowrin-test.txt ไหม");
+    var r = await fs.writeFile({ path:"Meowrin/test-" + Date.now() + ".txt", data:"ทดสอบ meowrin " + Date.now(), directory:"DOCUMENTS", encoding:"utf8", recursive:true });
+    return ask("เซฟแล้วที่ " + (r && r.uri) + "\nเปิดแอพไฟล์ดูโฟลเดอร์ Documents/Meowrin มีไฟล์ test-ตัวเลข.txt ไหม");
   } });
 
   TESTS.push({ id:"sh1", title:"แชร์ข้อความแบบหน้าเว็บ (navigator.share)", run: async function(){
@@ -197,52 +197,48 @@
     return { s:r.s, t:"เลือกได้ " + fl.length + " ไฟล์ รวม " + mb(tot) + "\n" + r.t };
   } });
 
-  TESTS.push({ id:"media", title:"อ่านอัลบั้มวิดีโอในมือถือโดยตรง (Media) — สำคัญที่สุด", desc:"ถ้าได้ แอพจะเล่นวิดีโอจากโฟลเดอร์ได้เลยโดยไม่ต้องเลือกไฟล์ทุกครั้ง · ช่องด้านล่างพิมพ์ชื่ออัลบั้มที่อยากลอง (เว้นว่าง = ขอดูรายชื่ออัลบั้มก่อน)", input:"mediaAlbum", ph:"ชื่ออัลบั้ม (เว้นว่างเพื่อดูรายชื่อ)", run: async function(){
-    var m = plug("Media"); if(!m) return bad("ไม่มีปลั๊กอิน Media (ต้องอยู่ในแอพ APK)");
-    var out = [], want = ($("mediaAlbum").value || "").trim(), albums;
-    try{ var ar = await m.getAlbums(); albums = ar.albums || []; }catch(e){ return bad("อ่านรายชื่ออัลบั้มไม่ได้: " + errText(e) + "\n(ถ้ามีหน้าต่างขออนุญาตเข้าถึงไฟล์ ให้กดอนุญาตแล้วลองใหม่)"); }
-    out.push("พบอัลบั้ม " + albums.length + " อัน");
-    if(!want){ out.push(albums.slice(0, 40).map(function(a){ return "- " + a.name + (a.count != null ? " (" + a.count + ")" : ""); }).join("\n")); return info(out.join("\n") + "\n\nพิมพ์ชื่ออัลบั้มในช่องแล้วกดทดสอบอีกครั้งเพื่อลองเล่นคลิปจากอัลบั้มนั้น"); }
-    var al = albums.filter(function(a){ return a.name === want; })[0] || albums.filter(function(a){ return (a.name || "").toLowerCase().indexOf(want.toLowerCase()) >= 0; })[0];
-    if(!al) return bad(out[0] + "\nไม่เจออัลบั้มชื่อ \"" + want + "\"");
-    var q = { quantity:5, types:"videos", albumIdentifier:al.identifier, thumbnailWidth:64, sort:"creationDate" };
-    var mr; try{ mr = await m.getMedias(q); }catch(e){ return bad(out[0] + "\nอ่านวิดีโอในอัลบั้มไม่ได้: " + errText(e)); }
-    var items = mr.medias || []; out.push("อัลบั้ม \"" + al.name + "\": ดึงคลิปมาลอง " + items.length + " คลิป");
-    if(!items.length) return bad(out.join("\n"));
-    var it = items[0]; out.push("ข้อมูลที่ได้ต่อคลิป: " + Object.keys(it).join(", "));
-    var path = it.path || it.uri || it.filePath || null;
-    if(!path && m.getMediaByIdentifier){ try{ var g = await m.getMediaByIdentifier({ identifier:it.identifier }); out.push("getMediaByIdentifier ได้: " + Object.keys(g).join(", ")); path = g.path || g.uri || null; }catch(e){ out.push("getMediaByIdentifier ไม่ได้: " + errText(e)); } }
-    if(!path) return bad(out.join("\n") + "\nไม่ได้ที่อยู่ไฟล์ของคลิป จึงเล่นต่อไม่ได้");
-    out.push("ที่อยู่ไฟล์: " + path);
-    var src = cap() && cap().convertFileSrc ? cap().convertFileSrc(path) : path, r = await playTest(src, "เล่นจากที่อยู่ไฟล์โดยตรง");
-    return { s:r.s, t:out.join("\n") + "\n" + r.t };
-  } });
-
   var VEXT = /\.(mp4|mov|m4v|mkv|webm|3gp)$/i;
-  TESTS.push({ id:"fsdir", title:"อ่านโฟลเดอร์ + เล่นวิดีโอจากโฟลเดอร์โดยตรง (Filesystem) — สำคัญที่สุด", desc:"พิมพ์ที่อยู่โฟลเดอร์อัลบั้ม เช่น Pictures/Gallery/owner/ชื่ออัลบั้ม (หรือเว้นว่างลอง Pictures/Gallery/owner) · จะนับวิดีโอ จับเวลาอ่าน แล้วลองเล่นคลิปแรก", input:"fsPath", ph:"เช่น Pictures/Gallery/owner/ชื่ออัลบั้ม", run: async function(){
-    var fs = plug("Filesystem"); if(!fs) return bad("ไม่มีปลั๊กอิน Filesystem");
-    var p = ($("fsPath").value || "").trim().replace(/^\/+|\/+$/g, "") || "Pictures/Gallery/owner";
-    try{ if(fs.requestPermissions) await fs.requestPermissions(); }catch(e){}
+  /* อ่านโฟลเดอร์ด้วย Filesystem แล้วลองเล่นวิดีโอคลิปแรก · abs = ที่อยู่เต็ม (/storage/...) ไม่งั้นนับจากที่เก็บของเครื่อง */
+  async function probeFolder(fs, p, abs){
+    function rd(path){ return abs ? fs.readdir({ path:path }) : fs.readdir({ path:path, directory:"EXTERNAL_STORAGE" }); }
     var out = [], t0 = Date.now(), r;
-    try{ r = await fs.readdir({ path:p, directory:"EXTERNAL_STORAGE" }); }catch(e){ return bad("อ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
+    try{ r = await rd(p); }catch(e){ return bad("อ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
     var fl = r.files || [], dirs = fl.filter(function(f){ return f.type === "directory"; }), vids = fl.filter(function(f){ return f.type !== "directory" && VEXT.test(f.name); });
     out.push("โฟลเดอร์ " + p + ": " + fl.length + " รายการ (โฟลเดอร์ย่อย " + dirs.length + ", วิดีโอ " + vids.length + ") · อ่านใช้ " + (Date.now() - t0) + " ms");
     if(!vids.length && dirs.length){
       out.push("โฟลเดอร์ย่อย: " + dirs.slice(0, 12).map(function(d){ return d.name; }).join(", "));
       for(var i = 0; i < dirs.length && !vids.length; i++){
-        try{ var t1 = Date.now(), r2 = await fs.readdir({ path:p + "/" + dirs[i].name, directory:"EXTERNAL_STORAGE" });
+        try{ var t1 = Date.now(), r2 = await rd(p + "/" + dirs[i].name);
           vids = (r2.files || []).filter(function(f){ return f.type !== "directory" && VEXT.test(f.name); });
           if(vids.length){ p = p + "/" + dirs[i].name; out.push("ลงไปดูใน " + dirs[i].name + ": วิดีโอ " + vids.length + " ไฟล์ · อ่านใช้ " + (Date.now() - t1) + " ms"); } }catch(e){}
       }
     }
-    if(!vids.length) return bad(out.join("\n") + "\nไม่เจอวิดีโอ (นามสกุล mp4/mov/m4v/mkv/webm/3gp) · ลองพิมพ์ที่อยู่ของอัลบั้มที่มีวิดีโอโดยตรง");
-    var tot = vids.reduce(function(a, f){ return a + (f.size || 0); }, 0);
+    if(!vids.length) return bad(out.join("\n") + "\nไม่เจอวิดีโอ (นามสกุล mp4/mov/m4v/mkv/webm/3gp)" + (fl.length ? "" : " · โฟลเดอร์ว่างทั้งที่มีอยู่จริง มักแปลว่ายังไม่ได้อนุญาตให้แอพดูรูปและวิดีโอ (ตั้งค่ามือถือ > แอป > Meowrin > สิทธิ์)"));
+    var tot = vids.reduce(function(a, f){ return a + (f.size || 0); }, 0), v = vids[0], uri = v.uri;
     out.push("วิดีโอ " + vids.length + " ไฟล์ รวม " + (tot >= 1073741824 ? gb(tot) : mb(tot)) + " · ตัวอย่าง: " + vids.slice(0, 5).map(function(f){ return f.name + " (" + mb(f.size || 0) + ")"; }).join(", "));
-    var v = vids[0], uri = v.uri;
-    if(!uri){ try{ uri = (await fs.getUri({ path:p + "/" + v.name, directory:"EXTERNAL_STORAGE" })).uri; }catch(e){ return bad(out.join("\n") + "\nขอที่อยู่ไฟล์ไม่ได้: " + errText(e)); } }
+    if(!uri){ try{ uri = (await (abs ? fs.getUri({ path:p + "/" + v.name }) : fs.getUri({ path:p + "/" + v.name, directory:"EXTERNAL_STORAGE" }))).uri; }catch(e){ return bad(out.join("\n") + "\nขอที่อยู่ไฟล์ไม่ได้: " + errText(e)); } }
     out.push("ที่อยู่ไฟล์: " + uri);
     var src = cap() && cap().convertFileSrc ? cap().convertFileSrc(uri) : uri, pr = await playTest(src, "เล่น " + v.name + " จากที่อยู่ไฟล์โดยตรง");
     return { s:pr.s, t:out.join("\n") + "\n" + pr.t };
+  }
+
+  TESTS.push({ id:"media", title:"ขอสิทธิ์ดูวิดีโอ + หาอัลบั้มจากชื่อ แล้วเล่นจากโฟลเดอร์ — สำคัญที่สุด", desc:"ครั้งแรกจะมีหน้าต่างขออนุญาตดูรูปและวิดีโอ ให้กดอนุญาต · เว้นช่องว่างไว้ = ดูรายชื่ออัลบั้มทั้งหมด · พิมพ์ชื่ออัลบั้ม (เช่น luffy) = หาโฟลเดอร์ของอัลบั้มนั้นแล้วลองเล่นคลิปแรก", input:"mediaAlbum", ph:"ชื่ออัลบั้ม (เว้นว่างเพื่อดูรายชื่อ)", run: async function(){
+    var m = plug("Media"), fs = plug("Filesystem"); if(!m || !fs) return bad("ไม่มีปลั๊กอิน " + (!m ? "Media " : "") + (!fs ? "Filesystem" : ""));
+    var want = ($("mediaAlbum").value || "").trim(), albums;
+    try{ albums = (await m.getAlbums()).albums || []; }catch(e){ return bad("ขอสิทธิ์/อ่านรายชื่ออัลบั้มไม่ได้: " + errText(e) + "\n(ถ้าเคยกดไม่อนุญาต ให้ไปเปิดที่ ตั้งค่ามือถือ > แอป > Meowrin > สิทธิ์ แล้วลองใหม่)"); }
+    var head = "พบอัลบั้ม " + albums.length + " อัน";
+    if(!want) return info(head + "\n" + albums.slice(0, 60).map(function(a){ return "- " + a.name + "  →  " + a.identifier; }).join("\n") + "\n\nพิมพ์ชื่ออัลบั้มในช่องแล้วกดทดสอบอีกครั้งเพื่อลองเล่นคลิป");
+    var hit = albums.filter(function(a){ return (a.name || "").toLowerCase().indexOf(want.toLowerCase()) >= 0; });
+    if(!hit.length) return bad(head + "\nไม่เจออัลบั้มที่ชื่อมี \"" + want + "\"" + (albums.length ? "" : " · ได้ 0 อัน มักแปลว่ายังไม่ได้อนุญาตสิทธิ์ดูรูป/วิดีโอ"));
+    var a0 = hit.filter(function(a){ return a.name === want; })[0] || hit[0];
+    var r = await probeFolder(fs, a0.identifier, true);
+    return { s:r.s, t:head + " · ชื่อที่ตรง: " + hit.map(function(a){ return a.name; }).join(", ") + "\nใช้อัลบั้ม \"" + a0.name + "\" → " + a0.identifier + "\n" + r.t };
+  } });
+
+  TESTS.push({ id:"fsdir", title:"อ่านโฟลเดอร์ตามที่อยู่ที่พิมพ์เอง (Filesystem)", desc:"พิมพ์ที่อยู่ เช่น Pictures/Gallery/owner/ชื่ออัลบั้ม (นับจากที่เก็บของเครื่อง) หรือที่อยู่เต็มขึ้นต้นด้วย /storage/ · วิธีสำรองถ้าข้อบนหาอัลบั้มไม่เจอ", input:"fsPath", ph:"เช่น Pictures/Gallery/owner/ชื่ออัลบั้ม", run: async function(){
+    var fs = plug("Filesystem"); if(!fs) return bad("ไม่มีปลั๊กอิน Filesystem");
+    var raw = ($("fsPath").value || "").trim() || "Pictures/Gallery/owner", abs = /^(\/|file:)/.test(raw), p = abs ? raw.replace(/\/+$/, "") : raw.replace(/^\/+|\/+$/g, "");
+    return probeFolder(fs, p, abs);
   } });
 
   /* ---------------- วาดหน้า ---------------- */

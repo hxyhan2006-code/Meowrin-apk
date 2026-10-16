@@ -33,7 +33,8 @@ jobs:
             "appId": "com.han.meowrin",
             "appName": "Meowrin",
             "webDir": "www",
-            "backgroundColor": "#0b0e0d"
+            "backgroundColor": "#0b0e0d",
+            "plugins": { "Media": { "androidGalleryMode": true } }
           }
           JSON
           npx cap add android
