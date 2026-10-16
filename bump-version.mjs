@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const STAMP = /(\.(?:js|css|png|json)\?v=)([\w.]+)/g; // รวมไอคอน (.png) และ manifest.json ด้วย ไม่งั้นมือถือจำไอคอนเก่า · ลิงก์ YouTube (watch?v=) ไม่ตรงรูปแบบนี้
-const FILES = ['manifest.json', 'index.html', 'footage.html', 'sub/index.html', 'sub/app.js', 'sub/media.js', 'sub/waveform.js', 'sub/voicepick.js'];
+const FILES = ['manifest.json', 'index.html', 'footage.html', 'check.html', 'sub/index.html', 'sub/app.js', 'sub/media.js', 'sub/waveform.js', 'sub/voicepick.js'];
 const VERSION_JS = ['version.js', /(var VERSION = ")([\w.]+)(")/g];
 
 const arg = process.argv[2];

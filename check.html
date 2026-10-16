@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0e0d" />
+<title>ตรวจระบบแอพ · Meowrin factory</title>
+<link rel="icon" type="image/png" href="icon-192.png?v=5.5">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Mitr:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="footage.css?v=5.5">
+<link rel="stylesheet" href="check.css?v=5.5">
+</head>
+<body>
+<header>
+  <div class="wrap"><a class="back" href="./" aria-label="กลับแอพ"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></a><h1>ตรวจระบบแอพ</h1></div>
+</header>
+
+<main class="wrap">
+  <div class="panel">
+    <h2>ตรวจว่าอะไรใช้ได้บนเครื่องนี้</h2>
+    <p class="hint">กดทดสอบทีละข้อ หรือกด "ทดสอบอัตโนมัติทั้งหมด" แล้วกด "คัดลอกผลทั้งหมด" ส่งให้ผู้ช่วยดู · ข้อที่ต้องแตะเองจะบอกให้ทำอะไร · ไม่มีข้อไหนเสียเงิน</p>
+    <div class="row2"><button class="btn" id="runAuto" type="button">ทดสอบอัตโนมัติทั้งหมด</button><button class="btn ghost" id="copyAll" type="button">คัดลอกผลทั้งหมด</button></div>
+  </div>
+  <div id="list"></div>
+</main>
+
+<video id="tcVid" controls playsinline preload="metadata" hidden></video>
+<script src="store.js?v=5.5" data-boot="icons.js?v=5.5 dialog.js?v=5.5 r2.js?v=5.5 check.js?v=5.5"></script>
+</body>
+</html>
