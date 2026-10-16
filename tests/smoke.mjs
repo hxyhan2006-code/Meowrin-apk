@@ -181,6 +181,37 @@ try {
   });
   check('ส่งออกวิดีโอเร็ว (exporter.js): ต่อ 3 ช็อต ยาว 1.5 วิ ขนาด 270x480 ลำดับสีถูก', exr.frames === 45 && Math.abs(exr.dur - 1.5) < 0.1 && exr.w === 270 && exr.h === 480 && exr.order === 'RBR' && exr.size > 500 && !exErr.length, JSON.stringify(exr) + exErr.join(';'));
   await ex.close();
+  // อัปเดตแอพเอง (ota.js): เช็ก files.json → ดาวน์โหลดลงโฟลเดอร์ + ตรวจ sha1 → สลับ · ไฟล์ถูกแก้ = ยกเลิกทั้งชุดไม่สลับ · บูตสำเร็จ = จำชุดใหม่ + ลบชุดเก่า
+  const { createHash } = await import('node:crypto'); const sha = (b) => createHash('sha1').update(b).digest('hex');
+  const REM = 'https://hxyhan2006-code.github.io/Meowrin-apk/', NEWID = 'newid1234567890abcdef';
+  const subset = ['version.js', 'icons.js', 'sub/vendor/mediabunny.LICENSE'].map((p) => { const b = readFileSync(join(ROOT, p)); return { p, h: sha(b), s: b.length }; });
+  const otaCtx = await browser.newContext({ viewport: { width: 380, height: 820 }, serviceWorkers: 'block' }); // sw.js จะดึงคำขอข้ามโดเมนไปเอง ทำให้ page.route ดักไม่ได้
+  async function otaPage(tamper) {
+    const pg = await otaCtx.newPage();
+    await pg.route(new RegExp('^' + REM.replace(/[.\/]/g, '\\$&')), (route) => {
+      const p = decodeURIComponent(new URL(route.request().url()).pathname.replace('/Meowrin-apk/', '')), cors = { 'access-control-allow-origin': '*' };
+      if (p === 'files.json') return route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ id: NEWID, version: '9.9', files: subset }) });
+      let body = readFileSync(join(ROOT, p)); if (tamper && p === 'icons.js') body = Buffer.concat([body, Buffer.from('x')]);
+      return route.fulfill({ status: 200, body, headers: cors });
+    });
+    await pg.addInitScript((id) => { window.__o = { w: [], sb: [], persisted: 0, rm: [] }; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: {
+      WebView: { setServerBasePath: async (o) => { window.__o.sb.push(o.path); }, getServerBasePath: async () => ({ path: '/data/user/0/app/files/ota/' + id }), persistServerBasePath: async () => { window.__o.persisted++; } },
+      Filesystem: { writeFile: async (o) => { window.__o.w.push([o.path, o.data.length]); }, stat: async () => { throw new Error('nope'); }, rmdir: async (o) => { window.__o.rm.push(o.path); }, getUri: async (o) => ({ uri: 'file:///data/user/0/app/files/' + o.path }), readdir: async () => ({ files: [{ name: 'oldid' }, { name: id }] }) } } }; }, NEWID);
+    await pg.goto(base + '/index.html'); await pg.waitForFunction(() => window.MWOta && window.MW, null, { timeout: 20000 });
+    return pg;
+  }
+  const o1p = await otaPage(false);
+  const o1 = await o1p.evaluate(async () => { const c = await MWOta.check(); const d = await MWOta.download(); await MWOta.apply(); return { update: c.update, w: window.__o.w, sb: window.__o.sb }; });
+  check('อัปเดตแอพ (ota.js): เจอเวอร์ชันใหม่ → ดาวน์โหลดครบ (ไฟล์+files.json) ตรวจ sha1 → สลับชุดไฟล์', o1.update && o1.w.length === 4 && o1.w.some(([p]) => p === 'ota/' + NEWID + '/files.json') && o1.sb.length === 1 && o1.sb[0] === '/data/user/0/app/files/ota/' + NEWID, JSON.stringify(o1));
+  await o1p.close();
+  const o2p = await otaPage(true);
+  const o2 = await o2p.evaluate(async () => { try { await MWOta.check(); await MWOta.download(); return { err: null, sb: window.__o.sb.length }; } catch (e) { return { err: e.message, sb: window.__o.sb.length, rm: window.__o.rm.length }; } });
+  check('อัปเดตแอพ (ota.js): ไฟล์ไม่ตรง sha1 → ยกเลิกทั้งชุด ลบของค้าง ไม่สลับ', /sha1/.test(o2.err || '') && o2.sb === 0 && o2.rm >= 1, JSON.stringify(o2));
+  await o2p.close();
+  const o3p = await otaPage(false);
+  const o3 = await o3p.evaluate(async () => { await MWOta.bootOk(); return { persisted: window.__o.persisted, rm: window.__o.rm }; });
+  check('อัปเดตแอพ (ota.js): บูตจากชุด OTA สำเร็จ → จำชุดนี้ + ลบชุดเก่า (ไม่ลบชุดที่ใช้อยู่)', o3.persisted === 1 && o3.rm.includes('ota/oldid') && !o3.rm.includes('ota/' + NEWID), JSON.stringify(o3));
+  await o3p.close(); await otaCtx.close();
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

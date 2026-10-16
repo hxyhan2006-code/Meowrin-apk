@@ -6,10 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "live = แอพโหลดโค้ดจากเว็บ (GitHub Pages) แก้แล้ว push เปิดแอพได้ของใหม่เลย · bundled = ห่อโค้ดไว้ใน APK (ต้องสร้างใหม่ทุกครั้งที่แก้)"
+        description: "bundled (แนะนำ) = ห่อโค้ดไว้ใน APK หน้าอยู่ที่ https://localhost อ่านไฟล์วิดีโอได้ แล้ว ota.js อัปเดตโค้ดจาก GitHub Pages เอง · live = โหลดโค้ดจากเว็บตลอด (หน้าอยู่ที่ github.io อ่านข้อมูลภาพจากไฟล์ในมือถือไม่ได้ ติด CORS)"
         type: choice
-        options: [live, bundled]
-        default: live
+        options: [bundled, live]
+        default: bundled
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -30,6 +30,7 @@ jobs:
       - name: เตรียมโฟลเดอร์ห่อแอพ
         env:
           MODE: ${{ github.event.inputs.mode }}
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
           mkdir -p wrap/www
           rsync -a --exclude '.git' --exclude '.github' --exclude 'wrap' --exclude 'tests' --exclude 'tools' --exclude '*.md' --exclude '*.mjs' --exclude '*.test.mjs' ./ wrap/www/
@@ -40,11 +41,12 @@ jobs:
           import json, os
           cfg = {"appId": "com.han.meowrin", "appName": "Meowrin App", "webDir": "www", "backgroundColor": "#0b0e0d",
                  "android": {"adjustMarginsForEdgeToEdge": "force"}, "plugins": {"Media": {"androidGalleryMode": True}}}
-          if os.environ.get("MODE", "live") == "live":
+          if os.environ.get("MODE", "bundled") == "live":
               cfg["server"] = {"url": "https://hxyhan2006-code.github.io/Meowrin-apk/", "cleartext": False}
           json.dump(cfg, open("capacitor.config.json", "w"), indent=2)
           PY1
           npx cap add android
+          sed -i "s/versionCode 1/versionCode ${RUN_NUMBER}/" android/app/build.gradle  # APK ใหม่ = Capacitor ทิ้งชุดไฟล์ OTA ที่จำไว้ กลับไปใช้ไฟล์ที่ห่อมา (ทางรีเซ็ตถ้า OTA พัง)
           pip install --quiet pillow
           python3 ../tools/android-icons.py android/app/src/main/res www/icon-512.png
           python3 - <<'PY2'

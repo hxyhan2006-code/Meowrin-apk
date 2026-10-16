@@ -3,6 +3,7 @@
 //      node bump-version.mjs --check   ตรวจว่าทุกจุดเป็นเลขเดียวกัน
 // ต้องรันก่อน push ทุกครั้ง ไม่งั้นมือถือแคชไฟล์เก่าผสมไฟล์ใหม่ หน้าจะเพี้ยน
 import { readFileSync, writeFileSync } from 'node:fs';
+import { writeManifest, manifestFresh } from './tools/make-manifest.mjs'; // files.json = รายการไฟล์ที่ ota.js ใช้อัปเดตแอพ (ต้องตรงกับไฟล์จริงเสมอ)
 
 const STAMP = /(\.(?:js|css|png|json)\?v=)([\w.]+)/g; // รวมไอคอน (.png) และ manifest.json ด้วย ไม่งั้นมือถือจำไอคอนเก่า · ลิงก์ YouTube (watch?v=) ไม่ตรงรูปแบบนี้
 const FILES = ['manifest.json', 'index.html', 'footage.html', 'check.html', 'sub/index.html', 'sub/app.js', 'sub/media.js', 'sub/waveform.js', 'sub/voicepick.js'];
@@ -29,6 +30,8 @@ const versions = new Set(found.map((f) => f[2]));
 if (arg === '--check') {
   if (versions.size === 1) console.log(`เลขรุ่นตรงกันทุกจุด: v${[...versions][0]} (${found.length} จุด)`);
   else { console.error('เลขรุ่นไม่ตรงกัน:'); found.forEach((f) => console.error(' ', f[0], f[1])); process.exit(1); }
+  if (!manifestFresh()) { console.error('files.json ไม่ตรงกับไฟล์จริง (แก้ไฟล์หลัง bump?) รัน: node tools/make-manifest.mjs'); process.exit(1); }
 } else {
   console.log(`บวกเป็น v${arg} แล้ว ${found.length} จุด`);
+  const m = writeManifest(); console.log(`สร้าง files.json แล้ว (${m.files.length} ไฟล์ · id ${m.id.slice(0, 8)})`);
 }
