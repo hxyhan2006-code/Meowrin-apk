@@ -186,7 +186,7 @@ try {
   const REM = 'https://hxyhan2006-code.github.io/Meowrin-apk/', NEWID = 'newid1234567890abcdef';
   const subset = ['version.js', 'icons.js', 'sub/vendor/mediabunny.LICENSE'].map((p) => { const b = readFileSync(join(ROOT, p)); return { p, h: sha(b), s: b.length }; });
   const otaCtx = await browser.newContext({ viewport: { width: 380, height: 820 }, serviceWorkers: 'block' }); // sw.js จะดึงคำขอข้ามโดเมนไปเอง ทำให้ page.route ดักไม่ได้
-  async function otaPage(tamper) {
+  async function otaPage(tamper, opt = {}) {
     const pg = await otaCtx.newPage();
     await pg.route(new RegExp('^' + REM.replace(/[.\/]/g, '\\$&')), (route) => {
       const p = decodeURIComponent(new URL(route.request().url()).pathname.replace('/Meowrin-apk/', '')), cors = { 'access-control-allow-origin': '*' };
@@ -194,9 +194,9 @@ try {
       let body = readFileSync(join(ROOT, p)); if (tamper && p === 'icons.js') body = Buffer.concat([body, Buffer.from('x')]);
       return route.fulfill({ status: 200, body, headers: cors });
     });
-    await pg.addInitScript((id) => { window.__o = { w: [], sb: [], persisted: 0, rm: [] }; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: {
-      WebView: { setServerBasePath: async (o) => { window.__o.sb.push(o.path); }, getServerBasePath: async () => ({ path: '/data/user/0/app/files/ota/' + id }), persistServerBasePath: async () => { window.__o.persisted++; } },
-      Filesystem: { writeFile: async (o) => { window.__o.w.push([o.path, o.data.length]); }, stat: async () => { throw new Error('nope'); }, rmdir: async (o) => { window.__o.rm.push(o.path); }, getUri: async (o) => ({ uri: 'file:///data/user/0/app/files/' + o.path }), readdir: async () => ({ files: [{ name: 'oldid' }, { name: id }] }) } } }; }, NEWID);
+    await pg.addInitScript(({ id, bp, state, exists }) => { if (state) localStorage.setItem('ota_state_v1', JSON.stringify(state)); window.__o = { w: [], sb: [], persisted: 0, rm: [] }; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: {
+      WebView: { setServerBasePath: async (o) => { window.__o.sb.push(o.path); }, getServerBasePath: async () => ({ path: bp || '/data/user/0/app/files/ota/' + id }), persistServerBasePath: async () => { window.__o.persisted++; } },
+      Filesystem: { writeFile: async (o) => { window.__o.w.push([o.path, o.data.length]); }, stat: async (o) => { if (!(exists || []).includes(o.path)) throw new Error('nope'); return {}; }, rmdir: async (o) => { window.__o.rm.push(o.path); }, getUri: async (o) => ({ uri: 'file:///data/user/0/app/files/' + o.path }), readdir: async () => ({ files: [{ name: 'oldid' }, { name: id }] }) } } }; }, { id: NEWID, bp: opt.bp, state: opt.state, exists: opt.exists });
     await pg.goto(base + '/index.html'); await pg.waitForFunction(() => window.MWOta && window.MW, null, { timeout: 20000 });
     return pg;
   }
@@ -211,7 +211,18 @@ try {
   const o3p = await otaPage(false);
   const o3 = await o3p.evaluate(async () => { await MWOta.bootOk(); return { persisted: window.__o.persisted, rm: window.__o.rm }; });
   check('อัปเดตแอพ (ota.js): บูตจากชุด OTA สำเร็จ → จำชุดนี้ + ลบชุดเก่า (ไม่ลบชุดที่ใช้อยู่)', o3.persisted === 1 && o3.rm.includes('ota/oldid') && !o3.rm.includes('ota/' + NEWID), JSON.stringify(o3));
-  await o3p.close(); await otaCtx.close();
+  await o3p.close();
+  // ตัวกันพลาด: เปิดแอพมาเป็นชุดที่ห่อมากับ APK แต่เคยดาวน์โหลดชุดใหม่ไว้ → สลับให้เอง (นับรอบ) · ครบ 2 รอบไม่สำเร็จ = เลิก ไม่วนลูป
+  const o4p = await otaPage(false, { bp: '/android_asset/public', state: { wanted: { id: 'abc', dir: 'ota/abc' }, tries: 0 }, exists: ['ota/abc/files.json'] });
+  await o4p.waitForTimeout(300);
+  const o4 = await o4p.evaluate(() => ({ sb: window.__o.sb, st: JSON.parse(localStorage.getItem('ota_state_v1')) }));
+  check('อัปเดตแอพ (ota.js): เปิดแอพมายังเป็นชุดเดิมแต่มีชุดใหม่ที่ดาวน์โหลดไว้ → สลับให้เอง นับรอบ', o4.sb.length === 1 && o4.sb[0] === '/data/user/0/app/files/ota/abc' && o4.st.tries === 1, JSON.stringify(o4));
+  await o4p.close();
+  const o5p = await otaPage(false, { bp: '/android_asset/public', state: { wanted: { id: 'abc', dir: 'ota/abc' }, tries: 2 }, exists: ['ota/abc/files.json'] });
+  await o5p.waitForTimeout(300);
+  const o5 = await o5p.evaluate(() => ({ sb: window.__o.sb.length, st: JSON.parse(localStorage.getItem('ota_state_v1')) }));
+  check('อัปเดตแอพ (ota.js): สลับตอนเปิดแอพไม่สำเร็จครบ 2 รอบ → เลิก ไม่วนลูป', o5.sb === 0 && !o5.st.wanted, JSON.stringify(o5));
+  await o5p.close(); await otaCtx.close();
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

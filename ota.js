@@ -2,12 +2,15 @@
    วิธี: เช็ก files.json บน Pages (รายการไฟล์+sha1) เทียบกับ files.json ของชุดไฟล์ที่กำลังใช้ → ถ้าต่าง ดาวน์โหลดไฟล์ทั้งหมดลง
    โฟลเดอร์ในมือถือ (Filesystem DATA/ota/<id>) ตรวจ sha1 ทุกไฟล์ → WebView.setServerBasePath ให้ตัวช่วยของแอพเสิร์ฟจากโฟลเดอร์นั้นแทนไฟล์ที่ห่อมากับ APK
    หน้าแอพยังอยู่ที่ https://localhost (อ่านไฟล์วิดีโอ/วาด canvas ได้ ไม่ติด CORS) และใช้ออฟไลน์ได้ · เปลี่ยนชุดไฟล์ = หน้าโหลดใหม่ทันที
-   ความปลอดภัย: จำชุดไฟล์ใหม่ (persistServerBasePath) ต่อเมื่อบูตสำเร็จ (โหลดครบ ไม่มี error) ถ้าพัง ครั้งต่อไปกลับไปใช้ชุดเดิมเอง
+   ความปลอดภัย: จำชุดไฟล์ใหม่ (persistServerBasePath) ต่อเมื่อบูตสำเร็จ (แอพเริ่มทำงาน window.MW) ถ้าพัง ครั้งต่อไปกลับไปใช้ชุดเดิมเอง
+   ตัวกันพลาด: จำชุดที่ต้องการไว้ใน localStorage (ota_state_v1) ถ้าเปิดแอพมาแล้วยังเป็นชุดที่ห่อมากับ APK แต่ชุดใหม่ดาวน์โหลดไว้แล้ว = สลับให้เองตอนเปิด (ลองได้ 2 รอบ ไม่สำเร็จเลิก กันวนลูป)
    · ติดตั้ง APK ตัวใหม่ (versionCode เปลี่ยน) = Capacitor ทิ้งชุดที่จำไว้ กลับไปใช้ไฟล์ที่ห่อมากับ APK · ไม่ได้อยู่ในแอพ = ไม่ทำอะไร */
 (function(){
   "use strict";
-  var REMOTE = "https://hxyhan2006-code.github.io/Meowrin-apk/", DIR = "ota", KEY = "mw_ota_v1", LOCAL = null, st = { remote:null, ready:null }, bootErr = false;
-  window.addEventListener("error", function(){ bootErr = true; });
+  var REMOTE = "https://hxyhan2006-code.github.io/Meowrin-apk/", DIR = "ota", KEY = "ota_state_v1", LOCAL = null, st = { remote:null, ready:null }, PATH = "";
+  function meta(){ try{ return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ return {}; } }
+  function saveMeta(m){ try{ localStorage.setItem(KEY, JSON.stringify(m)); }catch(e){} }
+  function note(m, text){ m.log = text; saveMeta(m); }
   function cap(){ return window.Capacitor || null; }
   function plug(n){ var c = cap(); return c && c.isNativePlatform && c.isNativePlatform() && c.Plugins && c.Plugins[n] && (!c.isPluginAvailable || c.isPluginAvailable(n)) ? c.Plugins[n] : null; }
   function usable(){ return location.hostname === "localhost" && !!plug("WebView") && !!plug("Filesystem"); }
@@ -47,15 +50,31 @@
   }
   async function apply(){ /* สลับไปใช้ชุดไฟล์ที่ดาวน์โหลดไว้ · หน้าโหลดใหม่ทันที */
     if(!st.ready) throw new Error("ยังไม่ได้ดาวน์โหลดชุดไฟล์ใหม่");
-    var u = (await plug("Filesystem").getUri({ path:st.ready.dir, directory:"DATA" })).uri.replace(/^file:\/\//, "");
+    var u = (await plug("Filesystem").getUri({ path:st.ready.dir, directory:"DATA" })).uri.replace(/^file:\/\//, ""), m = meta();
+    m.wanted = { id:st.ready.id, dir:st.ready.dir, version:st.ready.version }; m.tries = 0; note(m, "สลับไปชุด " + st.ready.id.slice(0, 8));
+    await plug("WebView").setServerBasePath({ path:u });
+  }
+  async function curPath(){ try{ return ((await plug("WebView").getServerBasePath()) || {}).path || ""; }catch(e){ return ""; } }
+  async function early(){ /* เปิดแอพมาแล้วยังเป็นชุดที่ห่อมากับ APK แต่เคยดาวน์โหลดชุดใหม่ไว้ (จำไม่ติด) → สลับให้เอง */
+    if(!usable()) return;
+    PATH = await curPath(); if(PATH.indexOf("/" + DIR + "/") >= 0) return;
+    var m = meta(); if(!m.wanted) return;
+    if((m.tries || 0) >= 2){ m.wanted = null; note(m, "สลับตอนเปิดแอพไม่สำเร็จ 2 รอบ เลิกใช้ชุดที่ดาวน์โหลด"); return; }
+    try{ await plug("Filesystem").stat({ path:m.wanted.dir + "/files.json", directory:"DATA" }); }catch(e){ m.wanted = null; note(m, "ไม่เจอโฟลเดอร์ชุดที่ดาวน์โหลดไว้"); return; }
+    m.tries = (m.tries || 0) + 1; note(m, "สลับตอนเปิดแอพ รอบที่ " + m.tries);
+    var u = (await plug("Filesystem").getUri({ path:m.wanted.dir, directory:"DATA" })).uri.replace(/^file:\/\//, "");
     await plug("WebView").setServerBasePath({ path:u });
   }
   async function bootOk(){ /* ชุดไฟล์จากโฟลเดอร์ OTA บูตสำเร็จ → จำไว้ใช้ครั้งต่อไป + ลบชุดเก่า */
-    if(!usable() || bootErr || document.readyState !== "complete") return;
-    var wv = plug("WebView"), fs = plug("Filesystem"), p = ((await wv.getServerBasePath()) || {}).path || "";
+    if(!usable() || !window.MW) return;
+    var wv = plug("WebView"), fs = plug("Filesystem"), p = await curPath(); PATH = p;
     if(p.indexOf("/" + DIR + "/") < 0) return; /* ยังใช้ไฟล์ที่ห่อมากับ APK */
-    var meta = MWStore.get(KEY, {}) || {};
-    if(meta.persisted !== p){ await wv.persistServerBasePath(); MWStore.set(KEY, { persisted:p }); }
+    var m = meta(), id = p.split("/").pop();
+    m.wanted = { id:id, dir:DIR + "/" + id, version:(LOCAL || {}).version }; saveMeta(m); /* ชุดที่บูตผ่านแล้ว = ชุดที่ต้องใช้ (ถ้า persist ไม่ติด early() จะสลับให้ตอนเปิดแอพ) */
+    if(m.persisted !== p){
+      try{ await wv.persistServerBasePath(); m.persisted = p; m.tries = 0; note(m, "บูตจากชุด " + id.slice(0, 8) + " สำเร็จ จำไว้แล้ว"); }
+      catch(e){ note(m, "จำชุดไม่สำเร็จ: " + (e && e.message || e)); return; }
+    }
     try{ var cur = p.split("/").pop(), list = ((await fs.readdir({ path:DIR, directory:"DATA" })).files || []);
       for(var i = 0; i < list.length; i++){ var n = typeof list[i] === "string" ? list[i] : list[i].name; if(n && n !== cur) await fs.rmdir({ path:DIR + "/" + n, directory:"DATA", recursive:true }).catch(function(){}); } }catch(e){}
   }
@@ -68,8 +87,8 @@
   function render(msg, bad){
     var info = document.getElementById("otaInfo"), row = document.getElementById("otaRow"); if(!info) return;
     row.hidden = !usable();
-    var l = LOCAL || {}; info.className = "hint" + (bad ? " bad" : "");
-    info.textContent = msg || ("ชุดไฟล์ที่ใช้: v" + (l.version || window.MW_VERSION || "?") + (l.id ? " (" + l.id.slice(0, 8) + ")" : "") + " · แอพอัปเดตตัวเองจากเว็บได้ ไม่ต้องติดตั้ง APK ใหม่");
+    var l = LOCAL || {}, m = meta(); info.className = "hint" + (bad ? " bad" : "");
+    info.textContent = msg || ("ชุดไฟล์ที่ใช้: v" + (l.version || window.MW_VERSION || "?") + (l.id ? " (" + l.id.slice(0, 8) + ")" : "") + " · " + (PATH.indexOf("/" + DIR + "/") >= 0 ? "จากโฟลเดอร์ที่ดาวน์โหลด" : "จากไฟล์ที่ห่อมากับ APK") + (m.persisted ? " · จำไว้แล้ว" : "") + (m.log ? " · " + m.log : ""));
   }
   async function manual(){
     var btn = document.getElementById("otaBtn"); btn.disabled = true;
@@ -89,9 +108,10 @@
       bar("มีเวอร์ชันใหม่ v" + r.remote.version + " พร้อมแล้ว · แตะเพื่ออัปเดต", function(){ this.textContent = "กำลังเปิดใหม่..."; apply().catch(function(e){ bar("อัปเดตไม่ได้: " + (e && e.message || e), function(){ this.hidden = true; }); }); });
     }catch(e){ /* ไม่มีเน็ต/เว็บล่ม = ใช้ชุดเดิมต่อ */ }
   }
-  window.MWOta = { usable:usable, check:check, download:download, apply:apply, bootOk:bootOk };
+  window.MWOta = { usable:usable, check:check, download:download, apply:apply, bootOk:bootOk, early:early };
+  early().catch(function(){}); /* รันทันทีที่โหลดสคริปต์ (ไม่รอ load) จะได้สลับก่อนผู้ใช้เห็นหน้า */
   function init(){
-    localManifest().then(function(){ render(); });
+    localManifest().then(function(){ return usable() ? curPath() : ""; }).then(function(p){ PATH = p; render(); });
     var b = document.getElementById("otaBtn"); if(b) b.addEventListener("click", manual);
     if(!usable()) return;
     setTimeout(function(){ bootOk().catch(function(){}); }, 2500);
