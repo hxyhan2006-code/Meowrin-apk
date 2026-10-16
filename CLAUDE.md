@@ -6,6 +6,8 @@
 
 > **`native.js` (`window.MWNative`, v5.9)** บันทึก/แชร์ไฟล์ทั้งในแอพและเบราว์เซอร์: `save(blob,name)` ในแอพเขียนลง `Documents/Meowrin/` ด้วย Filesystem ทีละก้อน 6 MB (ชื่อเดิมเขียนทับไม่ได้ = ใช้ชื่อ+เวลา) · `share(blob,name)` เขียนลงแคชแล้วเปิด Share · ใช้ที่: ไฟล์สำรอง (app.js), ไฟล์สำรองดัชนี (footage.js), คลิปตัดต่อ (footage-stitch.js), เสียง mp3 บันทึก/แชร์ (tts.js), คลิปซับ/srt (sub/app.js) · **ห้ามใช้ `<a download>`/`navigator.share` ตรงๆ ในโค้ดใหม่ ใช้ MWNative** · workflow ตั้ง `android.adjustMarginsForEdgeToEdge:"force"` กันหัวหน้าชนแถบสถานะ (ยังไม่ยืนยันบนมือถือจริง)
 
+> **โหมด live (ตั้งแต่ 2026-10-17)**: workflow `build-apk` มีตัวเลือก `mode` ค่าเริ่ม `live` = APK เป็นเปลือก โหลดโค้ดจาก GitHub Pages `https://hxyhan2006-code.github.io/Meowrin-apk/` (Capacitor `server.url`) → แก้โค้ด push main แล้วเปิดแอพได้ของใหม่เลย (Pages อัปเดต ~1 นาที, WebView อาจแคชหน้าแรกได้ถึง ~10 นาที) · ต้องสร้าง APK ใหม่เฉพาะเมื่อเปลี่ยนปลั๊กอิน/สิทธิ์/config เนทีฟ · ต้องมีเน็ตตอนเปิดแอพ · origin เปลี่ยนจาก `https://localhost` เป็นโดเมน Pages (ข้อมูลในแอพแยกจากแบบ bundled) · `bundled` = ห่อโค้ดไว้ใน APK แบบเดิม · repo นี้เป็น Public เพื่อใช้ Pages (ห้ามใส่ความลับ/คีย์ในโค้ด) · **ยังไม่ยืนยันบนมือถือจริงว่าปลั๊กอิน/เล่นไฟล์ในเครื่อง (`convertFileSrc`) ทำงานในโหมด live** → ดูผลหน้า ตรวจระบบแอพ
+
 # Meowrin factory
 
 แอพส่วนตัวของ Han สำหรับช่อง YouTube Shorts วันพีซภาษาไทย "meowrin"
