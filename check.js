@@ -66,9 +66,15 @@
 
   TESTS.push({ id:"codec", auto:true, title:"เข้ารหัสวิดีโอ (WebCodecs) สำหรับเรนเดอร์ซับ", run: async function(){
     if(!window.VideoEncoder) return bad("ไม่มี VideoEncoder ในเครื่องนี้ · หน้าซับเรนเดอร์ mp4 ไม่ได้");
-    var v = await VideoEncoder.isConfigSupported({ codec:"avc1.42001f", width:1080, height:1080, bitrate:5000000, framerate:30 });
+    /* 1080x1080 ต้องระดับ H.264 ตั้งแต่ 4.0 ขึ้นไป (3.1 รับได้แค่ ~720p) */
+    var list = [["avc1.640028", "High 4.0"], ["avc1.4d0028", "Main 4.0"], ["avc1.42002a", "Baseline 4.2"], ["avc1.640032", "High 5.0"]], out = [], any = false;
+    for(var k = 0; k < list.length; k++){
+      var r = await VideoEncoder.isConfigSupported({ codec:list[k][0], width:1080, height:1080, bitrate:5000000, framerate:30 });
+      out.push("H.264 " + list[k][1] + " 1080x1080: " + (r.supported ? "ได้" : "ไม่ได้")); if(r.supported) any = true;
+    }
     var a = window.AudioEncoder ? await AudioEncoder.isConfigSupported({ codec:"mp4a.40.2", sampleRate:48000, numberOfChannels:2, bitrate:128000 }) : { supported:false };
-    return (v.supported ? ok : bad)("H.264 1080x1080: " + (v.supported ? "ได้" : "ไม่ได้") + " · เสียง AAC: " + (a.supported ? "ได้" : "ไม่ได้"));
+    out.push("เสียง AAC: " + (a.supported ? "ได้" : "ไม่ได้"));
+    return (any ? ok : bad)(out.join("\n"));
   } });
 
   TESTS.push({ id:"net", auto:true, title:"เรียก API ด้วยคีย์ที่ตั้งไว้ (ไม่เสียเงิน)", run: async function(){
@@ -135,6 +141,11 @@
     try{ await navigator.clipboard.writeText(tx); w = true; }catch(e){ return bad("เขียน clipboard ไม่ได้: " + errText(e)); }
     try{ r = await navigator.clipboard.readText(); }catch(e){ return info("เขียนได้ แต่อ่านไม่ได้ (" + errText(e) + ") · แอพมีกล่องให้กดค้างคัดลอกสำรองอยู่แล้ว"); }
     return (r === tx ? ok : bad)("เขียน: " + w + " · อ่านกลับตรงกัน: " + (r === tx));
+  } });
+
+  TESTS.push({ id:"paste", title:"วางข้อความผ่านช่องพิมพ์ (ทางสำรองเมื่ออ่าน clipboard ไม่ได้)", desc:"คัดลอกข้อความอะไรก็ได้จากที่อื่น แล้วกดค้างช่องด้านล่างเลือก วาง จากนั้นกดทดสอบ", input:"pasteBox", ph:"กดค้างตรงนี้แล้วเลือก วาง", run: async function(){
+    var v = ($("pasteBox").value || "").trim();
+    return v ? ok("วางได้ " + v.length + " ตัวอักษร · ใช้ช่องพิมพ์แทนการอ่าน clipboard ตรงๆ ได้") : info("ช่องยังว่าง · วางข้อความลงช่องก่อนแล้วกดทดสอบ");
   } });
 
   var GIS = null;
@@ -207,15 +218,31 @@
     return { s:r.s, t:out.join("\n") + "\n" + r.t };
   } });
 
-  TESTS.push({ id:"fsdir", title:"อ่านโฟลเดอร์ด้วย Filesystem (วิธีสำรอง)", desc:"พิมพ์ที่อยู่โฟลเดอร์ในที่เก็บของเครื่อง เช่น Pictures/Gallery/owner หรือ Movies", input:"fsPath", ph:"เช่น Pictures/Gallery/owner", run: async function(){
+  var VEXT = /\.(mp4|mov|m4v|mkv|webm|3gp)$/i;
+  TESTS.push({ id:"fsdir", title:"อ่านโฟลเดอร์ + เล่นวิดีโอจากโฟลเดอร์โดยตรง (Filesystem) — สำคัญที่สุด", desc:"พิมพ์ที่อยู่โฟลเดอร์อัลบั้ม เช่น Pictures/Gallery/owner/ชื่ออัลบั้ม (หรือเว้นว่างลอง Pictures/Gallery/owner) · จะนับวิดีโอ จับเวลาอ่าน แล้วลองเล่นคลิปแรก", input:"fsPath", ph:"เช่น Pictures/Gallery/owner/ชื่ออัลบั้ม", run: async function(){
     var fs = plug("Filesystem"); if(!fs) return bad("ไม่มีปลั๊กอิน Filesystem");
-    var p = ($("fsPath").value || "").trim() || "Pictures";
+    var p = ($("fsPath").value || "").trim().replace(/^\/+|\/+$/g, "") || "Pictures/Gallery/owner";
     try{ if(fs.requestPermissions) await fs.requestPermissions(); }catch(e){}
-    try{
-      var r = await fs.readdir({ path:p, directory:"EXTERNAL_STORAGE" }), fl = r.files || [];
-      var names = fl.slice(0, 8).map(function(f){ return typeof f === "string" ? f : f.name + (f.size != null ? " (" + mb(f.size) + ")" : ""); });
-      return (fl.length ? ok : info)("โฟลเดอร์ " + p + ": " + fl.length + " รายการ\n" + names.join("\n"));
-    }catch(e){ return bad("อ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
+    var out = [], t0 = Date.now(), r;
+    try{ r = await fs.readdir({ path:p, directory:"EXTERNAL_STORAGE" }); }catch(e){ return bad("อ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
+    var fl = r.files || [], dirs = fl.filter(function(f){ return f.type === "directory"; }), vids = fl.filter(function(f){ return f.type !== "directory" && VEXT.test(f.name); });
+    out.push("โฟลเดอร์ " + p + ": " + fl.length + " รายการ (โฟลเดอร์ย่อย " + dirs.length + ", วิดีโอ " + vids.length + ") · อ่านใช้ " + (Date.now() - t0) + " ms");
+    if(!vids.length && dirs.length){
+      out.push("โฟลเดอร์ย่อย: " + dirs.slice(0, 12).map(function(d){ return d.name; }).join(", "));
+      for(var i = 0; i < dirs.length && !vids.length; i++){
+        try{ var t1 = Date.now(), r2 = await fs.readdir({ path:p + "/" + dirs[i].name, directory:"EXTERNAL_STORAGE" });
+          vids = (r2.files || []).filter(function(f){ return f.type !== "directory" && VEXT.test(f.name); });
+          if(vids.length){ p = p + "/" + dirs[i].name; out.push("ลงไปดูใน " + dirs[i].name + ": วิดีโอ " + vids.length + " ไฟล์ · อ่านใช้ " + (Date.now() - t1) + " ms"); } }catch(e){}
+      }
+    }
+    if(!vids.length) return bad(out.join("\n") + "\nไม่เจอวิดีโอ (นามสกุล mp4/mov/m4v/mkv/webm/3gp) · ลองพิมพ์ที่อยู่ของอัลบั้มที่มีวิดีโอโดยตรง");
+    var tot = vids.reduce(function(a, f){ return a + (f.size || 0); }, 0);
+    out.push("วิดีโอ " + vids.length + " ไฟล์ รวม " + (tot >= 1073741824 ? gb(tot) : mb(tot)) + " · ตัวอย่าง: " + vids.slice(0, 5).map(function(f){ return f.name + " (" + mb(f.size || 0) + ")"; }).join(", "));
+    var v = vids[0], uri = v.uri;
+    if(!uri){ try{ uri = (await fs.getUri({ path:p + "/" + v.name, directory:"EXTERNAL_STORAGE" })).uri; }catch(e){ return bad(out.join("\n") + "\nขอที่อยู่ไฟล์ไม่ได้: " + errText(e)); } }
+    out.push("ที่อยู่ไฟล์: " + uri);
+    var src = cap() && cap().convertFileSrc ? cap().convertFileSrc(uri) : uri, pr = await playTest(src, "เล่น " + v.name + " จากที่อยู่ไฟล์โดยตรง");
+    return { s:pr.s, t:out.join("\n") + "\n" + pr.t };
   } });
 
   /* ---------------- วาดหน้า ---------------- */
@@ -228,7 +255,7 @@
   function setRes(t, r){ res[t.id] = r; render(t); }
   async function runOne(t){
     setRes(t, { s:"run", t:"" });
-    var card = ui[t.id].card; if($("tcVid") && t.id !== "pick" && t.id !== "media") $("tcVid").hidden = true; else card.appendChild($("tcVid"));
+    var card = ui[t.id].card; if($("tcVid") && t.id !== "pick" && t.id !== "media" && t.id !== "fsdir") $("tcVid").hidden = true; else card.appendChild($("tcVid"));
     try{ setRes(t, await t.run()); }catch(e){ setRes(t, bad("พังกลางทาง: " + errText(e))); }
   }
   function build(){
