@@ -65,8 +65,10 @@
   async function curPath(){ try{ return ((await plug("WebView").getServerBasePath()) || {}).path || ""; }catch(e){ return ""; } }
   async function early(){ /* เปิดแอพมาแล้วยังเป็นชุดที่ห่อมากับ APK แต่เคยดาวน์โหลดชุดใหม่ไว้ (จำไม่ติด) → สลับให้เอง */
     if(!usable()) return;
-    PATH = await curPath(); if(PATH.indexOf("/" + DIR + "/") >= 0) return;
-    var m = meta(); if(!m.wanted) return;
+    PATH = await curPath(); var m = meta();
+    m.boot = (PATH.indexOf("/" + DIR + "/") >= 0 ? "เปิดจากชุดที่ดาวน์โหลด" : "เปิดจากไฟล์ที่ห่อมา") + " · อยากได้: " + (m.wanted ? m.wanted.id.slice(0, 8) : "-"); saveMeta(m); /* วินิจฉัย: เปิดแอพรอบล่าสุดเริ่มจากไหน */
+    if(PATH.indexOf("/" + DIR + "/") >= 0) return;
+    if(!m.wanted) return;
     if((m.tries || 0) >= 2){ m.wanted = null; note(m, "สลับตอนเปิดแอพไม่สำเร็จ 2 รอบ เลิกใช้ชุดที่ดาวน์โหลด"); return; }
     try{ await plug("Filesystem").stat({ path:m.wanted.dir + "/files.json", directory:"DATA" }); }catch(e){ m.wanted = null; note(m, "ไม่เจอโฟลเดอร์ชุดที่ดาวน์โหลดไว้"); return; }
     m.tries = (m.tries || 0) + 1; note(m, "สลับตอนเปิดแอพ รอบที่ " + m.tries);
@@ -95,7 +97,7 @@
     var info = document.getElementById("otaInfo"), row = document.getElementById("otaRow"); if(!info) return;
     row.hidden = !usable();
     var l = LOCAL || {}, m = meta(); info.className = "hint" + (bad ? " bad" : "");
-    info.textContent = msg || ("ชุดไฟล์ที่ใช้: v" + (l.version || window.MW_VERSION || "?") + (l.id ? " (" + l.id.slice(0, 8) + ")" : "") + " · " + (PATH.indexOf("/" + DIR + "/") >= 0 ? "จากโฟลเดอร์ที่ดาวน์โหลด" : "จากไฟล์ที่ห่อมากับ APK") + (m.persisted ? " · จำไว้แล้ว" : "") + (m.log ? " · " + m.log : ""));
+    info.textContent = msg || ("ชุดไฟล์ที่ใช้: v" + (l.version || window.MW_VERSION || "?") + (l.id ? " (" + l.id.slice(0, 8) + ")" : "") + " · " + (PATH.indexOf("/" + DIR + "/") >= 0 ? "จากโฟลเดอร์ที่ดาวน์โหลด" : "จากไฟล์ที่ห่อมากับ APK") + (m.persisted ? " · จำไว้แล้ว" : "") + (m.log ? " · " + m.log : "") + (m.boot ? " · [" + m.boot + "]" : "") + " · path=" + (PATH ? PATH.split("/").slice(-2).join("/") : "-"));
   }
   async function manual(){
     var btn = document.getElementById("otaBtn"); btn.disabled = true;
