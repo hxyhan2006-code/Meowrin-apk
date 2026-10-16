@@ -38,20 +38,22 @@ jobs:
           npm install --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7 @capacitor-community/keep-awake@7 @capacitor-community/media@8.0.1
           python3 - <<'PY1'
           import json, os
-          cfg = {"appId": "com.han.meowrin", "appName": "Meowrin", "webDir": "www", "backgroundColor": "#0b0e0d",
+          cfg = {"appId": "com.han.meowrin", "appName": "Meowrin App", "webDir": "www", "backgroundColor": "#0b0e0d",
                  "android": {"adjustMarginsForEdgeToEdge": "force"}, "plugins": {"Media": {"androidGalleryMode": True}}}
           if os.environ.get("MODE", "live") == "live":
               cfg["server"] = {"url": "https://hxyhan2006-code.github.io/Meowrin-apk/", "cleartext": False}
           json.dump(cfg, open("capacitor.config.json", "w"), indent=2)
           PY1
           npx cap add android
+          pip install --quiet pillow
+          python3 ../tools/android-icons.py android/app/src/main/res www/icon-512.png
           python3 - <<'PY2'
           p = "android/app/src/main/AndroidManifest.xml"
           s = open(p, encoding="utf-8").read()
           perms = "".join('    <uses-permission android:name="android.permission.%s" />\n' % n for n in [
               "READ_MEDIA_VIDEO", "READ_MEDIA_IMAGES", "READ_MEDIA_AUDIO", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "WAKE_LOCK"])
           s = s.replace("<application", perms + "    <application", 1)
-          s = s.replace("<application", '<application android:requestLegacyExternalStorage="true"', 1)
+          s = s.replace("<application", '<application android:requestLegacyExternalStorage="true" android:largeHeap="true"', 1)
           open(p, "w", encoding="utf-8").write(s)
           PY2
           npx cap sync android
