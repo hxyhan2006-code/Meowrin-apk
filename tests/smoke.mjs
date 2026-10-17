@@ -279,6 +279,16 @@ try {
   const a5 = await al.evaluate(() => ({ home: !document.getElementById('alHome').hidden, view: document.getElementById('alView').hidden, url: location.pathname }));
   check('แท็บอัลบั้ม: ปุ่มย้อนปิดทีละชั้น (ตัวเล่น → อัลบั้ม → หน้าอัลบั้มทั้งหมด) และไม่หลุดออกจากหน้า', a4.play && a4.view && a4.vsrc === null && a5.home && a5.view && /footage\.html$/.test(a5.url) && !alErr.length, JSON.stringify([a4, a5]) + alErr.join());
   await al.close();
+  // v8.0: ชื่อไฟล์ยาวไม่มีเว้นวรรคในกล่องข้อความ ไม่ทำให้หน้าล้นจอ · อัลบั้มโชว์ผลสแกนรอบก่อนทันทีที่เปิด · ชีตจำนวนคนไม่มีช่องค้นหา
+  const v8 = await browser.newContext({ viewport: { width: 380, height: 800 } }); const v8p = await v8.newPage(); const v8Err = []; v8p.on('pageerror', (e) => v8Err.push(e.message));
+  await v8p.goto(base + '/index.html'); await v8p.waitForFunction(() => window.MW, null, { timeout: 20000 });
+  const ovf = await v8p.evaluate(() => { const m = document.getElementById('setMsg'); m.innerHTML = '<div class="msg">' + 'x'.repeat(6) + '_HOW_BADLY_THE_STRAW_HATS_EXPLOIT_SANJI_long_long_name_without_spaces.mp4</div>'; document.querySelector('nav [data-tab=settings]').click(); document.querySelector('#setMsg').closest('details').open = true; document.querySelector('#setMsg').closest('details.top').open = true; return document.documentElement.scrollWidth - document.documentElement.clientWidth; });
+  check('ข้อความชื่อไฟล์ยาวไม่มีเว้นวรรค ไม่ทำให้หน้าล้นจอ', ovf <= 1, 'ล้น ' + ovf + ' px');
+  await v8p.evaluate(() => MWStore.set('mw_local_v1', { auto: true, st: { albums: 1, files: 2, at: 1 }, list: [{ name: 'p.mp4', size: 11, uri: 'file:///storage/emulated/0/Pictures/Gallery/owner/nami/p.mp4', album: 'nami', dir: '/storage/emulated/0/Pictures/Gallery/owner/nami/' }, { name: 'q.mp4', size: 12, uri: 'file:///storage/emulated/0/Pictures/Gallery/owner/nami/q.mp4', album: 'nami', dir: '/storage/emulated/0/Pictures/Gallery/owner/nami/' }] }));
+  await v8p.goto(base + '/footage.html'); await v8p.waitForFunction(() => window.FT && FT.ui && document.getElementById('alGrid'), null, { timeout: 20000 }); await v8p.waitForTimeout(600);
+  const rs = await v8p.evaluate(() => [...document.querySelectorAll('#alGrid .album')].map((a) => a.querySelector('b').textContent + ':' + a.querySelector('small').textContent).join(','));
+  check('อัลบั้ม: เปิดหน้าแล้วโชว์อัลบั้มจากผลสแกนรอบก่อนทันที (ไม่ต้องรอสแกนใหม่)', /nami:2 คลิป/.test(rs), rs);
+  await v8.close();
   // อัปเดตแอพเอง (ota.js): เช็ก files.json → ดาวน์โหลดลงโฟลเดอร์ + ตรวจ sha1 → สลับ · ไฟล์ถูกแก้ = ยกเลิกทั้งชุดไม่สลับ · บูตสำเร็จ = จำชุดใหม่ + ลบชุดเก่า
   const { createHash } = await import('node:crypto'); const sha = (b) => createHash('sha1').update(b).digest('hex');
   const REM = 'https://hxyhan2006-code.github.io/Meowrin-apk/', NEWID = 'newid1234567890abcdef';

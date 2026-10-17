@@ -146,7 +146,8 @@
       items:function(q){
         var rows = dat.ks.filter(function(k){ var nx = NAMEX.find(function(x){ return x.key === k; }); return !q || (enName(k) + " " + k + " " + (labelOf[k] || "") + " " + (nx ? nx.ths.join(" ") : "")).toLowerCase().indexOf(q) >= 0; })
           .map(function(k){ return { k:k, name:enName(k), sub:dat.cnt[k] + " ฉาก", on:sel.indexOf(k) >= 0 }; });
-        if(dat.none && (!q || "ไม่ระบุตัวละคร unknown".indexOf(q) >= 0)) rows.unshift({ k:"?", name:"ไม่ระบุตัวละคร", sub:dat.none + " ฉาก", on:sel.indexOf("?") >= 0 });
+        rows = rows.filter(function(r){ return dat.cnt[r.k] >= MINSC || r.on; }).concat(rows.filter(function(r){ return dat.cnt[r.k] < MINSC && !r.on; })); /* เจอบ่อยก่อน (A-Z) ที่เจอแค่ 1-2 ฉากต่อท้าย (A-Z) */
+        if(dat.none && (!q || "ไม่ระบุตัวละคร unknown".indexOf(q) >= 0)) rows.push({ k:"?", name:"ไม่ระบุตัวละคร", sub:dat.none + " ฉาก", on:sel.indexOf("?") >= 0 }); /* ล่างสุด */
         return rows; },
       onPick:function(k){ var i = sel.indexOf(k);
         if(k === "?") sel = i >= 0 ? [] : ["?"]; else { sel = sel.filter(function(x){ return x !== "?"; }); if(i >= 0) sel.splice(i, 1); else sel.push(k); }
@@ -154,8 +155,8 @@
       onClear:function(){ sel = []; chipMax = 40; search(); } });
   }
   function pickSize(){
-    FT.pick.open({ title:"จำนวนคนในฉาก", placeholder:"พิมพ์เพื่อหา เช่น คู่", icon:"user", count:matchCount,
-      items:function(q){ return SIZES.filter(function(x){ return !q || x[1].toLowerCase().indexOf(q) >= 0; }).map(function(x){ return { k:x[0], name:x[1], sub:x[0] ? dat.sz[x[0]] + " ฉาก" : "", on:sizeSel === x[0] }; }); },
+    FT.pick.open({ title:"จำนวนคนในฉาก", search:false, icon:"users", count:matchCount, /* มีแค่ 5 ตัวเลือก ไม่ต้องมีช่องค้นหา */
+      items:function(){ return SIZES.map(function(x){ return { k:x[0], name:x[1], sub:x[0] ? dat.sz[x[0]] + " ฉาก" : "", icon:x[0] === "1" ? "user" : "users", on:sizeSel === x[0] }; }); },
       onPick:function(k){ sizeSel = k === sizeSel ? "" : k; chipMax = 40; search(); } });
   }
   $("chips").addEventListener("click", function(e){

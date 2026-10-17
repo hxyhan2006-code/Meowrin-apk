@@ -23,7 +23,7 @@
       try{ ((await F.readdir({ path:p })).files || []).forEach(function(f){ if(f.type !== "directory" && f.uri && VEXT.test(f.name)){ next[key(f.name, f.size)] = f.uri; items.push({ name:f.name, size:f.size, mtime:f.mtime || 0, uri:f.uri, album:albums[i].name || p.split("/").pop(), dir:p + "/" }); files++; } }); }
       catch(e){ /* โฟลเดอร์ที่อ่านไม่ได้ ข้าม */ }
     }
-    map = next; all = items; st = { albums:n, files:files, at:Date.now() }; MWStore.set(KEY, { auto:true });
+    map = next; all = items; st = { albums:n, files:files, at:Date.now() }; MWStore.set(KEY, { auto:true, st:st, list:items }); /* จำรายการไว้ เปิดหน้าครั้งถัดไปโชว์ได้ทันทีก่อนสแกนเสร็จ */
     document.dispatchEvent(new CustomEvent("ft:files", { detail:files })); /* แท็บผู้กำกับอัปเดตสถานะไฟล์ที่พร้อมใช้ */
     return st;
   }
@@ -38,12 +38,15 @@
     tag.textContent = !native() ? "เฉพาะแอพ" : busy ? "กำลังสแกน" : ok ? m + "/" + lib().length : "ยังไม่สแกน"; tag.className = "state " + (ok && native() ? "ok" : "idle");
     btn.disabled = busy || !native();
   }
+  (function restore(){ var s = MWStore.get(KEY, {}) || {}; if(!Array.isArray(s.list)) return; /* ผลสแกนรอบก่อน (ไฟล์ที่ย้าย/ลบไปแล้วจะหายตอนสแกนรอบใหม่เสร็จ) */
+    all = s.list; s.list.forEach(function(f){ map[key(f.name, f.size)] = f.uri; }); if(s.st) st = s.st; })();
+  function ping(){ document.dispatchEvent(new CustomEvent("ft:scan")); } /* หน้าอัลบั้มขึ้น/เอาคำว่า "กำลังสแกน" ออก */
   async function run(){
-    if(busy) return; busy = true; render("กำลังสแกน...");
-    try{ await scan(function(i, n){ render("กำลังสแกนอัลบั้ม " + i + "/" + n + "..."); }); busy = false; render(); }
-    catch(e){ busy = false; render("สแกนไม่ได้: " + (e && (e.message || e.errorMessage) || e) + " · ถ้าเคยกดไม่อนุญาต ให้เปิดสิทธิ์ที่ ตั้งค่ามือถือ > แอป > Meowrin > สิทธิ์ แล้วลองใหม่", true); }
+    if(busy) return; busy = true; render("กำลังสแกน..."); ping();
+    try{ await scan(function(i, n){ render("กำลังสแกนอัลบั้ม " + i + "/" + n + "..."); }); busy = false; render(); ping(); }
+    catch(e){ busy = false; ping(); render("สแกนไม่ได้: " + (e && (e.message || e.errorMessage) || e) + " · ถ้าเคยกดไม่อนุญาต ให้เปิดสิทธิ์ที่ ตั้งค่ามือถือ > แอป > Meowrin > สิทธิ์ แล้วลองใหม่", true); }
   }
-  window.MWLocal = { native:native, scan:scan, list:function(){ return all; }, urlOf:urlOf, fileUrl:fileUrl, count:function(){ return st.files; } };
+  window.MWLocal = { native:native, scan:scan, list:function(){ return all; }, scanning:function(){ return busy; }, urlOf:urlOf, fileUrl:fileUrl, count:function(){ return st.files; } };
   if($("locScan")){
     $("locScan").addEventListener("click", run);
     $("locFold").addEventListener("toggle", function(){ if(this.open) render(); }); /* ดัชนีโหลดทีหลัง ตัวเลขจับคู่อัปเดตตอนเปิดแผง */

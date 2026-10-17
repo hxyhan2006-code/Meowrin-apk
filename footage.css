@@ -44,7 +44,7 @@ input[type="range"]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;b
 .row{display:flex;gap:8px;flex-wrap:wrap}.row>.btn{flex:1}
 .hint{color:var(--muted);font-size:13px;margin:6px 0 0}
 .hint.bad{color:#fda4af}
-.msg{border-radius:var(--rc);padding:10px 12px;background:var(--field);border:1px solid var(--line);font-size:14px;margin-top:10px}
+.msg{border-radius:var(--rc);padding:10px 12px;background:var(--field);border:1px solid var(--line);font-size:14px;margin-top:10px;overflow-wrap:anywhere}
 .msg.err{background:var(--err-soft);border-color:rgba(244,63,94,.4)}
 .msg.ok{background:var(--ok-soft);border-color:rgba(16,185,129,.4)}
 .prog{height:8px;border-radius:99px;background:var(--field);overflow:hidden;margin-top:10px}

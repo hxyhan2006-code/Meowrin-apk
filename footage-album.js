@@ -32,6 +32,7 @@
   function fileUrl(e){ try{ return e.uri && window.MWLocal ? MWLocal.fileUrl(e.uri) : null; }catch(err){ return null; } }
   function dur(e, t){ var d = e.c && e.c.duration || t && t.d; if(!d) return ""; d = Math.round(d); return Math.floor(d / 60) + ":" + String(d % 60).padStart(2, "0"); }
   function esc(s){ return U.esc(String(s)); }
+  function scanning(){ return !!(window.MWLocal && MWLocal.scanning && MWLocal.scanning()); }
 
   /* ---------- ภาพย่อ (แคชใน IndexedDB) ---------- */
   var db = null;
@@ -78,7 +79,7 @@
   function renderHome(){
     build();
     var n = albums.reduce(function(a, x){ return a + x.items.length; }, 0), native = window.MWLocal && MWLocal.native && MWLocal.native();
-    $("alSub").textContent = albums.length ? albums.length + " อัลบั้ม · " + n + " คลิป" : "";
+    $("alSub").textContent = (albums.length ? albums.length + " อัลบั้ม · " + n + " คลิป" : "") + (scanning() ? (albums.length ? " · " : "") + "กำลังสแกนหาคลิปใหม่..." : "");
     $("alScan").hidden = !native;
     $("alMsg").textContent = albums.length ? "" : native ? "ยังไม่เจอคลิป · กด สแกนใหม่ (ครั้งแรกจะมีหน้าต่างขออนุญาตดูรูปและวิดีโอ ให้กดอนุญาต)" : "ใช้ปุ่มเลือกไฟล์ในแท็บ อัปโหลด เพื่อทำดัชนี แล้วคลิปจะขึ้นที่นี่";
     $("alGrid").innerHTML = albums.map(function(a, i){
@@ -152,6 +153,7 @@
   });
   function refresh(){ if(view === "home") renderHome(); }
   document.addEventListener("ft:files", refresh); /* สแกนเสร็จ */
+  document.addEventListener("ft:scan", refresh); /* เริ่ม/จบการสแกน (ข้อความกำลังสแกน) */
   document.addEventListener("ft:lib", refresh); /* ดัชนีโหลด/เปลี่ยน */
   document.querySelector(".tabs").addEventListener("click", function(e){ var b = e.target.closest('button[data-p="album"]'); if(b) refresh(); });
   refresh();
