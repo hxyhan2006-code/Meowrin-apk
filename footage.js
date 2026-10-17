@@ -91,6 +91,7 @@
     var el = running ? Date.now() - runStart : 0, left = running && etaAt ? Math.max(0, etaBase - (Date.now() - etaAt)) : -1;
     $("progTxt").textContent = work.length ? "เสร็จ " + fin + "/" + work.length + " คลิป" + (running ? " · ผ่านไป " + mmss(el) + (fin < work.length ? (left < 0 ? " · กำลังประเมินเวลา..." : left < 8000 ? " · ใกล้เสร็จ" : " · เหลือประมาณ " + mmss(Math.round(left / 5000) * 5000)) : "") : "") + (runCost ? " · รอบนี้ใช้ไป " + money(runCost) + " จากงบ " + money(cfg.budget) : "") : "";
     renderEst();
+    document.dispatchEvent(new CustomEvent("ft:queue")); /* หน้าอัลบั้มอัปเดตแถบ AI */
   }
 
   /* ---------- ทำดัชนี ---------- */
@@ -431,7 +432,20 @@
   /* ให้ไฟล์อื่นใช้ร่วม · footage-find.js เติม terms/hay/card/chars/hasSrc/srcUrl/openFiles/search */
   FT.ui = { lib:function(){ return lib; }, esc:esc, msg:msg, money:money, tm:tm, capDur:capDur, refresh:refreshLib,
             addQueue:function(items){ queue = queue.filter(function(q){ return q.status !== "skip"; }).concat(items.filter(function(a){ return !queue.some(function(q){ return q.id === a.id; }); })); renderQueue(); },
-            addCost:function(x){ runCost += x; renderStats(); }, wake:wake };
+            addCost:function(x){ runCost += x; renderStats(); }, wake:wake,
+            /* ให้หน้าอัลบั้มสั่งทำดัชนีคลิปในมือถือ: list = [{ name, size, uri, album, mtime }] · อ่านเฟรมจากที่อยู่ไฟล์ตรงๆ (ไม่ต้องเลือกไฟล์) · คืนจำนวนที่เข้าคิว (ข้ามคลิปที่ทำแล้ว/อยู่ในคิวแล้ว) */
+            indexLocal:function(list){
+              var picked = Date.now(), items = [];
+              list.forEach(function(f){
+                var done = lib.find(function(c){ return c.name === f.name && c.size === f.size; }); if(done && done.status === "done") return; /* ชื่อ+ขนาดตรงเป๊ะเท่านั้น (ไม่ใช้ขนาดอย่างเดียว: คลิปคนละไฟล์ขนาดเท่ากันจะถูกข้ามผิด) */
+                var lm = f.mtime || 0, id = FT.clipId({ name:f.name, size:f.size, lastModified:lm });
+                items.push({ file:MWLocal.fileUrl(f.uri), id:id, album:f.album || "ไม่ระบุ", mode:"", toCloud:false, status:"wait", err:"", p:0, info:{ name:f.name, type:"video/mp4", size:f.size, lastModified:lm, picked:picked } });
+              });
+              var before = queue.length; FT.ui.addQueue(items); return queue.length - before;
+            },
+            runQueue:function(){ return run(); }, stopQueue:function(){ paused = true; renderQueue(); },
+            queueInfo:function(){ var work = queue.filter(function(q){ return q.status !== "skip"; }), fin = work.filter(function(q){ return q.status === "done" || q.status === "error"; }).length;
+              return { running:running, paused:paused, total:work.length, fin:fin, wait:work.filter(function(q){ return q.status === "wait"; }).length, errs:work.filter(function(q){ return q.status === "error"; }).length, cost:runCost, avg:avgCost() }; } };
   /* ---------- เปลี่ยนชื่ออัลบั้ม (แท็บตั้งค่า) · ชีตเลือกอัลบั้มของแอพเอง ไม่ใช้ select ของเบราว์เซอร์ ---------- */
   var renFrom = "";
   function albumCounts(){ var n = {}; lib.forEach(function(c){ if(c.album) n[c.album] = (n[c.album] || 0) + 1; }); return n; }

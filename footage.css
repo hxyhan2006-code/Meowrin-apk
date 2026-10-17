@@ -217,3 +217,6 @@ html:has(.asheet:not([hidden])),html:has(.big:not([hidden])){overflow:hidden}
 .alplay .hint{margin:8px 14px 14px;text-align:center}
 html:has(.alplay:not([hidden])){overflow:hidden}
 .tabs button{font-size:14px}
+.alai{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;font-size:13px;color:var(--muted)}.alai:empty{display:none}
+.alai .btn{flex:none}
+.aid{position:absolute;left:7px;top:7px;width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px rgba(0,0,0,.45)}

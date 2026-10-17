@@ -14,7 +14,7 @@
   function build(){
     var byKey = {}, other = {}, out = [], loc = window.MWLocal && MWLocal.list ? MWLocal.list() : [];
     loc.forEach(function(f){
-      var e = { k:f.name + "|" + f.size, name:f.name, size:f.size, album:f.album, uri:f.uri, c:null };
+      var e = { k:f.name + "|" + f.size, name:f.name, size:f.size, mtime:f.mtime, album:f.album, uri:f.uri, c:null };
       if(f.dir.indexOf(ROOT) < 0){ other[e.k] = e; return; } /* ไฟล์นอกโฟลเดอร์หลัก: โชว์เฉพาะที่อยู่ในดัชนี */
       byKey[e.k] = e; out.push(e);
     });
@@ -28,6 +28,7 @@
     albums = Object.keys(g).map(function(n){ var it = g[n].sort(function(a, b){ return a.name < b.name ? -1 : 1; }); return { name:n, items:it }; })
       .sort(function(a, b){ return b.items.length - a.items.length; });
   }
+  function done(e){ return !!(e.c && e.c.status === "done"); } /* AI ทำดัชนีคลิปนี้แล้ว */
   function fileUrl(e){ try{ return e.uri && window.MWLocal ? MWLocal.fileUrl(e.uri) : null; }catch(err){ return null; } }
   function dur(e, t){ var d = e.c && e.c.duration || t && t.d; if(!d) return ""; d = Math.round(d); return Math.floor(d / 60) + ":" + String(d % 60).padStart(2, "0"); }
   function esc(s){ return U.esc(String(s)); }
@@ -81,20 +82,48 @@
     $("alScan").hidden = !native;
     $("alMsg").textContent = albums.length ? "" : native ? "ยังไม่เจอคลิป · กด สแกนใหม่ (ครั้งแรกจะมีหน้าต่างขออนุญาตดูรูปและวิดีโอ ให้กดอนุญาต)" : "ใช้ปุ่มเลือกไฟล์ในแท็บ อัปโหลด เพื่อทำดัชนี แล้วคลิปจะขึ้นที่นี่";
     $("alGrid").innerHTML = albums.map(function(a, i){
-      return '<button class="alt album" data-i="' + i + '" type="button"><span class="alimg"><img alt="" decoding="async"><i class="alph"></i></span><b>' + esc(a.name) + "</b><small>" + a.items.length + " คลิป</small></button>";
+      return '<button class="alt album" data-i="' + i + '" type="button"><span class="alimg"><img alt="" decoding="async"><i class="alph"></i></span><b>' + esc(a.name) + "</b><small>" + a.items.length + " คลิป" + (a.items.some(done) ? " · AI " + a.items.filter(done).length : "") + "</small></button>";
     }).join("");
+    strips();
     $("alGrid").querySelectorAll("[data-i]").forEach(function(el){ el._e = albums[+el.dataset.i].items[0]; if(io) io.observe(el); else fill(el); });
   }
   function openAlbum(i){
     var a = albums[i]; if(!a) return; curAlbum = a;
-    $("alvTitle").textContent = a.name; $("alvSub").textContent = a.items.length + " คลิป";
+    $("alvTitle").textContent = a.name; $("alvSub").textContent = a.items.length + " คลิป · AI ทำแล้ว " + a.items.filter(done).length;
     $("alvGrid").innerHTML = a.items.map(function(e, k){
-      return '<button class="alt clip" data-i="' + k + '" type="button"><span class="alimg"><img alt="" decoding="async"><i class="alph"></i><em class="dur">' + dur(e, null) + "</em></span></button>";
+      return '<button class="alt clip" data-i="' + k + '" type="button"><span class="alimg"><img alt="" decoding="async"><i class="alph"></i>' + (done(e) ? '<i class="aid" title="AI ทำดัชนีแล้ว"></i>' : "") + '<em class="dur">' + dur(e, null) + "</em></span></button>";
     }).join("");
     watch($("alvGrid"), function(k){ return a.items[k]; });
-    $("alHome").hidden = true; $("alView").hidden = false; window.scrollTo(0, 0);
+    strips(); $("alHome").hidden = true; $("alView").hidden = false; window.scrollTo(0, 0);
     if(view === "home") history.pushState({ al:1 }, ""); view = "album";
   }
+  /* ---------- แถบ AI (สถานะดัชนี + ปุ่มให้ AI ทำที่เหลือ) ---------- */
+  function strip(el, items, label){
+    var q = U.queueInfo(), rem = items.filter(function(e){ return e.uri && !done(e); }), nDone = items.filter(done).length;
+    if(q.running){ el.innerHTML = "<span>AI กำลังทำดัชนี " + q.fin + "/" + q.total + " คลิป · ใช้ไป " + U.money(q.cost) + "</span>" + (q.paused ? "<span>จะพักหลังคลิปนี้...</span>" : '<button class="btn small ghost" data-act="stop" type="button">พัก</button>'); return; }
+    if(!rem.length){ el.innerHTML = items.length ? "<span>" + label + "AI ทำดัชนีครบทุกคลิปแล้ว (" + nDone + ")</span>" : ""; return; }
+    el.innerHTML = "<span>" + label + "AI ทำแล้ว " + nDone + "/" + items.length + " คลิป</span>" + '<button class="btn small" data-act="run" type="button">ให้ AI ทำที่เหลือ (' + rem.length + ")</button>";
+  }
+  function allItems(){ return albums.reduce(function(a, x){ return a.concat(x.items); }, []).filter(function(e){ return e.album !== MISSING; }); }
+  function strips(){ strip($("alAi"), allItems(), ""); if(curAlbum) strip($("alvAi"), curAlbum.items, ""); }
+  async function runFor(items){
+    var rem = items.filter(function(e){ return e.uri && !done(e); }); if(!rem.length) return;
+    if(!FT.orKey()){ await MWDialog.alert("ยังไม่มี OpenRouter key ในแอพ ไปใส่ที่ ตั้งค่า > คีย์ API ก่อน"); return; }
+    var avg = U.queueInfo().avg;
+    var ok = await MWDialog.confirm("ให้ AI ทำดัชนี " + rem.length + " คลิป?\n\nประมาณ " + U.money(rem.length * avg) + " (ประมาณการจากค่าเฉลี่ยของคลิปที่เคยทำ " + U.money(avg) + " ต่อคลิป ราคาจริงอาจต่างไป)\n\nต้องเปิดแอพค้างไว้จนเสร็จ พักและทำต่อได้ ไม่ทำคลิปเดิมซ้ำ", { ok:"เริ่ม" });
+    if(!ok) return;
+    U.indexLocal(rem.map(function(e){ return { name:e.name, size:e.size, uri:e.uri, album:e.album, mtime:e.mtime }; }));
+    U.runQueue(); strips();
+  }
+  function onStrip(items){ return function(e){ var b = e.target.closest("[data-act]"); if(!b) return; if(b.dataset.act === "stop") U.stopQueue(); else runFor(items()); }; }
+  $("alAi").addEventListener("click", onStrip(allItems));
+  $("alvAi").addEventListener("click", onStrip(function(){ return curAlbum ? curAlbum.items : []; }));
+  var wasRunning = false;
+  document.addEventListener("ft:queue", function(){ /* คิวเดินอยู่: อัปเดตแค่แถบ · จบรอบค่อยวาดตารางใหม่ (ไม่ให้กะพริบทุกวินาที) */
+    var r = U.queueInfo().running; build(); if(curAlbum) curAlbum = albums.find(function(a){ return a.name === curAlbum.name; }) || null; strips();
+    if(wasRunning && !r){ if(view === "home") renderHome(); else if(curAlbum) openAlbum(albums.indexOf(curAlbum)); }
+    wasRunning = r;
+  });
   function closeAlbum(){ $("alView").hidden = true; $("alHome").hidden = false; curAlbum = null; view = "home"; }
   var playDone = null;
   async function openPlayer(e){
