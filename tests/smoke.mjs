@@ -278,6 +278,23 @@ try {
   await al.goBack(); await al.waitForTimeout(300);
   const a5 = await al.evaluate(() => ({ home: !document.getElementById('alHome').hidden, view: document.getElementById('alView').hidden, url: location.pathname }));
   check('แท็บอัลบั้ม: ปุ่มย้อนปิดทีละชั้น (ตัวเล่น → อัลบั้ม → หน้าอัลบั้มทั้งหมด) และไม่หลุดออกจากหน้า', a4.play && a4.view && a4.vsrc === null && a5.home && a5.view && /footage\.html$/.test(a5.url) && !alErr.length, JSON.stringify([a4, a5]) + alErr.join());
+  // อัลบั้ม 3 แบบ: ตัวละคร (≥3 คลิป) / ภาค (มั่นใจเข้าเอง ไม่แน่ใจรวมไว้) · เลือกคลิปแล้วย้ายเข้าภาคเอง (ล็อกไม่ให้ AI ทับ)
+  await al.evaluate(() => { const L = FT.ui.lib(); const a = L.find((c) => c.name === 'a.mp4');
+    a.scenes = [{ ai: { characters: ['Luffy'], arc: 'Alabasta' } }, { ai: { characters: ['Luffy', 'Zoro'], arc: 'Alabasta arc' } }];
+    L.push({ id: 'b1', name: 'b.mp4', size: 1005, album: 'luffy', duration: 5, status: 'done', scenes: [{ ai: { characters: ['Luffy'], arc: '' } }] });
+    L.push({ id: 'c1', name: 'c.mp4', size: 1005, album: 'zoro', duration: 5, status: 'done', scenes: [{ ai: { characters: ['Luffy'], arc: 'Enies Lobby' } }, { ai: { characters: ['Luffy'], arc: '' } }, { ai: { characters: ['Luffy'], arc: '' } }, { ai: { characters: ['Luffy'], arc: '' } }] });
+    document.dispatchEvent(new CustomEvent('ft:lib')); });
+  await al.click('#alSeg [data-m=char]'); await al.waitForTimeout(300);
+  const ch = await al.evaluate(() => [...document.querySelectorAll('#alGrid .album')].map((x) => x.querySelector('b').textContent + ':' + x.querySelector('small').textContent.split(' · ')[0]).join(','));
+  check('อัลบั้มแบบตัวละคร: Luffy 3 คลิป (Zoro เจอ 1 คลิป ไม่ทำอัลบั้ม)', /^Luffy:3 คลิป$/.test(ch), ch);
+  await al.click('#alSeg [data-m=arc]'); await al.waitForTimeout(300);
+  const ar = await al.evaluate(() => [...document.querySelectorAll('#alGrid .album')].map((x) => x.querySelector('b').textContent + ':' + x.querySelector('small').textContent.split(' · ')[0]).join(','));
+  check('อัลบั้มแบบภาค: Alabasta 1 (ชื่อภาคต่างกัน "Alabasta arc" รวมกัน) · Enies Lobby 1 · ยังไม่แน่ใจ 1 (ไม่มีป้ายภาค)', ar === 'Alabasta:1 คลิป,Enies Lobby:1 คลิป,ยังไม่แน่ใจ:1 คลิป', ar);
+  await al.click('#alGrid .album:last-child'); await al.waitForTimeout(200);
+  await al.click('#alSel'); await al.click('#alvGrid .clip'); await al.waitForTimeout(150);
+  await al.click('#alMove'); await al.waitForTimeout(200); await al.locator('#pkList .alrow', { hasText: 'Alabasta' }).click(); await al.waitForTimeout(600);
+  const mv = await al.evaluate(() => ({ b: FT.ui.lib().find((c) => c.name === 'b.mp4'), names: [...document.querySelectorAll('#alGrid .album')].map((x) => x.querySelector('b').textContent + ':' + x.querySelector('small').textContent.split(' · ')[0]).join(','), home: !document.getElementById('alHome').hidden }));
+  check('อัลบั้มแบบภาค: เลือกคลิปที่ไม่แน่ใจ แล้วย้ายเข้า Alabasta → ล็อกภาค (arcFixed) และกลับหน้ารวมที่จัดกลุ่มใหม่', mv.b.arc === 'Alabasta' && mv.b.arcFixed === true && mv.home && /Alabasta:2 คลิป/.test(mv.names) && !/ยังไม่แน่ใจ/.test(mv.names), JSON.stringify(mv));
   await al.close();
   // v8.0: ชื่อไฟล์ยาวไม่มีเว้นวรรคในกล่องข้อความ ไม่ทำให้หน้าล้นจอ · อัลบั้มโชว์ผลสแกนรอบก่อนทันทีที่เปิด · ชีตจำนวนคนไม่มีช่องค้นหา
   const v8 = await browser.newContext({ viewport: { width: 380, height: 800 } }); const v8p = await v8.newPage(); const v8Err = []; v8p.on('pageerror', (e) => v8Err.push(e.message));

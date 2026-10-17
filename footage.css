@@ -220,3 +220,11 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 .alai{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;font-size:13px;color:var(--muted)}.alai:empty{display:none}
 .alai .btn{flex:none}
 .aid{position:absolute;left:7px;top:7px;width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px rgba(0,0,0,.45)}
+.alseg{display:flex;gap:6px;margin:0 0 12px}
+.alseg button{flex:1;min-height:38px;border-radius:12px;border:1px solid var(--line-strong);background:var(--field);color:var(--muted);font:inherit;font-weight:500;font-size:14px}
+.alseg button.on{background:var(--accent-soft);border-color:rgba(57,217,138,.55);color:var(--accent)}
+.ack{position:absolute;right:7px;top:7px;width:20px;height:20px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.35);display:none}
+.selecting .ack{display:block}.selecting .clip.on .ack{background:var(--accent);border-color:var(--accent)}
+.selecting .clip.on .alimg{outline:3px solid var(--accent);outline-offset:-3px}
+.alselbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:center;gap:8px;padding:10px 14px max(10px,env(safe-area-inset-bottom));background:var(--surface,#151a19);border-top:1px solid var(--line-strong);font-size:13.5px}
+.alselbar[hidden]{display:none}.alsp{flex:1}

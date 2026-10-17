@@ -319,7 +319,7 @@
       a.characters = (a.characters || []).concat(nx ? nx.key.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }) : k); a.characters_th = (a.characters_th || []).concat(nx ? nx.th : k); n++; });
     if(n){ a.rc = 1; chipCache.delete(sc); } return n;
   }
-  Object.assign(U, { addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
+  Object.assign(U, { addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
                      openFiles:function(docs){ $(docs ? "pickDocs" : "playFiles").click(); } });
   if($("p-find").classList.contains("on")) search();
 })();
