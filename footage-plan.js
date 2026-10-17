@@ -281,6 +281,13 @@
     $("plProg").hidden = true;
   });
   $("plBatches").addEventListener("click", function(e){ if(cuts && e.target.closest("#plSave")) FT.stitch.save(cuts.file, say); });
+  $("plStudio").addEventListener("click", async function(){ /* ส่งตารางช็อตไปแก้ต่อในสตูดิโอ (studio.html) · ภาพตามคลิปที่เลือก เสียงพากย์ (แบบ 2) ข้อความของช็อต */
+    var list = picked(); if(!list.length) return;
+    if(MWStudio.load() && !(await MWDialog.confirm("แทนโปรเจกต์ที่ค้างอยู่ในสตูดิโอด้วยตารางช็อตนี้ไหม?", { ok:"แทนเลย", cancel:"ไม่" }))) return;
+    var name = String(plan.script || "").replace(/\s+/g, " ").trim().slice(0, 40) || "โปรเจกต์ใหม่";
+    MWStudio.save(MWStudio.fromPlan(list, { name:name, voice:!isLong() && plan.voice ? plan.voice : null, uriOf:function(c){ return window.MWLocal ? MWLocal.uriOf(c) : null; } }));
+    location.href = "studio.html";
+  });
   $("plCopy").addEventListener("click", function(){
     var txt = plan.shots.map(function(x, k){ var ch = x.use && chosen(x), r = ch && cut(x, ch);
       return (k + 1) + ". " + x.t + "\n   → " + (ch ? ch.c.name + " ช่วง " + U.tm(r.from) + "–" + U.tm(r.to) + " (" + (r.to - r.from).toFixed(1) + " วิ)" : "ไม่มีในคลัง: " + x.want); }).join("\n");

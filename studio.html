@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0e0d" />
+<title>สตูดิโอ · Meowrin factory</title>
+<link rel="icon" type="image/png" href="icon-192.png?v=8.25">
+<link rel="stylesheet" href="fonts.css?v=8.25"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google) -->
+<link rel="stylesheet" href="studio.css?v=8.25">
+</head>
+<body>
+<header>
+  <a class="back" href="index.html#settings" aria-label="กลับแอพ"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></a>
+  <h1 id="stName">สตูดิโอ</h1>
+  <button class="export" id="stExport" type="button" hidden>ส่งออก</button>
+</header>
+
+<section id="stEmpty" class="empty" hidden>
+  <svg class="ic big" aria-hidden="true"><use href="#i-film"/></svg>
+  <h2>ยังไม่มีโปรเจกต์</h2>
+  <p>ให้ AI ตัดต่อให้ก่อนที่ <b>ตัดต่ออัตโนมัติ</b> แล้วกดปุ่ม "แก้ต่อในสตูดิโอ" ใต้ตารางช็อต</p>
+  <a class="btn" href="footage.html?tab=plan">ไปที่ตัดต่ออัตโนมัติ</a>
+</section>
+
+<main id="stMain" hidden>
+  <div class="stage" id="stStage"><canvas id="stCanvas" width="540" height="960"></canvas></div>
+  <div class="ctrl">
+    <span class="time"><b id="stNow">00:00.0</b> / <span id="stDur">00:00.0</span></span>
+    <button class="ib play" id="stPlay" type="button" aria-label="เล่น"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg></button>
+    <span class="ur">
+      <button class="ib" id="stUndo" type="button" aria-label="เลิกทำ" disabled><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg></button>
+      <button class="ib" id="stRedo" type="button" aria-label="ทำซ้ำ" disabled><svg class="ic" aria-hidden="true"><use href="#i-redo"/></svg></button>
+    </span>
+  </div>
+  <div class="tlwrap">
+    <div class="tl" id="stTl"><div class="tlin" id="stTlIn"></div></div>
+    <div class="head" aria-hidden="true"></div>
+  </div>
+  <p class="msg" id="stMsg" role="status"></p>
+  <nav class="tools">
+    <button class="tool" id="stSplit" type="button"><svg class="ic" aria-hidden="true"><use href="#i-split"/></svg>แบ่ง</button>
+    <button class="tool" id="stDel" type="button"><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>ลบ</button>
+  </nav>
+</main>
+
+<script src="store.js?v=8.25" data-boot="version.js?v=8.25 icons.js?v=8.25 dialog.js?v=8.25 native.js?v=8.25 local.js?v=8.25 voicestore.js?v=8.25 studio-model.js?v=8.25 studio-player.js?v=8.25 studio.js?v=8.25"></script>
+</body>
+</html>

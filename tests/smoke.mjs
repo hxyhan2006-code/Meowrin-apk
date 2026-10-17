@@ -25,7 +25,7 @@ for (const f of [...files('.', '.js'), ...files('sub', '.js')]) { const t = text
 const jsAll = [...files('.', '.js'), ...files('sub', '.js')];
 const defined = new Set([...text('icons.js').matchAll(/^\s{4}([a-z]+):\s*'/gm)].map((m) => m[1]));
 const used = new Set(); const subUsed = new Set();
-for (const f of [...jsAll.filter((x) => !x.startsWith('sub')), 'index.html', 'footage.html']) for (const m of text(f).matchAll(/MWIcon\("([a-z]+)"\)|#i-([a-z]+)/g)) used.add(m[1] || m[2]);
+for (const f of [...jsAll.filter((x) => !x.startsWith('sub')), 'index.html', 'footage.html', 'studio.html']) for (const m of text(f).matchAll(/MWIcon\("([a-z]+)"\)|#i-([a-z]+)/g)) used.add(m[1] || m[2]);
 const subSyms = new Set([...text('sub/index.html').matchAll(/<symbol id="i-([a-z]+)"/g)].map((m) => m[1]));
 for (const f of ['sub/index.html', ...files('sub', '.js')]) for (const m of text(f).matchAll(/#i-([a-z]+)/g)) subUsed.add(m[1]);
 const missing = [...used].filter((n) => !defined.has(n)); const subMissing = [...subUsed].filter((n) => !subSyms.has(n));
@@ -235,7 +235,7 @@ try {
   const hm = await context.newPage(); const hmErr = []; hm.on('pageerror', (e) => hmErr.push(e.message));
   await hm.goto(base + '/index.html'); await hm.waitForFunction(() => window.MW, null, { timeout: 20000 }); await hm.click('nav [data-tab=settings]');
   const tl = await hm.evaluate(() => ({ tiles: [...document.querySelectorAll('#tab-settings .tool b')].map((b) => b.textContent), plan: document.querySelector('#tab-settings .tool[href="footage.html?tab=plan"]') ? 1 : 0, chk: [...document.querySelectorAll('#tab-settings a.btn')].some((a) => a.getAttribute('href') === 'check.html' && /ตรวจระบบแอพ/.test(a.textContent)) }));
-  check('ตั้งค่า: เครื่องมือเป็น อัลบั้ม / ตัดต่ออัตโนมัติ / ซับจอเขียว และตรวจระบบเป็นแถบเล็กท้ายหน้า', tl.tiles.join('|') === 'อัลบั้ม|ตัดต่ออัตโนมัติ|ซับจอเขียว' && tl.plan === 1 && tl.chk && !hmErr.length, JSON.stringify(tl) + hmErr.join());
+  check('ตั้งค่า: เครื่องมือเป็น อัลบั้ม / ตัดต่ออัตโนมัติ / ซับจอเขียว / สตูดิโอ และตรวจระบบเป็นแถบเล็กท้ายหน้า', tl.tiles.join('|') === 'อัลบั้ม|ตัดต่ออัตโนมัติ|ซับจอเขียว|สตูดิโอ' && tl.plan === 1 && tl.chk && !hmErr.length, JSON.stringify(tl) + hmErr.join());
   await hm.goto(base + '/footage.html?tab=plan'); await hm.waitForFunction(() => window.FT && FT.ui, null, { timeout: 20000 }); await hm.waitForTimeout(500);
   check('footage.html?tab=plan: เปิดโหมดตัดต่ออัตโนมัติ (ผู้กำกับอย่างเดียว ไม่มีแท็บ)', await hm.evaluate(() => document.getElementById('p-plan').classList.contains('on') && document.body.classList.contains('mode-plan') && getComputedStyle(document.querySelector('.tabs')).display === 'none' && document.getElementById('pgTitle').textContent === 'ตัดต่ออัตโนมัติ'));
   await hm.goto(base + '/check.html'); await hm.waitForTimeout(800);
@@ -531,6 +531,51 @@ try {
   const early = await hp.evaluate(() => document.getElementById('tab-settings').classList.contains('on') && !!document.getElementById('tab-clips') && !document.getElementById('tab-clips').classList.contains('on'));
   check('เปิดหน้าแรกด้วย #settings → วาดแท็บตั้งค่าเลย (store.js ตั้งก่อนข้อมูลโหลด ไม่แว้บแท็บคลิป)', early);
   await hp.close();
+  // สตูดิโอ (studio.html): ไม่มีโปรเจกต์ = หน้าว่างบอกทาง · fromPlan รวมช็อตค้างภาพ · พรีวิววาดคลิปถูกตัว เต็มกรอบไม่ตัดขอบ · แบ่ง/ลบ/เลิกทำ/ทำซ้ำ · ส่งออกได้ไฟล์
+  {
+  const se = await open('/studio.html', 'หน้าสตูดิโอ (ว่าง)');
+  check('สตูดิโอ: ยังไม่มีโปรเจกต์ = หน้าว่างพร้อมลิงก์ไปตัดต่ออัตโนมัติ', await se.page.evaluate(() => !document.getElementById('stEmpty').hidden && document.getElementById('stMain').hidden && !!document.querySelector('#stEmpty a[href="footage.html?tab=plan"]')));
+  const clipsB64 = await se.page.evaluate(async () => {
+    const mb = await import('/sub/vendor/mediabunny.min.js');
+    async function make(color){ const c = document.createElement('canvas'); c.width = 320; c.height = 180; const x = c.getContext('2d'); const o = new mb.Output({ format: new mb.Mp4OutputFormat(), target: new mb.BufferTarget() }); const v = new mb.CanvasSource(c, { codec: 'vp9', quality: mb.QUALITY_HIGH }); o.addVideoTrack(v); await o.start();
+      for (let i = 0; i < 60; i++){ x.fillStyle = color; x.fillRect(0, 0, 320, 180); await v.add(i / 30, 1 / 30); } await o.finalize(); const b = new Uint8Array(o.target.buffer); let s = ''; for (let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
+    const fp = MWStudio.fromPlan([{ c: { name: 'a.mp4', size: 1 }, at: 0, from: 1, to: 2, t: 'หนึ่ง' }, { c: null, at: 1.2, from: 0, to: 0, t: 'ค้าง' }, { c: { name: 'b.mp4', size: 2 }, at: 2, from: 5, to: 6, t: 'สาม' }], { voice: { id: 9, dur: 3 }, uriOf: (c) => 'file:///x/' + c.name });
+    return { red: await make('#d00'), blue: await make('#00d'), fp: { lens: fp.clips.map((c) => c.len), uri: fp.clips[1].uri, texts: fp.texts.length, dur: MWStudio.duration(fp) } };
+  });
+  await finishPage(se); await se.page.close();
+  check('สตูดิโอ: fromPlan มีเสียงพากย์ → ช็อตค้างภาพรวมเข้าช็อตก่อนหน้า ช็อตสุดท้ายยาวถึงท้ายเสียง', JSON.stringify(clipsB64.fp.lens) === '[2,1]' && clipsB64.fp.uri === 'file:///x/b.mp4' && clipsB64.fp.texts === 3 && clipsB64.fp.dur === 3, JSON.stringify(clipsB64.fp));
+  const sp = await context.newPage(); const spErr = []; sp.on('pageerror', (e) => spErr.push(e.message));
+  await sp.route(/\/t\/(red|blue)\.mp4/, (rt) => rt.fulfill({ status: 200, contentType: 'video/mp4', body: Buffer.from(clipsB64[/red/.test(rt.request().url()) ? 'red' : 'blue'], 'base64') }));
+  await sp.goto(base + '/studio.html'); await sp.waitForFunction(() => window.MWStudio, null, { timeout: 20000 });
+  await sp.evaluate(async (b) => { await MWStore.ready; const p = MWStudio.blank('ทดสอบสตูดิโอ'); p.bg = 'black'; p.clips = [{ id: 'a', uri: b + '/t/red.mp4', name: 'red', size: 1, from: 0.2, len: 1, thumb: '', t: '' }, { id: 'b', uri: b + '/t/blue.mp4', name: 'blue', size: 1, from: 0, len: 1, thumb: '', t: '' }]; p.texts = [{ at: 0, len: 1, t: 'แดง' }, { at: 1, len: 1, t: 'น้ำเงิน' }]; MWStudio.save(p); }, base);
+  await sp.reload(); await sp.waitForFunction(() => window.MWStudioUI, null, { timeout: 20000 });
+  const px = (t) => sp.evaluate(async (t) => { const pl = MWStudioUI.player(); pl.seek(t); await new Promise((ok) => setTimeout(ok, 700)); pl.paint(); const c = document.getElementById('stCanvas'), x = c.getContext('2d'); const mid = x.getImageData(c.width / 2, c.height / 2, 1, 1).data, top = x.getImageData(c.width / 2, 10, 1, 1).data; return { mid: mid[0] > 120 && mid[2] < 80 ? 'R' : mid[2] > 120 && mid[0] < 80 ? 'B' : '?', top: top[0] + top[1] + top[2], w: c.width, h: c.height }; }, t);
+  const s1 = await px(0.5), s2 = await px(1.5);
+  check('สตูดิโอ: พรีวิววาดคลิปตามเวลา (แดง → น้ำเงิน) ภาพเต็มกรอบ ไม่ตัดขอบ (บน/ล่างเป็นพื้นดำ) กรอบ 9:16', s1.mid === 'R' && s2.mid === 'B' && s1.top < 30 && s1.w === 540 && s1.h === 960, JSON.stringify([s1, s2]));
+  await sp.evaluate(() => { const p = MWStudioUI.ed().p; p.bg = 'blur'; MWStudioUI.player().setProject(p); });
+  const s3 = await px(0.5);
+  check('สตูดิโอ: พื้นหลังเบลอ = ขอบบนเป็นสีจากภาพ ไม่ใช่ดำ', s3.mid === 'R' && s3.top > 60, JSON.stringify(s3));
+  const ui = await sp.evaluate(async () => {
+    const pl = MWStudioUI.player(), n = () => document.querySelectorAll('#stTlIn .clip').length, out = { clips0: n(), texts: document.querySelectorAll('#stTlIn .tx').length };
+    pl.seek(0.5); document.getElementById('stSplit').click(); out.split = n(); out.lens = MWStudioUI.ed().p.clips.map((c) => c.len); out.from2 = MWStudioUI.ed().p.clips[1].from;
+    document.getElementById('stUndo').click(); out.undo = n(); document.getElementById('stRedo').click(); out.redo = n();
+    document.querySelector('#stTlIn .clip[data-i="2"]').click(); out.sel = !!document.querySelector('#stTlIn .clip.sel[data-i="2"]');
+    document.getElementById('stDel').click(); out.del = n(); out.saved = MWStore.get('mw_studio_v1').cur.clips.length;
+    pl.seek(0); pl.play(); await new Promise((ok) => setTimeout(ok, 800)); out.moved = pl.t; out.playing = pl.playing; pl.pause();
+    out.scroll = document.getElementById('stTl').scrollLeft;
+    return out;
+  });
+  check('สตูดิโอ: ไทม์ไลน์มี 2 คลิป + ข้อความ · แบ่งตรงเส้นเล่น → 3 คลิป (0.5+0.5 วิ ต้นคลิปที่ 2 เลื่อนตาม) · เลิกทำ/ทำซ้ำ · เลือกแล้วลบ · บันทึกลงเครื่อง', ui.clips0 === 2 && ui.texts === 2 && ui.split === 3 && JSON.stringify(ui.lens) === '[0.5,0.5,1]' && Math.abs(ui.from2 - 0.7) < 0.001 && ui.undo === 2 && ui.redo === 3 && ui.sel && ui.del === 2 && ui.saved === 2, JSON.stringify(ui));
+  check('สตูดิโอ: กดเล่นแล้วเวลาเดิน ไทม์ไลน์เลื่อนตาม', ui.moved > 0.3 && ui.playing && ui.scroll > 10, JSON.stringify(ui));
+  const sx = await sp.evaluate(async () => { const pr = await import('/exporter.js'); const p = MWStudioUI.ed().p; const r = await pr.exportShots({ shots: p.clips.map((c) => ({ url: c.uri, start: c.from, dur: c.len })), width: 270, height: 480, fps: 30, codec: 'vp9', draw: (ctx, W, H, img) => MWStudioPlayer.draw(ctx, W, H, img, img.width, img.height, 'black') });
+    const v = document.createElement('video'); v.muted = true; v.src = URL.createObjectURL(r.blob); await new Promise((ok) => v.onloadeddata = ok); v.currentTime = 0.2; await new Promise((ok) => v.onseeked = ok);
+    const c = document.createElement('canvas'); c.width = 27; c.height = 48; const x = c.getContext('2d'); x.drawImage(v, 0, 0, 27, 48); const top = x.getImageData(13, 2, 1, 1).data, mid = x.getImageData(13, 24, 1, 1).data; return { frames: r.frames, top: top[0] + top[1] + top[2], midR: mid[0] }; });
+  check('สตูดิโอ: ส่งออกใช้วิธีวางภาพเดียวกับพรีวิว (เต็มกรอบ ไม่ตัดขอบ)', sx.frames === 30 && sx.top < 40 && sx.midR > 120, JSON.stringify(sx));
+  const over = await sp.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: innerWidth, tb: document.querySelector('.tools').getBoundingClientRect().bottom, ih: innerHeight }));
+  check('สตูดิโอ: ไม่มี error · หน้าไม่ล้นจอ · แถบเครื่องมืออยู่ในจอ', !spErr.length && over.sw <= over.iw + 1 && over.tb <= over.ih + 1, spErr.join(' | ') + JSON.stringify(over));
+  await sp.evaluate(() => MWStore.del('mw_studio_v1'));
+  await sp.close();
+  }
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

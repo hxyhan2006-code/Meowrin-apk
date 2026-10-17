@@ -14,6 +14,7 @@
     if(location.hostname === "localhost") return cap().convertFileSrc(uri);
     return "https://localhost/_capacitor_file_" + uri.replace(/^file:\/\//, "").split("/").map(encodeURIComponent).join("/");
   }
+  function uriOf(c){ return c && map[key(c.name, c.size)] || null; } /* ที่อยู่ไฟล์ (file://) ให้สตูดิโอเก็บลงโปรเจกต์ */
   function urlOf(c){ var u = c && map[key(c.name, c.size)]; return u ? fileUrl(u) : null; } /* ที่อยู่ที่ <video> เล่นได้ หรือ null */
   async function scan(onStep){
     var M = plug("Media"), F = plug("Filesystem"); if(!M || !F) throw new Error("ใช้ได้เฉพาะในแอพ APK");
@@ -52,7 +53,7 @@
     try{ await scan(function(i, n){ render("กำลังสแกนอัลบั้ม " + i + "/" + n + "..."); }); busy = false; render(); ping(); }
     catch(e){ busy = false; ping(); render("สแกนไม่ได้: " + (e && (e.message || e.errorMessage) || e) + " · ถ้าเคยกดไม่อนุญาต ให้เปิดสิทธิ์ที่ ตั้งค่ามือถือ > แอป > Meowrin > สิทธิ์ แล้วลองใหม่", true); }
   }
-  window.MWLocal = { LIBROOT:LIBROOT, plug:plug, native:native, scan:scan, list:function(){ return all; }, scanning:function(){ return busy; }, urlOf:urlOf, fileUrl:fileUrl, count:function(){ return st.files; } };
+  window.MWLocal = { LIBROOT:LIBROOT, plug:plug, native:native, scan:scan, list:function(){ return all; }, scanning:function(){ return busy; }, urlOf:urlOf, uriOf:uriOf, fileUrl:fileUrl, count:function(){ return st.files; } };
   if($("locScan")){
     $("locScan").addEventListener("click", run);
     $("locFold").addEventListener("toggle", function(){ if(this.open) render(); }); /* ดัชนีโหลดทีหลัง ตัวเลขจับคู่อัปเดตตอนเปิดแผง */

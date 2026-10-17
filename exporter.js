@@ -3,7 +3,7 @@
 // ใช้: const { blob, seconds, ms } = await exportShots({ shots:[{ url, start, dur }], width:1080, height:1920, fps:30, onProgress(p), onLog(text) })
 // url = ที่อยู่คลิป (ไฟล์ในมือถือใช้ MWLocal.fileUrl) · start/dur = วินาที · ช็อตที่ไม่มี url = ค้างภาพก่อนหน้า (ภาพแรกสุดเป็นสีดำ)
 // voice = Blob เสียงพากย์ (ใส่เป็นแทร็กเสียงของไฟล์) → ช็อตกำหนดเวลาด้วย `at` (วินาทีที่ช็อตเริ่มในเสียง) แทน dur: ยาวถึงช็อตถัดไป ช็อตสุดท้ายยาวถึงจบเสียง
-// codec = "auto" เลือกตัวที่เครื่องเข้ารหัสได้ (avc ก่อน เพื่อให้ CapCut อ่านได้) · คืน { blob, seconds, frames, ms, codec, audio }
+// draw(ctx, width, height, frameCanvas) = วางภาพเอง (ไม่ใส่ = ครอปกลางเต็มกรอบ) · codec = "auto" เลือกตัวที่เครื่องเข้ารหัสได้ (avc ก่อน เพื่อให้ CapCut อ่านได้) · คืน { blob, seconds, frames, ms, codec, audio }
 const MB_URL = "./sub/vendor/mediabunny.min.js";
 let mbPromise = null;
 export function loadMediabunny(){ return mbPromise || (mbPromise = import(MB_URL)); }
@@ -13,7 +13,7 @@ async function decodeVoice(voice){
   try{ return await ac.decodeAudioData(await voice.arrayBuffer()); } finally { try{ ac.close(); }catch(e){} }
 }
 
-export async function exportShots({ shots, voice, width = 1080, height = 1920, fps = 30, codec = "auto", onProgress, onLog, onShot }){
+export async function exportShots({ shots, voice, width = 1080, height = 1920, fps = 30, codec = "auto", onProgress, onLog, onShot, draw }){
   const mb = await loadMediabunny(), t0 = performance.now(), log = onLog || function(){};
   const buf = voice ? await decodeVoice(voice) : null;
   if(codec === "auto"){
@@ -47,10 +47,10 @@ export async function exportShots({ shots, voice, width = 1080, height = 1920, f
       try{
         const track = await input.getPrimaryVideoTrack();
         if(!track) throw new Error("ช็อต " + (i + 1) + ": ไม่เจอแทร็กภาพในไฟล์");
-        const sink = new mb.CanvasSink(track, { width, height, fit: "cover" });
+        const sink = draw ? new mb.CanvasSink(track) : new mb.CanvasSink(track, { width, height, fit: "cover" }); /* draw = วางภาพเอง (สตูดิโอ: เต็มกรอบ + พื้นหลังเบลอ) ได้เฟรมขนาดจริงของคลิป */
         const stamps = []; for(let k = 0; k < n; k++) stamps.push(s.start + k * frameDur);
         for await (const w of sink.canvasesAtTimestamps(stamps)){
-          if(w){ ctx.drawImage(w.canvas, 0, 0, width, height); got++; } /* เฟรมหาย (เลยท้ายคลิป) = ไม่วาดใหม่ ค้างภาพล่าสุด */
+          if(w){ if(draw) draw(ctx, width, height, w.canvas); else ctx.drawImage(w.canvas, 0, 0, width, height); got++; } /* เฟรมหาย (เลยท้ายคลิป) = ไม่วาดใหม่ ค้างภาพล่าสุด */
           await video.add(frames * frameDur, frameDur); frames++;
           if(onProgress && frames % 5 === 0) onProgress(frames / total);
         }
