@@ -385,6 +385,31 @@ try {
   check('ถาม AI: ค้นในคลังไม่เจอผู้สมัครเลย = บอกว่าไม่เจอ และไม่เรียก AI ขั้นเลือก (ไม่เสียเงินเพิ่ม)', (await ak.evaluate(() => window.__bodies.length)) === 1 && !akErr.length, akErr.join());
   await ak.fill('#q', ''); await ak.waitForTimeout(300);
   check('ถาม AI: ล้างคำค้น = ล้างคำตอบ', await ak.evaluate(() => document.getElementById('askOut').hidden));
+  // จัดอัลบั้มใหม่ (footage-organize.js): แผนจากภาคที่ AI รู้แน่ → ย้ายไฟล์จริงด้วย MediaScan.move · ไม่แตะคลิปที่ไม่แน่ใจภาค/สำเนาในแอพ/ที่อยู่ถูกแล้ว/ชื่อซ้ำ · ย้ายทดลอง · เลิกทำย้ายกลับ · ไม่มีสิทธิ์ = ปุ่มขอสิทธิ์
+  const og = await context.newPage(); const ogErr = []; og.on('pageerror', (e) => ogErr.push(e.message));
+  await og.addInitScript(() => { window.__mv = []; window.__perm = { granted: true }; window.__req = 0; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true,
+    Plugins: { Filesystem: {}, Media: { getAlbums: async () => ({ albums: [] }) }, MediaScan: { hasAccess: async () => window.__perm, requestAccess: async () => { window.__req++; }, move: async (o) => { window.__mv.push([o.from, o.to]); } } } }; });
+  await og.goto(base + '/footage.html'); await og.waitForFunction(() => window.FT && FT.organize && document.getElementById('orgBtn'), null, { timeout: 20000 }); await og.waitForTimeout(500);
+  await og.evaluate(() => {
+    const D = '/storage/emulated/0/Pictures/Gallery/owner/', mk = (id, name, size, arc) => ({ id, name, size, album: 'luffy', duration: 9, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 0, e: 3, thumb: '', ai: arc ? { arc, characters: ['Luffy'] } : { characters: ['Luffy'] } }] });
+    FT.ui.lib().push(mk('o1', 'a.mp4', 1, 'Alabasta arc'), mk('o2', 'b.mp4', 2, 'Skypiea arc'), mk('o3', 'c.mp4', 3, ''), mk('o4', 'd.mp4', 4, 'Alabasta arc'));
+    const ala = FT.organize.nameOfArc('Alabasta');
+    MWLocal.list = () => [{ name: 'a.mp4', size: 1, dir: D + 'luffy/', uri: 'file://x' }, { name: 'a.mp4', size: 1, dir: D + 'zoro/', uri: 'file://x2' }, { name: 'b.mp4', size: 2, dir: D + 'luffy/', uri: 'file://y' }, { name: 'c.mp4', size: 3, dir: D + 'luffy/', uri: 'file://z' }, { name: 'd.mp4', size: 4, dir: D + ala + '/', uri: 'file://w' }, { name: 'a.mp4', size: 1, dir: '/storage/emulated/0/Documents/Meowrin/library/luffy/', lib: true, uri: 'file://l' }];
+    document.getElementById('orgBtn').hidden = false;
+  });
+  await og.click('#orgBtn'); await og.waitForFunction(() => document.querySelector('#orgBox #orgTrial'), null, { timeout: 8000 });
+  const og1 = await og.evaluate(() => ({ t: document.getElementById('orgBox').textContent, ala: FT.organize.nameOfArc('Alabasta') }));
+  check('จัดอัลบั้มใหม่: แผนย้าย 2 คลิป (a กับ b) · ข้ามคลิปที่ไม่แน่ใจภาค/ที่อยู่ถูกแล้ว/สำเนาในแอพ/ชื่อซ้ำ 1 · มีชื่อโฟลเดอร์เลขลำดับ', /จะย้าย 2 คลิป/.test(og1.t) && /ไม่แตะ 1 คลิปที่ยังไม่แน่ใจ/.test(og1.t) && /ข้าม 1 ไฟล์ชื่อซ้ำ/.test(og1.t) && /^\d\d Alabasta/.test(og1.ala), JSON.stringify(og1).slice(0, 300));
+  await og.click('#orgTrial'); await og.waitForFunction(() => window.__mv.length === 2 && /ย้ายแล้ว 2 คลิป/.test(document.getElementById('orgMsg').textContent), null, { timeout: 8000 });
+  const og2 = await og.evaluate(() => ({ mv: window.__mv, j: MWStore.get('mw_org_v1', null), alb: FT.ui.lib().find((c) => c.id === 'o1').album, ala: FT.organize.nameOfArc('Alabasta') }));
+  check('จัดอัลบั้มใหม่: ย้ายทดลองด้วย MediaScan.move จากอัลบั้มเดิมไปโฟลเดอร์ภาค · จดบันทึกการย้าย · ป้ายอัลบั้มในดัชนีเปลี่ยน', og2.mv.length === 2 && og2.mv[0][0].endsWith('/owner/luffy/a.mp4') && og2.mv[0][1].endsWith('/owner/' + og2.ala + '/a.mp4') && og2.j && og2.j.batches[0].items.length === 2 && og2.alb === og2.ala, JSON.stringify(og2).slice(0, 400));
+  await og.evaluate(() => { window.__mv = []; }); await og.click('#orgUndo'); await og.waitForFunction(() => window.__mv.length === 2 && /เลิกทำแล้ว/.test(document.getElementById('orgMsg').textContent), null, { timeout: 8000 });
+  const og3 = await og.evaluate(() => ({ mv: window.__mv, j: MWStore.get('mw_org_v1', null).batches.length, alb: FT.ui.lib().find((c) => c.id === 'o1').album }));
+  check('จัดอัลบั้มใหม่: เลิกทำ = ย้ายกลับที่เดิมทุกไฟล์ · ลบบันทึก · ป้ายอัลบั้มกลับเดิม', og3.mv.length === 2 && og3.mv.every((m) => /\/owner\/luffy\//.test(m[1])) && og3.j === 0 && og3.alb === 'luffy', JSON.stringify(og3));
+  await og.evaluate(() => { window.__perm = { granted: false }; }); await og.click('#orgBtn'); await og.click('#orgBtn'); await og.waitForFunction(() => document.getElementById('orgPerm'), null, { timeout: 8000 });
+  await og.click('#orgPerm'); await og.waitForTimeout(300);
+  check('จัดอัลบั้มใหม่: ไม่มีสิทธิ์เข้าถึงไฟล์ทั้งหมด = ไม่มีปุ่มย้าย มีปุ่มขอสิทธิ์ที่เปิดหน้าตั้งค่า', (await og.evaluate(() => ({ req: window.__req, move: !!document.getElementById('orgTrial') }))).req === 1 && !(await og.evaluate(() => !!document.getElementById('orgTrial'))) && !ogErr.length, ogErr.join());
+  await og.close();
   // ให้ AI ดูภาคของคลิปที่ยังไม่แน่ใจ (โหมดภาค): ถามราคาก่อน · AI ตอบภาค = เข้าอัลบั้มภาคนั้น (arcAi) · ตอบว่าง = ยังไม่แน่ใจและไม่ลองซ้ำ
   await sq.evaluate(() => { const c = FT.ui.lib().find((x) => x.name === 'sk.mp4'); c.scenes[0].thumb = 'data:image/jpeg;base64,/9j/4AAQ'; FT.classifyArcs = async (items, arcs) => { window.__arcCalls = (window.__arcCalls || 0) + 1; return { cost: 0.01, map: { 1: 'Alabasta' } }; }; MWStore.set('mw_openrouter_key_v1', 'k'); });
   await sq.click('#alSeg [data-m=arc]'); await sq.waitForTimeout(300);

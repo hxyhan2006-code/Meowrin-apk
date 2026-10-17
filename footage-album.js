@@ -112,7 +112,7 @@
     var base = mode === "phone" ? (albums.length ? albums.length + " อัลบั้ม · " + n + " คลิป" : "") : mode === "char" ? albums.length + " ตัวละคร (เจอตั้งแต่ 3 คลิป) · จากคลิปที่ AI ดูแล้ว " + doneN
       : albums.filter(function(x){ return x.name !== UNSURE; }).length + " ภาค" + (albums.some(function(x){ return x.name === UNSURE; }) ? " · ยังไม่แน่ใจ " + albums.find(function(x){ return x.name === UNSURE; }).items.length + " คลิป (เลือกแล้วย้ายเองได้)" : "");
     $("alSub").textContent = base + (scanning() ? (base ? " · " : "") + "กำลังสแกนหาคลิปใหม่..." : "");
-    $("alScan").hidden = !native;
+    $("alScan").hidden = !native; $("orgBtn").hidden = !native; /* จัดอัลบั้มใหม่ (footage-organize.js) ใช้ได้เฉพาะในแอพ */
     $("alMsg").textContent = albums.length ? "" : mode !== "phone" ? "ยังไม่มีคลิปที่ AI ดูแล้ว · กด ให้ AI ทำที่เหลือ ด้านบน" : native ? "ยังไม่เจอคลิป · กด สแกนใหม่ (ครั้งแรกจะมีหน้าต่างขออนุญาตดูรูปและวิดีโอ ให้กดอนุญาต)" : "ใช้ปุ่มเลือกไฟล์ในแท็บ อัปโหลด เพื่อทำดัชนี แล้วคลิปจะขึ้นที่นี่";
     $("alGrid").innerHTML = albums.map(function(a, i){
       return '<button class="alt album" data-i="' + i + '" type="button"><span class="alimg"><img alt="" decoding="async"><i class="alph"></i></span><b>' + esc(a.name) + "</b><small>" + a.items.length + " คลิป" + (mode === "phone" && a.items.some(done) ? " · AI " + a.items.filter(done).length : "") + "</small></button>";

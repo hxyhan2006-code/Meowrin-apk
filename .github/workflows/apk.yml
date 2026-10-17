@@ -62,13 +62,20 @@ jobs:
           assert os.path.isdir(d), "ไม่เจอโฟลเดอร์ java ของแอพ: " + d
           open(d + "/MediaScanPlugin.java", "w", encoding="utf-8").write('''package com.han.meowrin;
 
+          import android.content.Intent;
           import android.media.MediaScannerConnection;
           import android.net.Uri;
+          import android.os.Build;
+          import android.os.Environment;
+          import android.provider.Settings;
           import com.getcapacitor.JSObject;
           import com.getcapacitor.Plugin;
           import com.getcapacitor.PluginCall;
           import com.getcapacitor.PluginMethod;
           import com.getcapacitor.annotation.CapacitorPlugin;
+          import java.io.File;
+          import java.io.FileInputStream;
+          import java.io.FileOutputStream;
 
           @CapacitorPlugin(name = "MediaScan")
           public class MediaScanPlugin extends Plugin {
@@ -88,6 +95,61 @@ jobs:
                           call.resolve(r);
                       }
                   });
+              }
+
+              private String plain(String p) {
+                  return p != null && p.startsWith("file://") ? Uri.decode(p.substring(7)) : p;
+              }
+
+              @PluginMethod
+              public void hasAccess(PluginCall call) {
+                  JSObject r = new JSObject();
+                  r.put("granted", Build.VERSION.SDK_INT < 30 || Environment.isExternalStorageManager());
+                  call.resolve(r);
+              }
+
+              @PluginMethod
+              public void requestAccess(PluginCall call) {
+                  if (Build.VERSION.SDK_INT >= 30) {
+                      Intent i = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:" + getContext().getPackageName()));
+                      i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                      getContext().startActivity(i);
+                  }
+                  call.resolve();
+              }
+
+              // ย้ายไฟล์: rename ก่อน (เร็ว ไม่กินที่) ไม่ได้ค่อยก๊อป+ตรวจขนาด+ลบต้นทาง · ไม่ทับไฟล์ปลายทาง · แจ้งแกลเลอรีทั้งที่เก่าและใหม่
+              @PluginMethod
+              public void move(PluginCall call) {
+                  String from = plain(call.getString("from")), to = plain(call.getString("to"));
+                  if (from == null || to == null) { call.reject("from/to is required"); return; }
+                  File src = new File(from), dst = new File(to);
+                  if (!src.isFile()) { call.reject("source missing: " + from); return; }
+                  if (dst.exists()) { call.reject("target exists: " + to); return; }
+                  File dir = dst.getParentFile();
+                  if (dir != null && !dir.exists() && !dir.mkdirs()) { call.reject("cannot create folder: " + dir); return; }
+                  boolean ok = src.renameTo(dst);
+                  if (!ok) {
+                      try {
+                          FileInputStream in = new FileInputStream(src);
+                          FileOutputStream out = new FileOutputStream(dst);
+                          byte[] buf = new byte[1 << 20];
+                          int n;
+                          while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                          in.close();
+                          out.close();
+                          if (dst.length() != src.length()) { dst.delete(); call.reject("copy size mismatch"); return; }
+                          if (!src.delete()) { call.reject("copied but cannot delete source"); return; }
+                      } catch (Exception e) {
+                          dst.delete();
+                          call.reject("move failed: " + e);
+                          return;
+                      }
+                  }
+                  MediaScannerConnection.scanFile(getContext(), new String[] { from, to }, null, null);
+                  JSObject r = new JSObject();
+                  r.put("to", to);
+                  call.resolve(r);
               }
           }
           ''')
@@ -109,7 +171,7 @@ jobs:
           p = "android/app/src/main/AndroidManifest.xml"
           s = open(p, encoding="utf-8").read()
           perms = "".join('    <uses-permission android:name="android.permission.%s" />\n' % n for n in [
-              "READ_MEDIA_VIDEO", "READ_MEDIA_IMAGES", "READ_MEDIA_AUDIO", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "WAKE_LOCK"])
+              "READ_MEDIA_VIDEO", "READ_MEDIA_IMAGES", "READ_MEDIA_AUDIO", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "MANAGE_EXTERNAL_STORAGE", "WAKE_LOCK"])
           s = s.replace("<application", perms + "    <application", 1)
           s = s.replace("<application", '<application android:requestLegacyExternalStorage="true" android:largeHeap="true"', 1)
           open(p, "w", encoding="utf-8").write(s)
