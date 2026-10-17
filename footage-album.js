@@ -165,9 +165,8 @@
       : todo ? "<span>" + (arcMsg ? arcMsg + " · " : "") + "ยังไม่แน่ใจ " + todo + " คลิป</span>" + '<button class="btn small" data-act="run" type="button">ให้ AI ดูภาค (' + todo + ")</button>"
       : "<span>" + (arcMsg || "ไม่มีคลิปที่รอ AI ดูภาค") + "</span>";
   }
-  $("alArc").addEventListener("click", async function(e){
-    var b = e.target.closest("[data-act]"); if(!b) return;
-    if(b.dataset.act === "stop"){ arcStopF = true; return; }
+  $("alArc").addEventListener("click", function(e){ var b = e.target.closest("[data-act]"); if(!b) return; if(b.dataset.act === "stop"){ arcStopF = true; return; } runArcs(); });
+  async function runArcs(){ /* ปุ่มในแถบภาค + ปุ่มในแผงจัดอัลบั้มใหม่ (footage-organize.js) ใช้ตัวเดียวกัน */
     var todo = arcTodo(); if(!todo.length || arcRun) return;
     if(!FT.orKey()){ await MWDialog.alert("ยังไม่มี OpenRouter key ในแอพ ไปใส่ที่ ตั้งค่า > คีย์ API ก่อน"); return; }
     if(!await MWDialog.confirm("ให้ AI ดูภาคของ " + todo.length + " คลิปที่ยังไม่แน่ใจ?\n\nประมาณ " + U.money(todo.length * 3 * 0.0012) + " (ประมาณการจากราคาต่อรูปของการตรวจตัวละครซ้ำ $0.0012 คูณ 3 รูปต่อคลิป ราคาจริงอาจต่างไป)\n\nAI จะไม่เดา: คลิปที่ไม่แน่ใจจะยังอยู่ในอัลบั้ม ยังไม่แน่ใจ และจะไม่ถูกลองซ้ำ ผลที่ AI ตอบไม่ทับภาคที่คุณย้ายเอง · พักและทำต่อได้ ต้องเปิดแอพค้างไว้", { ok:"เริ่ม" })) return;
@@ -181,7 +180,8 @@
       arcMsg = (arcStopF ? "หยุดแล้ว" : "เสร็จรอบนี้") + ": ดู " + n + " คลิป ได้ภาค " + hit + " คลิป ใช้ " + U.money(cost);
     }catch(err){ arcMsg = (err.budget ? "ถึงเพดานงบ: " : "ไม่สำเร็จ: ") + (err.message || err) + " · ทำไปแล้ว " + n + " คลิป (กดใหม่ทำต่อ)"; }
     arcRun = false; await U.wake(false); build(); if(view === "home") renderHome();
-  });
+  }
+  Object.assign(U, { runIndexFor:runFor, runArcs:runArcs, arcTodoCount:function(){ return arcTodo().length; } }); /* ให้แผงจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ / ให้ AI ดูภาค ได้เลย */
   var wasRunning = false;
   document.addEventListener("ft:queue", function(){ /* คิวเดินอยู่: อัปเดตแค่แถบ · จบรอบค่อยวาดตารางใหม่ (ไม่ให้กะพริบทุกวินาที) */
     var r = U.queueInfo().running; build(); if(curAlbum) curAlbum = albums.find(function(a){ return a.name === curAlbum.name; }) || null; strips();

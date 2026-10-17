@@ -14,18 +14,18 @@
   function clipOf(it){ return U.lib().find(function(c){ return c.name === it.name && c.size === it.size && c.status === "done" && !c.hide; }); }
 
   function buildPlan(){ /* คืน { moves:[{ name, size, from, to, album, toAlbum, clipId }], byAlbum:{ ชื่อ:จำนวน }, unsure, dup, skipped } */
-    var moves = [], byAlbum = {}, seenTo = {}, unsure = 0, dup = 0, same = 0;
+    var moves = [], byAlbum = {}, seenTo = {}, unsure = 0, dup = 0, same = 0, noIdx = []; /* noIdx = ไฟล์ในอัลบั้มจริงที่ยังไม่ได้ทำดัชนี (ย้ายไม่ได้ เพราะยังไม่รู้ภาค) */
     (MWLocal.list() || []).forEach(function(it){
       if(it.lib) return;
       var m = /^(.*\/Gallery\/owner)\/([^\/]+)\/$/.exec(it.dir || ""); if(!m) return; /* เฉพาะอัลบั้มจริงของแกลเลอรี (ไม่แตะสำเนาในแอพ/โฟลเดอร์อื่น) */
-      var c = clipOf(it); if(!c) return;
+      var c = clipOf(it); if(!c){ noIdx.push({ name:it.name, size:it.size, uri:it.uri, album:it.album, mtime:it.mtime }); return; }
       var ar = U.arcOf(c); if(!ar.arc || !ar.sure){ unsure++; return; }
       var to = nameOfArc(ar.arc); if(to === m[2]){ same++; return; }
       var dest = m[1] + "/" + to + "/" + it.name; if(seenTo[dest]){ dup++; return; } /* ชื่อซ้ำ (ไฟล์เดียวกันกระจายหลายอัลบั้ม) ย้ายแค่ตัวแรก */
       seenTo[dest] = 1; byAlbum[to] = (byAlbum[to] || 0) + 1;
       moves.push({ name:it.name, size:it.size, from:m[1] + "/" + m[2] + "/" + it.name, to:dest, album:m[2], toAlbum:to, clipId:c.id });
     });
-    return { moves:moves, byAlbum:byAlbum, unsure:unsure, dup:dup, same:same };
+    return { moves:moves, byAlbum:byAlbum, unsure:unsure, dup:dup, same:same, noIdx:noIdx };
   }
 
   async function run(list, onStep){ /* ย้ายทีละไฟล์ · พลาดติดกัน FAIL_STOP ครั้งหยุด · คืน { done:[], fail, last } */
@@ -50,9 +50,11 @@
     var native = !!plug("Filesystem"), M = mover(), j = load(), last = j.batches[0];
     plan = buildPlan();
     var h = '<div class="orghead"><b>จัดอัลบั้มใหม่ตามภาค/เรื่อง</b><small>ย้ายไฟล์จริงในแกลเลอรี CapCut จะเห็นอัลบั้มใหม่เลย · ไม่ลบอะไร · เลิกทำได้</small></div>';
-    h += '<p class="hint">' + (plan.moves.length ? "จะย้าย <b>" + plan.moves.length + "</b> คลิป เข้า <b>" + Object.keys(plan.byAlbum).length + "</b> อัลบั้ม" : "ไม่มีคลิปที่ต้องย้ายตอนนี้") + (plan.unsure ? " · ไม่แตะ " + plan.unsure + " คลิปที่ยังไม่แน่ใจภาค (ใช้แถบ ภาค → ให้ AI ดูภาค ก่อนแล้วกลับมา)" : "") + (plan.dup ? " · ข้าม " + plan.dup + " ไฟล์ชื่อซ้ำ" : "") + "</p>";
+    h += '<p class="hint">' + (plan.moves.length ? "จะย้าย <b>" + plan.moves.length + "</b> คลิป เข้า <b>" + Object.keys(plan.byAlbum).length + "</b> อัลบั้ม" : "ไม่มีคลิปที่ต้องย้ายตอนนี้") + (plan.noIdx.length ? " · ยังไม่ได้ทำดัชนี " + plan.noIdx.length + " คลิป" : "") + (plan.unsure ? " · ไม่แตะ " + plan.unsure + " คลิปที่ยังไม่แน่ใจภาค" : "") + (plan.dup ? " · ข้าม " + plan.dup + " ไฟล์ชื่อซ้ำ" : "") + "</p>";
     var names = Object.keys(plan.byAlbum).sort();
     if(names.length) h += '<div class="orglist">' + names.slice(0, expanded ? 999 : 6).map(function(n){ return "<span>" + U.esc(n) + " <em>" + plan.byAlbum[n] + "</em></span>"; }).join("") + (names.length > 6 ? '<button class="btn small ghost" id="orgMore" type="button">' + (expanded ? "ย่อ" : "ดูทั้งหมด " + names.length) + "</button>" : "") + "</div>";
+    var nArc = U.arcTodoCount ? U.arcTodoCount() : 0; /* ช่วยให้แผนครบขึ้น: ทำดัชนีที่เหลือ → ให้ AI ดูภาคที่ยังไม่แน่ใจ */
+    if(plan.noIdx.length || nArc) h += '<div class="orgbtns">' + (plan.noIdx.length ? '<button class="btn small" id="orgIdx" type="button">ให้ AI ทำดัชนีที่เหลือ (' + plan.noIdx.length + ")</button>" : "") + (nArc ? '<button class="btn small" id="orgArc" type="button">ให้ AI ดูภาค (' + nArc + ")</button>" : "") + "</div>";
     if(!native) h += '<p class="hint err">ใช้ได้เฉพาะในแอพ APK</p>';
     else if(!M) h += '<p class="hint err">ต้องติดตั้ง APK ใหม่ (สร้างจาก workflow build-apk) ก่อน ถึงจะย้ายไฟล์ได้ · ดูตัวอย่างแผนได้ตามด้านบน</p>';
     else {
@@ -85,6 +87,8 @@
     var id = e.target.closest("button") && e.target.closest("button").id; if(!id) return;
     if(id === "orgMore"){ expanded = !expanded; render(); }
     else if(id === "orgPerm"){ try{ await mover().requestAccess(); say("เปิดหน้าตั้งค่าแล้ว · เปิดสวิตช์ให้แอพนี้ แล้วกลับมาแตะ จัดอัลบั้มใหม่ อีกครั้ง"); }catch(err){ say("เปิดหน้าตั้งค่าไม่ได้: " + (err && err.message || err), "err"); } }
+    else if(id === "orgIdx") U.runIndexFor(plan.noIdx);
+    else if(id === "orgArc") U.runArcs();
     else if(id === "orgTrial") doMove(plan.moves.slice(0, TRIAL), "ทดลอง");
     else if(id === "orgAll"){ if(await MWDialog.confirm("ย้าย " + plan.moves.length + " คลิปเข้าอัลบั้มตามภาค? (ไม่ลบอะไร เลิกทำได้ทั้งชุด)", { ok:"ย้ายเลย", cancel:"ยกเลิก" })) doMove(plan.moves, "ย้ายทั้งหมด"); }
     else if(id === "orgUndo") undo();

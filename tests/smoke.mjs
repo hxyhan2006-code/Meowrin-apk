@@ -398,11 +398,14 @@ try {
     const D = '/storage/emulated/0/Pictures/Gallery/owner/', mk = (id, name, size, arc) => ({ id, name, size, album: 'luffy', duration: 9, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 0, e: 3, thumb: '', ai: arc ? { arc, characters: ['Luffy'] } : { characters: ['Luffy'] } }] });
     FT.ui.lib().push(mk('o1', 'a.mp4', 1, 'Alabasta arc'), mk('o2', 'b.mp4', 2, 'Skypiea arc'), mk('o3', 'c.mp4', 3, ''), mk('o4', 'd.mp4', 4, 'Alabasta arc'));
     const ala = FT.organize.nameOfArc('Alabasta');
-    MWLocal.list = () => [{ name: 'a.mp4', size: 1, dir: D + 'luffy/', uri: 'file://x' }, { name: 'a.mp4', size: 1, dir: D + 'zoro/', uri: 'file://x2' }, { name: 'b.mp4', size: 2, dir: D + 'luffy/', uri: 'file://y' }, { name: 'c.mp4', size: 3, dir: D + 'luffy/', uri: 'file://z' }, { name: 'd.mp4', size: 4, dir: D + ala + '/', uri: 'file://w' }, { name: 'a.mp4', size: 1, dir: '/storage/emulated/0/Documents/Meowrin/library/luffy/', lib: true, uri: 'file://l' }];
+    MWLocal.list = () => [{ name: 'a.mp4', size: 1, dir: D + 'luffy/', uri: 'file://x' }, { name: 'a.mp4', size: 1, dir: D + 'zoro/', uri: 'file://x2' }, { name: 'b.mp4', size: 2, dir: D + 'luffy/', uri: 'file://y' }, { name: 'c.mp4', size: 3, dir: D + 'luffy/', uri: 'file://z' }, { name: 'd.mp4', size: 4, dir: D + ala + '/', uri: 'file://w' }, { name: 'a.mp4', size: 1, dir: '/storage/emulated/0/Documents/Meowrin/library/luffy/', lib: true, uri: 'file://l' }, { name: 'e.mp4', size: 5, dir: D + 'luffy/', uri: 'file://e' }];
+    window.__idxCalls = []; FT.ui.runIndexFor = async (l) => { window.__idxCalls.push(l.length + ':' + l[0].name); }; FT.ui.arcTodoCount = () => 2; FT.ui.runArcs = async () => { window.__arcRun = 1; };
     document.getElementById('orgBtn').hidden = false;
   });
   await og.click('#orgBtn'); await og.waitForFunction(() => document.querySelector('#orgBox #orgTrial'), null, { timeout: 8000 });
   const og1 = await og.evaluate(() => ({ t: document.getElementById('orgBox').textContent, ala: FT.organize.nameOfArc('Alabasta') }));
+  await og.click('#orgIdx'); await og.click('#orgArc');
+  check('จัดอัลบั้มใหม่: คลิปที่ยังไม่ทำดัชนีมีปุ่ม ให้ AI ทำดัชนีที่เหลือ (ส่งไฟล์ e.mp4 เท่านั้น) · มีปุ่ม ให้ AI ดูภาค ในแผงเดียวกัน', /ยังไม่ได้ทำดัชนี 1 คลิป/.test(og1.t) && (await og.evaluate(() => window.__idxCalls.join())) === '1:e.mp4' && (await og.evaluate(() => window.__arcRun)) === 1);
   check('จัดอัลบั้มใหม่: แผนย้าย 2 คลิป (a กับ b) · ข้ามคลิปที่ไม่แน่ใจภาค/ที่อยู่ถูกแล้ว/สำเนาในแอพ/ชื่อซ้ำ 1 · มีชื่อโฟลเดอร์เลขลำดับ', /จะย้าย 2 คลิป/.test(og1.t) && /ไม่แตะ 1 คลิปที่ยังไม่แน่ใจ/.test(og1.t) && /ข้าม 1 ไฟล์ชื่อซ้ำ/.test(og1.t) && /^\d\d Alabasta/.test(og1.ala), JSON.stringify(og1).slice(0, 300));
   await og.click('#orgTrial'); await og.waitForFunction(() => window.__mv.length === 2 && /ย้ายแล้ว 2 คลิป/.test(document.getElementById('orgMsg').textContent), null, { timeout: 8000 });
   const og2 = await og.evaluate(() => ({ mv: window.__mv, j: MWStore.get('mw_org_v1', null), alb: FT.ui.lib().find((c) => c.id === 'o1').album, ala: FT.organize.nameOfArc('Alabasta') }));
