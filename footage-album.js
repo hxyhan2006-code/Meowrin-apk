@@ -1,6 +1,6 @@
 /* footage-album.js — แท็บ "อัลบั้ม" (หน้าตาแบบแอพแกลเลอรี): ตารางอัลบั้ม → ตารางคลิปในอัลบั้ม → ตัวเล่นเต็มจอ
    แหล่งรายการ: ไฟล์ในมือถือที่ MWLocal สแกน (เฉพาะโฟลเดอร์ Pictures/Gallery/owner) + คลิปในดัชนี (ใช้ปก/ความยาวที่ทำไว้แล้ว) จับคู่ด้วย ชื่อ|ขนาด
-   ภาพย่อ: คลิปที่อยู่ในดัชนีใช้ปกของดัชนี · ที่เหลือสร้างจากเฟรมของไฟล์เองตอนเลื่อนมาถึง (ทีละ 2 ไฟล์) แล้วเก็บไว้ใน IndexedDB mw_thumbs_v1 (เปิดครั้งถัดไปไม่ต้องสร้างใหม่)
+   ภาพย่อ: สร้างจากเฟรมของไฟล์เอง 600px ตอนเลื่อนมาถึง (ทีละ 2 ไฟล์) เก็บใน IndexedDB mw_thumbs_v1 (เปิดครั้งถัดไปไม่ต้องสร้างใหม่) · ไม่มีไฟล์ในมือถือค่อยใช้ปกของดัชนี (240px)
    ปุ่มย้อนกลับของมือถือ: เปิดอัลบั้ม/ตัวเล่น = pushState → ย้อนแล้วปิดชั้นบนสุด (ไม่เด้งออกจากหน้า) */
 (function(){
   "use strict";
@@ -10,15 +10,18 @@
   var albums = [], curAlbum = null, urls = {}; /* urls = key → blob URL ของภาพย่อ (ในหน่วยความจำ) */
 
   /* ---------- รายการ ---------- */
+  var MISSING = "ไม่เจอในมือถือ"; /* คลิปที่มีในดัชนีแต่หาไฟล์ในมือถือไม่เจอ (ถูกย้าย/ลบ/ชื่อต่าง) แยกเป็นอัลบั้มของมันเอง ไม่ปนกับอัลบั้มจริง */
   function build(){
-    var byKey = {}, out = [], loc = window.MWLocal && MWLocal.list ? MWLocal.list() : [];
+    var byKey = {}, other = {}, out = [], loc = window.MWLocal && MWLocal.list ? MWLocal.list() : [];
     loc.forEach(function(f){
-      if(f.dir.indexOf(ROOT) < 0) return;
-      var e = { k:f.name + "|" + f.size, name:f.name, size:f.size, album:f.album, uri:f.uri, c:null }; byKey[e.k] = e; out.push(e);
+      var e = { k:f.name + "|" + f.size, name:f.name, size:f.size, album:f.album, uri:f.uri, c:null };
+      if(f.dir.indexOf(ROOT) < 0){ other[e.k] = e; return; } /* ไฟล์นอกโฟลเดอร์หลัก: โชว์เฉพาะที่อยู่ในดัชนี */
+      byKey[e.k] = e; out.push(e);
     });
     U.lib().forEach(function(c){
-      var k = c.name + "|" + c.size, e = byKey[k];
-      if(e) e.c = c; else out.push({ k:k, name:c.name, size:c.size, album:c.album || "ไม่ระบุ", uri:null, c:c });
+      var k = c.name + "|" + c.size, e = byKey[k] || other[k];
+      if(e){ e.c = c; if(!byKey[k]){ byKey[k] = e; out.push(e); } }
+      else out.push({ k:k, name:c.name, size:c.size, album:loc.length ? MISSING : (c.album || "ไม่ระบุ"), uri:null, c:c });
     });
     var g = {};
     out.forEach(function(e){ (g[e.album] = g[e.album] || []).push(e); });
@@ -43,8 +46,8 @@
       v.onerror = function(){ fin(null); };
       v.onloadedmetadata = function(){ v.currentTime = Math.min(1, (v.duration || 2) / 2); };
       v.onseeked = function(){
-        var w = 240, h = Math.round(w * (v.videoHeight || 1) / (v.videoWidth || 1)), c = document.createElement("canvas"); c.width = w; c.height = h;
-        try{ c.getContext("2d").drawImage(v, 0, 0, w, h); c.toBlob(function(b){ fin(b ? { d:v.duration, b:b } : null); }, "image/jpeg", 0.7); }catch(e){ fin(null); }
+        var w = 600, h = Math.round(w * (v.videoHeight || 1) / (v.videoWidth || 1)), c = document.createElement("canvas"); c.width = w; c.height = h;
+        try{ c.getContext("2d").drawImage(v, 0, 0, w, h); c.toBlob(function(b){ fin(b ? { d:v.duration, b:b } : null); }, "image/jpeg", 0.82); }catch(e){ fin(null); }
       };
       v.src = url;
     });
@@ -52,8 +55,8 @@
   var queue = [], running = 0;
   function pump(){ while(running < 2 && queue.length){ var j = queue.shift(); running++; work(j.e).then(function(j){ return function(r){ running--; j.ok(r); pump(); }; }(j)); } }
   async function work(e){
-    var rec = await dbGet(e.k);
-    if(!rec){ var u = fileUrl(e); if(!u) return null; var g = await gen(u); if(!g) return null; rec = { k:e.k, d:g.d, b:g.b }; dbPut(rec); }
+    var rec = await dbGet("t2:" + e.k); /* t2 = ภาพย่อ 600px (รุ่นเก่า 240px ไม่ใช้แล้ว) */
+    if(!rec){ var u = fileUrl(e); if(!u) return null; var g = await gen(u); if(!g) return null; rec = { k:"t2:" + e.k, d:g.d, b:g.b }; dbPut(rec); }
     return { url:urls[e.k] || (urls[e.k] = URL.createObjectURL(rec.b)), d:rec.d };
   }
   function thumbOf(e){ return new Promise(function(ok){ queue.push({ e:e, ok:ok }); pump(); }); }
@@ -62,7 +65,7 @@
   }, { rootMargin:"300px" }) : null;
   function fill(el){
     var e = el._e; if(!e) return;
-    if(e.c && e.c.cover){ el.querySelector("img").src = e.c.cover; return; } /* ปกจากดัชนี ไม่ต้องสร้าง */
+    if(!e.uri && e.c && e.c.cover){ el.querySelector("img").src = e.c.cover; return; } /* ไม่มีไฟล์ในมือถือ = ใช้ปกจากดัชนี (240px ค่อนข้างเบลอ) */
     thumbOf(e).then(function(t){ if(!t || !el.isConnected) return; el.querySelector("img").src = t.url; var b = el.querySelector(".dur"); if(b && !b.textContent) b.textContent = dur(e, t); });
   }
   function watch(root, entryOf){

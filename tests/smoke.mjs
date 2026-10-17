@@ -250,6 +250,10 @@ try {
   await al.waitForTimeout(300);
   const a1 = await al.evaluate(() => ({ names: [...document.querySelectorAll('#alGrid .album b')].map((b) => b.textContent), sub: document.getElementById('alSub').textContent }));
   check('แท็บอัลบั้ม: โชว์เฉพาะอัลบั้มใต้ Gallery/owner (luffy 2, zoro 1) ไม่โชว์โฟลเดอร์อื่น', a1.names.join(',') === 'luffy,zoro' && /2 อัลบั้ม · 3 คลิป/.test(a1.sub), JSON.stringify(a1));
+  await al.evaluate(() => { FT.ui.lib().push({ id: 'g1', name: 'gone.mp4', size: 77, album: 'ยังไม่แยก', duration: 5, scenes: [] }); document.dispatchEvent(new CustomEvent('ft:lib')); });
+  await al.waitForTimeout(200);
+  const a1b = await al.evaluate(() => [...document.querySelectorAll('#alGrid .album')].map((a) => a.querySelector('b').textContent + ':' + a.querySelector('small').textContent).join(','));
+  check('แท็บอัลบั้ม: คลิปในดัชนีที่หาไฟล์ในมือถือไม่เจอ แยกเป็นอัลบั้ม "ไม่เจอในมือถือ" ไม่ปนกับอัลบั้มจริง', /luffy:2 คลิป/.test(a1b) && /ไม่เจอในมือถือ:1 คลิป/.test(a1b) && !/ยังไม่แยก/.test(a1b), a1b);
   await al.click('#alGrid .album'); await al.waitForTimeout(200);
   const a2 = await al.evaluate(() => ({ view: !document.getElementById('alView').hidden, home: document.getElementById('alHome').hidden, clips: document.querySelectorAll('#alvGrid .clip').length, t: document.getElementById('alvTitle').textContent }));
   check('แท็บอัลบั้ม: แตะอัลบั้มเข้าไปเห็นคลิปในอัลบั้ม', a2.view && a2.home && a2.clips === 2 && a2.t === 'luffy', JSON.stringify(a2));
