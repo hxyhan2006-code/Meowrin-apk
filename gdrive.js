@@ -193,7 +193,8 @@
       /* Drive: ยังไม่ได้เชื่อมในรอบนี้เป็นเรื่องปกติ (ต้องกดเชื่อมทุกครั้งที่เปิดแอพ) เตือนเฉพาะตอนสำรองล่าสุดนานเกิน 3 วันหรือไม่เคยสำรอง */
       var dk = d.kind === "idle" ? "warn" : d.kind === "ok" ? (kd === "warn" ? "warn" : "ok") : d.kind === "warn" ? (kd === "ok" ? "ok" : "warn") : d.kind;
       var all = worst(kinds.concat([dk]));
-      tag("stTag", all, all === "ok" ? "ปกติ" : all === "err" ? "มีปัญหา" : "ควรดูแล");
+      var onlyBackup = all === "warn" && kinds.every(function(k){ return k === "ok"; }); /* เตือนเพราะเรื่องสำรองอย่างเดียว → บอกสาเหตุตรงๆ ไม่ใช้คำกว้างๆ */
+      tag("stTag", all, all === "ok" ? "ปกติ" : all === "err" ? "มีปัญหา" : onlyBackup ? (cfg.last ? "สำรองนานแล้ว" : "ยังไม่เคยสำรอง") : "ควรดูแล");
     });
   }
   async function act(btn, fn){

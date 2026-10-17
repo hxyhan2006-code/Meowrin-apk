@@ -414,6 +414,15 @@ try {
   const wkt = await wk.evaluate(() => document.querySelectorAll('#mwWatch').length);
   check('ตัวเฝ้าหน้าค้าง: app.js โหลดไม่ได้ → ขึ้นกล่องบอก "โหลดไม่ได้: app.js" · แอพปกติไม่ขึ้นกล่อง', /แอพยังไม่ขึ้น \(MW\)/.test(wdt) && /โหลดไม่ได้: .*app\.js/.test(wdt) && wkt === 0, JSON.stringify([wdt, wkt]));
   await wd.close(); await wk.close();
+  // ป้ายหัวข้อ สำรองข้อมูล (ในแอพ): เตือนเรื่องสำรองอย่างเดียว → บอกสาเหตุ "ยังไม่เคยสำรอง" / "สำรองนานแล้ว" ไม่ใช้คำกว้างๆ · สำรองสดๆ = ปกติ
+  async function stTagFor(last) {
+    const cx2 = await browser.newContext({ viewport: { width: 380, height: 820 }, serviceWorkers: 'block' }); const pg = await cx2.newPage();
+    await pg.addInitScript((last) => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { Filesystem: {}, Share: {} } }; if (navigator.storage) { navigator.storage.persist = async () => true; navigator.storage.persisted = async () => true; } if (last) localStorage.setItem('mw_gdrive_v1', JSON.stringify({ last })); }, last);
+    await pg.goto(base + '/index.html'); await pg.waitForFunction(() => window.MW, null, { timeout: 20000 }); await pg.waitForTimeout(800);
+    const t = await pg.evaluate(() => document.getElementById('stTag').textContent); await cx2.close(); return t;
+  }
+  const tg = [await stTagFor(0), await stTagFor(Date.now() - 5 * 864e5), await stTagFor(Date.now() - 3600e3)];
+  check('ป้ายสำรองข้อมูล (ในแอพ): ไม่เคยสำรอง = "ยังไม่เคยสำรอง" · เกิน 3 วัน = "สำรองนานแล้ว" · เพิ่งสำรอง = "ปกติ"', tg[0] === 'ยังไม่เคยสำรอง' && tg[1] === 'สำรองนานแล้ว' && tg[2] === 'ปกติ', JSON.stringify(tg));
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
   await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });
