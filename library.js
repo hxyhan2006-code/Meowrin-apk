@@ -17,12 +17,13 @@
     }
     render();
   }
+  function miss(t){ var g = {}; t.forEach(function(f){ g[f.album] = (g[f.album] || 0) + 1; }); return Object.keys(g).sort(function(a, b){ return g[b] - g[a]; }).slice(0, 4).map(function(k){ return k + " " + g[k]; }).join(", "); } /* ขาดสำเนาเยอะสุด 4 อัลบั้ม (ไว้หาสาเหตุ) */
   function todo(){ return (window.MWLocal ? MWLocal.list() : []).filter(function(f){ return !f.lib && f.dir && f.dir.indexOf(ROOT) >= 0; }); } /* ยังไม่มีสำเนาในแอพ */
   function total(){ return (window.MWLocal ? MWLocal.list() : []).filter(function(f){ return f.dir && f.dir.indexOf(ROOT) >= 0 || f.lib; }); }
   function render(){
     var info = $("libInfo"); if(!info) return;
     var t = todo(), all = total(), bytes = t.reduce(function(a, f){ return a + (f.size || 0); }, 0), ok = !!F();
-    info.textContent = (msg || (!ok ? "ใช้ได้เฉพาะในแอพ APK" : !all.length ? "ยังไม่ได้สแกน · สแกนวิดีโอในมือถือก่อน (แผงด้านบน)" : t.length ? "ยังไม่มีสำเนา " + t.length + "/" + all.length + " คลิป (" + gb(bytes) + ") · ต้นฉบับไม่ถูกแตะ ก๊อปแล้วจะกินพื้นที่เพิ่มเท่ากัน" : "ก๊อปครบแล้ว " + all.length + " คลิป")) + (hidMsg ? " · " + hidMsg : "");
+    info.textContent = (msg || (!ok ? "ใช้ได้เฉพาะในแอพ APK" : !all.length ? "ยังไม่ได้สแกน · สแกนวิดีโอในมือถือก่อน (แผงด้านบน)" : t.length ? "ยังไม่มีสำเนา " + t.length + "/" + all.length + " คลิป (" + gb(bytes) + ") · ต้นฉบับไม่ถูกแตะ ก๊อปแล้วจะกินพื้นที่เพิ่มเท่ากัน" : "ก๊อปครบแล้ว " + all.length + " คลิป")) + (hidMsg ? " · " + hidMsg : "") + (t.length ? " · ขาดสำเนาในอัลบั้ม: " + miss(t) + " · เจอไฟล์ในโฟลเดอร์สำเนา " + MWLocal.libInfo().files + (MWLocal.libInfo().bad.length ? " · อ่านไม่ได้: " + MWLocal.libInfo().bad.join("; ") : "") : "");
     $("tagLib").textContent = !ok ? "เฉพาะแอพ" : busy ? "กำลังก๊อป" : all.length ? (all.length - t.length) + "/" + all.length : "-"; $("tagLib").className = "state " + (ok && all.length && !t.length ? "ok" : "idle");
     $("libGo").disabled = busy || !ok || !t.length; $("libStop").hidden = !busy;
   }

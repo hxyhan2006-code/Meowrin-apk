@@ -445,6 +445,15 @@ try {
   const sbr = await sb.evaluate(() => ({ path: location.pathname, dlg: document.body.textContent.includes('ออกจากแอพไหม') }));
   check('ปุ่มย้อนมือถือในหน้าซับจอเขียว → กลับหน้าแรก ไม่ถามออกแอพ', sbr.path === '/index.html' && !sbr.dlg, JSON.stringify(sbr));
   await sb.close();
+  // คลิปชื่อ+ขนาดเดียวกันอยู่ 2 อัลบั้ม (ซ้ำข้ามอัลบั้ม) + มีสำเนาในโฟลเดอร์สำเนา → ทั้งสองรายการต้องนับว่ามีสำเนา (เดิมนับตกอันหนึ่ง = "ยังไม่มีสำเนา 99") · โฟลเดอร์สำเนาอ่านไม่ได้ต้องจดไว้
+  const dq = await context.newPage();
+  await dq.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { Media: { getAlbums: async () => ({ albums: [{ name: 'luffy', identifier: '/s/Pictures/Gallery/owner/luffy' }, { name: 'zoro', identifier: '/s/Pictures/Gallery/owner/zoro' }] }) },
+    Filesystem: { stat: async () => { throw new Error('nope'); }, writeFile: async () => {}, readdir: async ({ path, directory }) => { if (directory === 'DOCUMENTS') { if (path === 'Meowrin/library') return { files: [{ name: 'luffy', type: 'directory' }, { name: 'bad', type: 'directory' }] }; if (path === 'Meowrin/library/luffy') return { files: [{ name: 'dup.mp4', type: 'file', size: 90, uri: 'file:///docs/Meowrin/library/luffy/dup.mp4' }] }; throw new Error('EACCES'); }
+      return { files: [{ name: 'dup.mp4', type: 'file', size: 90, uri: 'file:///s/Pictures/Gallery/owner/x/dup.mp4' }] }; } } } }; });
+  await dq.goto(base.replace('localhost', '127.0.0.1') + '/footage.html'); await dq.waitForFunction(() => window.MWLib && window.MWLocal && window.FT && FT.ui, null, { timeout: 20000 });
+  const dqr = await dq.evaluate(async () => { await MWLocal.scan(); return { todo: MWLib.todo().length, list: MWLocal.list().filter((f) => f.name === 'dup.mp4').length, bad: MWLocal.libInfo().bad }; });
+  check('สแกนสำเนา: คลิปซ้ำข้ามอัลบั้มนับว่ามีสำเนาทั้งสองรายการ · โฟลเดอร์สำเนาที่อ่านไม่ได้ถูกจดไว้', dqr.todo === 0 && dqr.list === 2 && dqr.bad.length === 1 && /^bad:/.test(dqr.bad[0]), JSON.stringify(dqr));
+  await dq.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
   await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });
