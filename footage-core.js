@@ -9,7 +9,7 @@
 
   /* ---------- ตั้งค่า ---------- */
   var CFG = "mw_footage_cfg_v1";
-  var cfg = Object.assign({ model:"google/gemini-3.8-flash", thr:0.18, maxScenes:30, budget:1, par:2, aiQuery:false, aiRank:false, godModel:"", godNew:false, fine:false }, load(CFG, {}));
+  var cfg = Object.assign({ model:"google/gemini-3.8-flash", thr:0.18, maxScenes:30, budget:1, par:2, clipPar:2, aiQuery:false, aiRank:false, godModel:"", godNew:false, fine:false }, load(CFG, {}));
   function saveCfg(){ return save(CFG, cfg); }
   function orKey(){ return load("mw_openrouter_key_v1", ""); }
 
@@ -167,6 +167,7 @@
       res = await fetch(URL_OR, { method:"POST", headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + key }, body: JSON.stringify(body) });
       j = await res.json().catch(function(){ return {}; });
       if((res.status === 502 || res.status === 503) && a < 1){ await sleep(2500); continue; }
+      if(res.status === 429 && a < 3){ await sleep(3000 * (a + 1)); continue; } /* ส่งถี่เกิน (ทำหลายคลิปพร้อมกัน) = รอแล้วลองใหม่เอง ครั้งที่ 4 ค่อยแจ้ง error */
       break;
     }
     var er = j.error || (j.choices && j.choices[0] && j.choices[0].error);

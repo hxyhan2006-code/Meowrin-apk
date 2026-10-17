@@ -657,6 +657,31 @@ try {
     await hp.evaluate(() => { MWStore.del('mw_hist_v1'); MWStore.del('mw_studio_v1'); MWStore.del('mw_footage_direct_v1'); });
     await hp.close();
   }
+  // ทำดัชนีหลายคลิปพร้อมกัน (footage.js worker + exclusive): อ่านเฟรมทีละคลิป (ใช้ <video> ตัวเดียว) แต่ระหว่างรอ AI ของคลิปหนึ่ง อ่านเฟรมคลิปถัดไปไปก่อน · ไม่หยิบคลิปซ้ำ · clipPar=1 = ทีละคลิปเหมือนเดิม
+  {
+    const fp = await context.newPage(); const fErr = []; fp.on('pageerror', (e) => fErr.push(e.message));
+    await fp.goto(base + '/footage.html'); await fp.waitForFunction(() => window.FT && FT.ui && document.getElementById('filesDocs'), null, { timeout: 20000 });
+    const runCase = async (clipPar, tag) => {
+      await fp.evaluate(async (clipPar) => {
+        MWStore.set('mw_openrouter_key_v1', 'test-key'); FT.cfg.clipPar = clipPar; FT.cfg.budget = 50; window.__ev = []; window.__act = 0; window.__maxAct = 0; window.__scanning = 0; window.__maxScan = 0; window.__seen = {};
+        const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+        FT.scan = async (v, f, onStep) => { __act++; __maxAct = Math.max(__maxAct, __act); __scanning++; __maxScan = Math.max(__maxScan, __scanning); __seen[f.name] = (__seen[f.name] || 0) + 1; __ev.push('scan+' + f.name); await sleep(150); onStep && onStep(1); __scanning--; __ev.push('scan-' + f.name);
+          return { duration: 5, w: 10, h: 10, cover: '', scenes: [{ s: 0, e: 2, thumb: '', img: '' }, { s: 2, e: 5, thumb: '', img: '' }] }; };
+        FT.describe = async (ch) => { __ev.push('ai+'); await sleep(400); __ev.push('ai-'); return { cost: 0.01, tin: 1, tout: 1, text: 'x', json: { clip_summary_th: 'ทดสอบ', scenes: ch.map((x) => ({ i: x.n, characters: ['Luffy'] })) } }; };
+        const act = FT.scan; FT.scan = async function(){ try{ return await act.apply(this, arguments); } finally { __act--; } };
+      }, clipPar);
+      const files = [1, 2, 3, 4, 5].map((i) => ({ name: tag + i + '.mp4', mimeType: 'video/mp4', buffer: Buffer.from('v' + tag + i) }));
+      await fp.setInputFiles('#filesDocs', files); await fp.waitForTimeout(200);
+      const t0 = Date.now(); await fp.evaluate(() => document.getElementById('startBtn').click()); await fp.waitForFunction(() => /เสร็จ 5\/5/.test(document.getElementById('progTxt').textContent), null, { timeout: 20000 }); const ms = Date.now() - t0;
+      return fp.evaluate((ms) => ({ ms, maxAct: __maxAct, maxScan: __maxScan, seen: Object.values(__seen).join(''), ev: __ev.join(' ') }), ms);
+    };
+    const par2 = await runCase(2, 'p'), ser = await runCase(1, 's');
+    check('ทำดัชนี 2 คลิปพร้อมกัน: ครบ 5 คลิป ไม่หยิบซ้ำ อ่านเฟรมทีละคลิป (ไม่ทับกัน) แต่ซ้อนกับรอ AI · เร็วกว่าทีละคลิปชัดเจน', par2.seen === '11111' && par2.maxScan === 1 && par2.maxAct <= 2 && par2.ms < ser.ms * 0.8 && /scan\+p2.*ai\+.*scan-p2|ai\+ scan\+/.test(par2.ev), JSON.stringify([par2, ser]));
+    check('ทำดัชนีตั้ง 1 คลิป = ทีละคลิปเหมือนเดิม (ไม่ซ้อนกัน)', ser.seen === '11111' && ser.maxAct === 1 && !/scan\+s\d scan\+s\d/.test(ser.ev.replace(/ai[+-] /g, '')), ser.ev);
+    check('ทำดัชนีหลายคลิปพร้อมกัน: ไม่มี error · ช่องตั้งค่า "ทำพร้อมกันกี่คลิป" มีและบันทึกค่า', !fErr.length && (await fp.evaluate(() => { const i = document.getElementById('clipPar'); i.value = '3'; i.dispatchEvent(new Event('change')); return FT.cfg.clipPar === 3; })), fErr.join(' | '));
+    await fp.evaluate(() => { MWStore.del('mw_openrouter_key_v1'); });
+    await fp.close();
+  }
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

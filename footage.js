@@ -17,10 +17,10 @@
   var capMsg = ""; /* ข้อความเมื่อชนเพดานค่าใช้จ่ายรวม (budget.js) */
   var etaBase = 0, etaAt = 0; /* เวลาที่เหลือ (ms) ประเมินใหม่ทุกครั้งที่คลิปเสร็จ แล้วนับถอยหลังเรียบๆ ระหว่างนั้น → ตัวเลขไม่เด้งขึ้นลง */
   function etaUpdate(){ /* ถ่วงด้วยขนาดไฟล์ (คลิปใหญ่ใช้เวลานานกว่า ทั้งอ่านเฟรม/AI/อัปโหลด) จากเวลาจริงของคลิปที่ทำเสร็จในรอบนี้ */
-    var work = queue.filter(function(q){ return q.status !== "skip"; }), dn = work.filter(function(q){ return (q.status === "done" || q.status === "error") && q.tEnd && q.t0; });
+    var work = queue.filter(function(q){ return q.status !== "skip"; }), dn = work.filter(function(q){ return (q.status === "done" || q.status === "error") && q.tEnd && q.tEnd >= runStart; });
     if(dn.length < 2) return; /* ยังน้อยไป ประเมินไม่นิ่ง */
     var sum = function(a, f){ return a.reduce(function(t, q){ return t + f(q); }, 0); };
-    var ms = sum(dn, function(q){ return q.tEnd - q.t0; }), mbDone = sum(dn, function(q){ return (q.info.size || 0) / 1048576; });
+    var ms = Math.max.apply(null, dn.map(function(q){ return q.tEnd; })) - runStart, /* เวลาจริงตั้งแต่เริ่มรอบ (ทำหลายคลิปพร้อมกันแล้ว บวกเวลาแต่ละคลิปจะประเมินช้าเกิน) */ mbDone = sum(dn, function(q){ return (q.info.size || 0) / 1048576; });
     var rest = work.filter(function(q){ return q.status === "wait" || q.status === "run"; }), mbLeft = sum(rest, function(q){ return (q.info.size || 0) / 1048576; });
     etaBase = mbDone > 1 ? ms / mbDone * mbLeft : ms / dn.length * rest.length; etaAt = Date.now();
   }
@@ -85,8 +85,8 @@
     $("pauseBtn").hidden = !running; $("pauseBtn").textContent = paused ? "จะพักหลังคลิปนี้..." : "พัก";
     $("retryBtn").hidden = running || !errs; $("retryBtn").textContent = "ลองใหม่คลิปที่ error (" + errs + ")";
     var work = queue.filter(function(q){ return q.status !== "skip"; }), fin = work.filter(function(q){ return q.status === "done" || q.status === "error"; }).length;
-    var cur = work.find(function(q){ return q.status === "run"; });
-    var pct = work.length ? (fin + (cur ? cur.p : 0)) / work.length : 0;
+    var runP = work.filter(function(q){ return q.status === "run"; }).reduce(function(t, q){ return t + q.p; }, 0); /* หลายคลิปกำลังทำพร้อมกันได้ */
+    var pct = work.length ? (fin + runP) / work.length : 0;
     $("progBar").style.width = Math.round(pct * 100) + "%";
     var el = running ? Date.now() - runStart : 0, left = running && etaAt ? Math.max(0, etaBase - (Date.now() - etaAt)) : -1;
     $("progTxt").textContent = work.length ? "เสร็จ " + fin + "/" + work.length + " คลิป" + (running ? " · ผ่านไป " + mmss(el) + (fin < work.length ? (left < 0 ? " · กำลังประเมินเวลา..." : left < 8000 ? " · ใกล้เสร็จ" : " · เหลือประมาณ " + mmss(Math.round(left / 5000) * 5000)) : "") : "") + (runCost ? " · รอบนี้ใช้ไป " + money(runCost) + " จากงบ " + money(cfg.budget) : "") : "";
@@ -131,16 +131,23 @@
   $("startBtn").addEventListener("click", function(){ run(); });
   $("retryBtn").addEventListener("click", function(){ queue.forEach(function(q){ if(q.status === "error"){ q.status = "wait"; q.err = ""; } }); run(); });
 
+  var scanChain = Promise.resolve();
+  function exclusive(fn){ /* ส่วนที่ใช้ <video id="vid"> ตัวเดียว (อ่านเฟรม/จับเฟรม/วาดรูป) ทำทีละคลิป · ส่วนรอ AI ไม่ต้องรอคิวนี้ */
+    var p = scanChain.then(fn); scanChain = p.catch(function(){}); return p;
+  }
+  async function worker(){
+    for(var q; !paused && (q = queue.find(function(x){ return x.status === "wait"; })); ){
+      if(runCost >= cfg.budget && q.mode !== "up") break; /* หลายคลิปพร้อมกัน: คลิปที่เริ่มไปแล้วอาจทำให้เกินเพดานเล็กน้อย */
+      await processClip(q); q.tEnd = Date.now(); etaUpdate(); /* processClip ตั้ง status = run ก่อน await ตัวแรก ตัวอื่นเลยไม่หยิบคลิปซ้ำ */
+    }
+  }
   async function run(){
     if(running) return;
     if(!FT.orKey()){ msg("runMsg", "ยังไม่มี OpenRouter key ในเบราว์เซอร์นี้ ไปใส่ในแอพหลัก (ตั้งค่า → OpenRouter API key) ก่อน", "err"); return; }
     running = true; paused = false; capMsg = ""; msg("runMsg", ""); await wake(true);
     runStart = Date.now(); etaBase = etaAt = 0; clearInterval(tick); renderWake(); tick = setInterval(renderQueue, 1000); /* นาฬิกาเดินทุกวินาทีระหว่างทำ */
     renderQueue();
-    for(var q; !paused && (q = queue.find(function(x){ return x.status === "wait"; })); ){
-      if(runCost >= cfg.budget && q.mode !== "up") break;
-      await processClip(q); q.tEnd = Date.now(); etaUpdate();
-    }
+    await Promise.all(Array.from({ length:Math.max(1, Math.min(3, cfg.clipPar || 1)) }, worker)); /* หลายตัวทำงานพร้อมกัน: ตัวหนึ่งรอ AI อีกตัวอ่านเฟรมคลิปถัดไป */
     running = false; clearInterval(tick); await wake(false);
     var left = queue.some(function(x){ return x.status === "wait"; });
     if(left && capMsg) msg("runMsg", capMsg, "err");
@@ -154,7 +161,8 @@
   async function upgradeClip(q){ /* วาดรูปใหม่ตามช่วงฉากเดิม ไม่ยุ่งผลของ AI */
     var c = byId(q.id); q.status = "run"; q.p = 0; q.err = ""; q.t0 = Date.now(); q.stage = "วาดรูปใหม่ให้คมขึ้น..."; renderQueue();
     try{
-      var r = await FT.refreshImages($("vid"), q.file, c, function(p){ q.p = p; renderQueue(); });
+      q.stage = "รอคิวอ่านวิดีโอ..."; renderQueue();
+      var r = await exclusive(function(){ q.stage = "วาดรูปใหม่ให้คมขึ้น..."; return FT.refreshImages($("vid"), q.file, c, function(p){ q.p = p; renderQueue(); }); });
       c.cover = r.cover; c.scenes.forEach(function(sc, i){ sc.img = r.imgs[i].img; sc.thumb = r.imgs[i].thumb; }); c.imgV = FT.IMG_V;
       await FT.store.put(c); q.status = "done"; q.p = 1; q.mode = "";
     }catch(err){ if(document.hidden){ q.status = "wait"; q.p = 0; } else { q.status = "error"; q.err = err.message || String(err); } }
@@ -193,7 +201,8 @@
       var src = q.file || (FT.ui.fileFor && FT.ui.fileFor(c));
       if(!src) throw new Error("ไม่มีไฟล์ (ไม่เจอในมือถือ และยังไม่ได้เปิดไฟล์)");
       var god = !!q.god;
-      var fr = await FT.deepFrames($("vid"), src, c, function(p){ q.p = p * 0.4; q.stage = (god ? "จับเฟรมรอบฉาก " : "จับเฟรมต้น/กลาง/ท้าย ") + Math.round(p * 100) + "%"; renderQueue(); }, god);
+      q.stage = "รอคิวอ่านวิดีโอ..."; renderQueue();
+      var fr = await exclusive(function(){ return FT.deepFrames($("vid"), src, c, function(p){ q.p = p * 0.4; q.stage = (god ? "จับเฟรมรอบฉาก " : "จับเฟรมต้น/กลาง/ท้าย ") + Math.round(p * 100) + "%"; renderQueue(); }, god); });
       var scenes = c.scenes.map(function(sc, i){ return god ? { n:i + 1, s:sc.s, e:sc.e, aiFrames:fr[i].frames, nf:fr[i].n } : { n:i + 1, s:sc.s, e:sc.e, aiImg:fr[i].img, nf:fr[i].n }; });
       var r = await describeAll(scenes, c.album, c.duration, q, 0.4);
       scenes.forEach(function(x, i){ var o = c.scenes[i].ai; if(x.ai){ if(o && o.fixed){ x.ai.characters = o.characters; x.ai.characters_th = o.characters_th; x.ai.fixed = true; } c.scenes[i].ai = x.ai; } }); /* ตัวละครที่ Han แก้เองไว้ไม่ถูกทับ */
@@ -212,9 +221,9 @@
     var t0 = Date.now();
     q.status = "run"; q.p = 0; q.err = ""; q.t0 = t0; renderQueue();
     try{
-      q.stage = "กำลังเปิดวิดีโอ...";
-      var m = await FT.scan($("vid"), q.file, function(p){ q.p = p * 0.5; q.stage = p < 0.7 ? "อ่านเฟรมหาจุดตัดฉาก..." : "จับภาพตัวแทนแต่ละฉาก..."; renderQueue(); });
-      var msScan = Date.now() - t0; /* เวลาอ่านเฟรม+ตัดฉาก (ยังไม่นับ AI) */
+      q.stage = "รอคิวอ่านวิดีโอ..."; renderQueue();
+      var tScan = 0, m = await exclusive(function(){ tScan = Date.now(); q.stage = "กำลังเปิดวิดีโอ..."; return FT.scan($("vid"), q.file, function(p){ q.p = p * 0.5; q.stage = p < 0.7 ? "อ่านเฟรมหาจุดตัดฉาก..." : "จับภาพตัวแทนแต่ละฉาก..."; renderQueue(); }); });
+      var msScan = Date.now() - tScan; /* เวลาอ่านเฟรม+ตัดฉาก (ยังไม่นับ AI) */
       q.stage = "ฉากทั้งหมด " + m.scenes.length + " · ส่งให้ AI ดู...";
       q.info.duration = m.duration; q.info.w = m.w; q.info.h = m.h;
       m.scenes.forEach(function(sc, i){ sc.n = i + 1; });
@@ -339,11 +348,11 @@
 
 
   /* ---------- ตั้งค่า ---------- */
-  $("model").value = cfg.model; $("budget").value = cfg.budget; $("par").value = cfg.par; $("thr").value = cfg.thr; $("maxScenes").value = cfg.maxScenes;
+  $("model").value = cfg.model; $("budget").value = cfg.budget; $("par").value = cfg.par; $("clipPar").value = cfg.clipPar; $("thr").value = cfg.thr; $("maxScenes").value = cfg.maxScenes;
   function setNum(id, k, min, max){
     $(id).addEventListener("change", function(){ var v = Number(this.value); if(!(v >= min)) v = min; if(v > max) v = max; cfg[k] = v; this.value = v; FT.saveCfg(); renderQueue(); });
   }
-  setNum("budget", "budget", 0.05, 100); setNum("par", "par", 1, 4); setNum("maxScenes", "maxScenes", 1, 60);
+  setNum("budget", "budget", 0.05, 100); setNum("par", "par", 1, 4); setNum("clipPar", "clipPar", 1, 3); setNum("maxScenes", "maxScenes", 1, 60);
   $("model").addEventListener("change", function(){ cfg.model = this.value.trim() || "google/gemini-3.8-flash"; this.value = cfg.model; FT.saveCfg(); });
   document.querySelectorAll("[data-models]").forEach(function(b){ b.addEventListener("click", function(){ /* โมเดลแนะนำ (ชีตของแอพ) · พิมพ์ชื่ออื่นเองในช่องได้ */
     var inp = $(b.dataset.models), list = ["google/gemini-3.8-flash", "google/gemini-4-argon"];

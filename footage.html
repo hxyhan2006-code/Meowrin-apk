@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
 <title>ฟุตเทจ · Meowrin factory</title>
-<link rel="icon" type="image/png" href="icon-192.png?v=8.30">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.30">
-<link rel="stylesheet" href="fonts.css?v=8.30"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
-<link rel="stylesheet" href="footage.css?v=8.30">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.31">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.31">
+<link rel="stylesheet" href="fonts.css?v=8.31"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
+<link rel="stylesheet" href="footage.css?v=8.31">
 </head>
 <body>
 <header>
@@ -176,6 +176,8 @@
       <input id="budget" type="number" min="0.05" step="0.05">
       <label for="par">ส่งพร้อมกันกี่คำขอ</label>
       <input id="par" type="number" min="1" max="4" step="1">
+      <label for="clipPar">ทำพร้อมกันกี่คลิป (1-3 · ระหว่างรอ AI ตอบ อ่านเฟรมคลิปถัดไปไปก่อน · เร็วขึ้นแต่เครื่องทำงานหนักกว่า)</label>
+      <input id="clipPar" type="number" min="1" max="3" step="1">
     </div></details>
     <details class="panel fold"><summary><span>ตัดฉาก</span><em class="state idle" id="tagCut"></em></summary><div class="fbody">
       <label for="thr">ความไวจุดตัดฉาก: <b id="thrVal"></b> (น้อย = ตัดถี่)</label>
@@ -232,6 +234,6 @@
 <video id="vid" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:2px;height:2px"></video>
 
 <div class="asheet" id="pkSheet" hidden><div class="abox" role="dialog"><div class="pkhead"><h3 id="pkTitle"></h3><span id="pkInfo"></span></div><input id="pkQ" type="search" autocomplete="off"><div id="pkList"></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="pkClear" type="button">ล้างที่เลือก</button><button class="btn" id="pkDone" type="button">เสร็จ</button></div></div></div>
-<script src="store.js?v=8.30" data-boot="icons.js?v=8.30 dialog.js?v=8.30 native.js?v=8.30 history.js?v=8.30 budget.js?v=8.30 footage-core.js?v=8.30 footage-pick.js?v=8.30 footage.js?v=8.30 local.js?v=8.30 library.js?v=8.30 footage-find.js?v=8.30 footage-album.js?v=8.30 footage-dup.js?v=8.30 footage-audit.js?v=8.30 mp4fix.js?v=8.30 footage-stitch.js?v=8.30 voicestore.js?v=8.30 studio-model.js?v=8.30 footage-plan.js?v=8.30 backup.js?v=8.30"></script>
+<script src="store.js?v=8.31" data-boot="icons.js?v=8.31 dialog.js?v=8.31 native.js?v=8.31 history.js?v=8.31 budget.js?v=8.31 footage-core.js?v=8.31 footage-pick.js?v=8.31 footage.js?v=8.31 local.js?v=8.31 library.js?v=8.31 footage-find.js?v=8.31 footage-album.js?v=8.31 footage-dup.js?v=8.31 footage-audit.js?v=8.31 mp4fix.js?v=8.31 footage-stitch.js?v=8.31 voicestore.js?v=8.31 studio-model.js?v=8.31 footage-plan.js?v=8.31 backup.js?v=8.31"></script>
 </body>
 </html>
