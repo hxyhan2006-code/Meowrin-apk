@@ -1,6 +1,7 @@
 /* footage-stitch.js — ต่อฉากเป็นวิดีโอยาวไฟล์เดียวในเบราว์เซอร์ (แท็บผู้กำกับ) · โหลดหลัง footage-find.js (ใช้ FT.ui)
    FT.stitch = { ok(), make(list, onStep, onMsg, opt) → { file, marks, rate, mime }, save(file, say) }
    list = [{ c, sc, from?, to? }] (from/to = ช่วงที่ตัด ถ้าไม่ใส่ใช้ทั้งฉาก) · opt.sep = วินาทีของจอเขียว + เสียงตื๊ด คั่นระหว่างช็อต (0 = ไม่คั่น)
+   opt.square = แบบ 2 สไตล์ช่อง: ไฟล์ 1080x1080 ภาพครอปเต็มกรอบ + เลื่อนซ้าย/ขวาช้าๆ ในส่วนที่เหลือ (pan) สลับทิศทุกภาพ · ไม่ใส่ = ขนาดเท่าคลิปต้นทาง วางทั้งภาพ (แบบ 1 ไปตัดเอง)
    opt.voice = Blob เสียงพากย์ → โหมดตัดตามเสียง: list = [{ c|null, from, to, at }] (at = วินาทีที่ช็อตเริ่มในเสียง · c ว่าง = ค้างภาพก่อนหน้า) อัดต่อเนื่องไม่ pause เสียงพากย์เล่นเป็นเส้นเวลาหลัก ภาพของฉากปิดเสียง
    ไม่มีปุ่มแชร์: ทดสอบแล้ว CapCut ขึ้น "ไม่รองรับไฟล์" ทุกครั้งที่แชร์จาก Brave แต่เปิดไฟล์ที่บันทึกลงเครื่องได้ */
 (function(){
@@ -8,7 +9,17 @@
   var FT = window.FT, U = FT && FT.ui; if(!U) return;
   /* เล่นทีละช็อต (เฉพาะช่วง) วาดลง canvas + เสียงผ่าน WebAudio แล้วอัดต่อกันด้วย MediaRecorder ตัวเดียว (pause ระหว่างเปิดไฟล์ถัดไป)
      อัดเวลาจริง ต้องเปิดหน้าค้างไว้ · ไฟล์ไม่ต้องแชร์แล้ว จึงไม่บีบให้เล็ก */
-  var RATE = 6e6, BEEP_HZ = 1000, GREEN = "#00ff00";
+  var RATE = 6e6, BEEP_HZ = 1000, GREEN = "#00ff00", SQ = 1080, PAN = 0.28, ZOOM = 0.06;
+  function pan(g, W, H, img, iw, ih, p, i){ /* วาดแบบสไตล์ช่อง: ครอปเต็มกรอบ แล้วเลื่อนในส่วนที่เหลือ ≤ PAN ของความกว้าง (ภาพคู่ไปขวา ภาพคี่ไปซ้าย, ค่อยๆ เร่ง-ชะลอ) · ภาพที่ไม่มีส่วนเหลือ (ภาพจัตุรัส/แนวตั้ง) = ซูมเบาๆ แทน */
+    if(!iw || !ih) return;
+    p = Math.max(0, Math.min(1, p || 0)); p = 0.5 - 0.5 * Math.cos(Math.PI * p);
+    var s = Math.max(W / iw, H / ih), w = iw * s, h = ih * s, dir = i % 2 ? -1 : 1, ex = w - W, ey = h - H, x, y;
+    if(ex > W * 0.06){ x = (W - w) / 2 + dir * Math.min(ex, W * PAN) * (p - 0.5); y = (H - h) / 2; } /* เลื่อนไม่เกินครึ่งของส่วนเกินแต่ละข้าง = ไม่มีขอบดำโผล่ */
+    else if(ey > H * 0.06){ x = (W - w) / 2; y = (H - h) / 2 + dir * Math.min(ey, H * PAN) * (p - 0.5); }
+    else { var z = 1 + ZOOM * (dir > 0 ? p : 1 - p); w *= z; h *= z; x = (W - w) / 2; y = (H - h) / 2; }
+    g.fillStyle = "#000"; g.fillRect(0, 0, W, H); g.drawImage(img, x, y, w, h);
+  }
+  function fit(g, W, H, v){ var r = Math.min(W / v.videoWidth, H / v.videoHeight), w = v.videoWidth * r, h = v.videoHeight * r; g.fillStyle = "#000"; g.fillRect(0, 0, W, H); g.drawImage(v, (W - w) / 2, (H - h) / 2, w, h); }
   function recMime(){
     var c = ["video/mp4;codecs=avc1.640028,mp4a.40.2", "video/mp4;codecs=avc1,mp4a.40.2", "video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
     return window.MediaRecorder ? c.find(function(m){ return MediaRecorder.isTypeSupported(m); }) || "" : null;
@@ -21,8 +32,8 @@
     v.src = src.url; await once(v, "loadedmetadata"); return v;
   }
   function closeVid(v){ v.pause(); if(v._done) v._done(); v.removeAttribute("src"); v.load(); v.remove(); }
-  async function record(list, mime, ac, onStep, sep){
-    var first = await openVid(list[0].c), W = first.videoWidth || 1080, H = first.videoHeight || 1080; closeVid(first);
+  async function record(list, mime, ac, onStep, sep, sq){
+    var first = await openVid(list[0].c), W = sq ? SQ : first.videoWidth || 1080, H = sq ? SQ : first.videoHeight || 1080; closeVid(first);
     var cv = document.createElement("canvas"); cv.width = W; cv.height = H; var g = cv.getContext("2d");
     var dest = ac.createMediaStreamDestination();
     var stream = new MediaStream(cv.captureStream(30).getVideoTracks().concat(dest.stream.getAudioTracks()));
@@ -44,8 +55,7 @@
           var s = x.from != null ? x.from : x.sc.s, e = Math.min(x.to != null ? x.to : x.sc.e, v.duration);
           v.currentTime = s; await once(v, "seeked");
           try{ src = ac.createMediaElementSource(v); src.connect(dest); }catch(err){ v.muted = true; } /* เสียงไปเข้าไฟล์อย่างเดียว ไม่ออกลำโพง */
-          var draw = function(){ var r = Math.min(W / v.videoWidth, H / v.videoHeight), w = v.videoWidth * r, h = v.videoHeight * r;
-            g.fillStyle = "#000"; g.fillRect(0, 0, W, H); g.drawImage(v, (W - w) / 2, (H - h) / 2, w, h); };
+          var draw = function(){ if(sq) pan(g, W, H, v, v.videoWidth, v.videoHeight, (v.currentTime - s) / Math.max(0.1, e - s), i); else fit(g, W, H, v); };
           draw();
           onStep(i, x);
           if(i && sep) await separator(); /* คั่นก่อนช็อตที่ 2 เป็นต้นไป (ไฟล์ถัดไปเปิดรอไว้แล้ว) */
@@ -65,10 +75,10 @@
     }finally{ stream.getTracks().forEach(function(t){ t.stop(); }); if(rec.state !== "inactive") rec.stop(); }
     return { blob:new Blob(parts, { type:mime.split(";")[0] }), marks:marks, rate:RATE };
   }
-  async function recordVoice(list, mime, ac, voiceBlob, onStep){ /* ตัดตามเสียง: เสียงพากย์เดินต่อเนื่อง ภาพเปลี่ยนตามเวลา at ของแต่ละช็อต (เตรียมคลิปถัดไปล่วงหน้า LOOK ช็อต) */
+  async function recordVoice(list, mime, ac, voiceBlob, onStep, sq){ /* ตัดตามเสียง: เสียงพากย์เดินต่อเนื่อง ภาพเปลี่ยนตามเวลา at ของแต่ละช็อต (เตรียมคลิปถัดไปล่วงหน้า LOOK ช็อต) */
     var LOOK = 3, buf = await ac.decodeAudioData(await voiceBlob.arrayBuffer()), total = buf.duration;
     var f0 = list.find(function(x){ return x.c; }); if(!f0) throw new Error("ไม่มีช็อตที่มีฉากเลย");
-    var first = await openVid(f0.c), W = first.videoWidth || 1080, H = first.videoHeight || 1080; closeVid(first);
+    var first = await openVid(f0.c), W = sq ? SQ : first.videoWidth || 1080, H = sq ? SQ : first.videoHeight || 1080; closeVid(first);
     var cv = document.createElement("canvas"); cv.width = W; cv.height = H; var g = cv.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, W, H);
     var dest = ac.createMediaStreamDestination();
     var stream = new MediaStream(cv.captureStream(30).getVideoTracks().concat(dest.stream.getAudioTracks()));
@@ -79,8 +89,7 @@
     function prep(i){ if(i >= list.length || prepared[i] || !list[i].c) return;
       prepared[i] = (async function(){ var v = await openVid(list[i].c); v.muted = true; v.currentTime = list[i].from; await once(v, "seeked"); return v; })();
       prepared[i].catch(function(){}); }
-    function draw(v){ var r = Math.min(W / v.videoWidth, H / v.videoHeight), w = v.videoWidth * r, h = v.videoHeight * r;
-      g.fillStyle = "#000"; g.fillRect(0, 0, W, H); g.drawImage(v, (W - w) / 2, (H - h) / 2, w, h); }
+    function draw(v, p, i){ if(sq) pan(g, W, H, v, v.videoWidth, v.videoHeight, p, i); else fit(g, W, H, v); }
     for(var k = 0; k <= LOOK; k++) prep(k);
     var firstIdx = list.indexOf(f0); if(prepared[firstIdx]) await prepared[firstIdx].catch(function(){});
     var src = ac.createBufferSource(); src.buffer = buf; src.connect(dest);
@@ -96,7 +105,7 @@
         var ts = now();
         await new Promise(function(ok){
           (function tick(){
-            if(v && v.readyState >= 2){ draw(v); if(v.currentTime >= x.to - 0.03) v.pause(); } /* ฉากสั้นกว่าช็อต = ค้างภาพสุดท้าย */
+            if(v && v.readyState >= 2){ draw(v, (now() - ts) / Math.max(0.1, end - ts), i); if(v.currentTime >= x.to - 0.03) v.pause(); } /* ฉากสั้นกว่าช็อต = ค้างภาพสุดท้าย (ภาพยังเลื่อนต่อ) */
             if(now() >= end){ ok(); return; } requestAnimationFrame(tick);
           })();
         });
@@ -111,15 +120,15 @@
     }
     return { blob:new Blob(parts, { type:mime.split(";")[0] }), marks:marks, rate:RATE };
   }
-  async function makeFast(list, onStep, onMsg, voice){ /* ตัดต่อแบบเร็ว (ไม่อัดเวลาจริง): ถอดรหัสเฟรมจากไฟล์ต้นทางด้วย WebCodecs ผ่าน exporter.js แล้วใส่เสียงพากย์ · list แบบเดียวกับ recordVoice */
+  async function makeFast(list, onStep, onMsg, voice, sq){ /* ตัดต่อแบบเร็ว (ไม่อัดเวลาจริง): ถอดรหัสเฟรมจากไฟล์ต้นทางด้วย WebCodecs ผ่าน exporter.js แล้วใส่เสียงพากย์ · list แบบเดียวกับ recordVoice */
     var mod = await import("./exporter.js?v=" + (window.MW_VERSION || "0")), shots = [], dones = [], DEFAULT_DUR = 1;
     try{
       for(var i = 0; i < list.length; i++){
-        var x = list[i], sh = { at:x.at, start:x.from, dur:DEFAULT_DUR, url:null };
+        var x = list[i], sh = { at:x.at, start:x.from, end:x.to, dur:DEFAULT_DUR, url:null };
         if(x.c){ var s = await U.srcUrl(x.c); if(!s) throw new Error("ไม่มีไฟล์ " + x.c.name); sh.url = s.url; if(s.done) dones.push(s.done); }
         shots.push(sh);
       }
-      var r = await mod.exportShots({ shots:shots, voice:voice, width:1080, height:1920, fps:30, onLog:function(t){ if(onMsg) onMsg(t); }, onShot:function(i){ onStep(i, list[i]); } });
+      var r = await mod.exportShots({ shots:shots, voice:voice, width:sq ? SQ : 1080, height:sq ? SQ : 1920, fps:30, draw:sq ? function(g, W, H, img, p, i){ pan(g, W, H, img, img.width, img.height, p, i); } : null, onLog:function(t){ if(onMsg) onMsg(t); }, onShot:function(i){ onStep(i, list[i]); } });
       var marks = list.map(function(x, i){ return { i:i, at:x.at, len:r.durs[i], x:x }; });
       return { blob:r.blob, marks:marks, rate:0, ms:r.ms, codec:r.codec + "/" + r.audio };
     }finally{ dones.forEach(function(d){ try{ d(); }catch(e){} }); }
@@ -132,10 +141,10 @@
     try{
       var r = null;
       if(opt && opt.voice && fastOk()){
-        try{ r = await makeFast(list, onStep, onMsg, opt.voice); r.fast = true; }
+        try{ r = await makeFast(list, onStep, onMsg, opt.voice, !!opt.square); r.fast = true; }
         catch(err){ if(onMsg) onMsg("ตัดแบบเร็วไม่ได้ (" + err.message + ") ใช้แบบอัดเวลาจริงแทน"); r = null; } /* ถอยไปแบบเดิม ไม่เงียบ */
       }
-      if(!r) r = opt && opt.voice ? await recordVoice(list, mime, ac, opt.voice, onStep) : await record(list, mime, ac, onStep, (opt && opt.sep) || 0);
+      if(!r) r = opt && opt.voice ? await recordVoice(list, mime, ac, opt.voice, onStep, !!opt.square) : await record(list, mime, ac, onStep, (opt && opt.sep) || 0, !!(opt && opt.square));
       if(!r.blob.size) throw new Error("อัดได้ไฟล์ว่าง");
       var d = new Date(), ext = r.fast || mime.indexOf("mp4") >= 0 ? "mp4" : "webm", out = r.blob;
       if(!r.fast && ext === "mp4" && window.MP4Fix){ if(onMsg) onMsg("กำลังจัดไฟล์ให้ CapCut อ่านได้..."); out = await MP4Fix.remux(r.blob); } /* MediaRecorder ให้ fragmented MP4 ซึ่ง CapCut ไม่รับ */
@@ -153,5 +162,5 @@
     setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
     say("สั่งบันทึกแล้ว ดูในโฟลเดอร์ Download ของมือถือ (" + file.name + ") แล้วเปิด CapCut → โปรเจกต์ใหม่ → เลือกจากแกลเลอรี", "ok");
   }
-  FT.stitch = { ok:ok, fastOk:fastOk, make:make, save:save };
+  FT.stitch = { ok:ok, fastOk:fastOk, make:make, save:save, pan:pan };
 })();

@@ -196,6 +196,11 @@ try {
     const cv = document.createElement('canvas'); cv.width = 27; cv.height = 48; const cx = cv.getContext('2d');
     const at = async (t) => { v.currentTime = t; await new Promise((ok) => v.onseeked = ok); cx.drawImage(v, 0, 0, 27, 48); const d = cx.getImageData(1, 1, 1, 1).data; return d[0] > d[2] ? 'R' : 'B'; };
     const out = { frames: res.frames, dur: v.duration, size: res.blob.size, w: v.videoWidth, h: v.videoHeight, order: (await at(0.2)) + (await at(0.7)) + (await at(1.2)) };
+    /* end = ท้ายฉาก: คลิปแดง 0-1 วิ ต่อด้วยน้ำเงิน · ช็อต start 0.5 end 1 ยาว 1 วิ → ครึ่งหลังต้องค้างแดง ไม่ไหลไปน้ำเงิน */
+    { const c = document.createElement('canvas'); c.width = 320; c.height = 180; const x = c.getContext('2d'); const o = new mb.Output({ format: new mb.Mp4OutputFormat(), target: new mb.BufferTarget() }); const vs = new mb.CanvasSource(c, { codec: 'vp9', quality: mb.QUALITY_HIGH }); o.addVideoTrack(vs); await o.start(); for (let i = 0; i < 60; i++){ x.fillStyle = i < 30 ? '#c00' : '#00c'; x.fillRect(0, 0, 320, 180); await vs.add(i / 30, 1 / 30); } await o.finalize();
+      const rb = URL.createObjectURL(new Blob([o.target.buffer], { type: 'video/mp4' }));
+      const re = await exportShots({ shots: [{ url: rb, start: 0.5, end: 1, dur: 1 }, { url: blue, start: 0, dur: 0.3 }], width: 270, height: 480, fps: 30, codec: 'vp9' });
+      v.src = URL.createObjectURL(re.blob); await new Promise((ok) => { v.onloadedmetadata = ok; }); out.endClamp = (await at(0.3)) + (await at(0.9)) + (await at(1.15)); }
     /* ใส่เสียงพากย์: เสียงสังเคราะห์ 2 วิ (WAV) → ช็อตกำหนดด้วย at · ช็อตที่ 2 ไม่มี url = ค้างภาพแดง · ไฟล์ต้องยาว 2 วิ มีแทร็กเสียง */
     const sr = 22050, n = sr * 2, wav = new DataView(new ArrayBuffer(44 + n * 2)); const W = (o, t) => { for (let i = 0; i < t.length; i++) wav.setUint8(o + i, t.charCodeAt(i)); };
     W(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); W(8, 'WAVEfmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true); W(36, 'data'); wav.setUint32(40, n * 2, true);
@@ -206,6 +211,7 @@ try {
     return out;
   });
   check('ส่งออกวิดีโอเร็ว (exporter.js): ใส่เสียงพากย์ 2 วิ ช็อตตามเวลา at + ค้างภาพ ได้ไฟล์มีทั้งภาพและเสียงยาว 2 วิ', exr.v2.frames === 60 && exr.v2.audio && Math.abs(exr.v2.ad - 2) < 0.15 && Math.abs(exr.v2.vd - 2) < 0.1, JSON.stringify(exr.v2));
+  check('ส่งออกวิดีโอเร็ว (exporter.js): ช็อตยาวกว่าฉาก (end) ค้างเฟรมท้ายฉาก ไม่ไหลไปฉากถัดไปในไฟล์', exr.endClamp === 'RRB', String(exr.endClamp));
   check('ส่งออกวิดีโอเร็ว (exporter.js): ต่อ 3 ช็อต ยาว 1.5 วิ ขนาด 270x480 ลำดับสีถูก', exr.frames === 45 && Math.abs(exr.dur - 1.5) < 0.1 && exr.w === 270 && exr.h === 480 && exr.order === 'RBR' && exr.size > 500 && !exErr.length, JSON.stringify(exr) + exErr.join(';'));
   await ex.close();
   // ตัวต่อวิดีโอในแท็บผู้กำกับ (FT.stitch.make โหมดมีเสียงพากย์) → ใช้ทางเร็ว (exporter) ได้ไฟล์ mp4 ถูกต้อง · ไฟล์ต้นทางหายก็ต้องถอยแบบเดิมแล้วบอกในข้อความ ไม่เงียบ
@@ -224,11 +230,21 @@ try {
     const r = await FT.stitch.make(list, (i) => steps.push(i), (m) => msgs.push(m), { voice });
     const inp = new mb.Input({ source: new mb.BlobSource(r.file), formats: mb.ALL_FORMATS });
     const out = { fast: r.fast, name: r.file.name, type: r.file.type, steps, marks: r.marks.map((m) => [m.at, +m.len.toFixed(2)]), ad: await (await inp.getPrimaryAudioTrack()).computeDuration(), vd: await (await inp.getPrimaryVideoTrack()).computeDuration() };
+    /* แบบ 2 สไตล์ช่อง (square): ไฟล์ 1080x1080 */
+    const m3 = []; const r3 = await FT.stitch.make(list, () => {}, (m) => m3.push(m), { voice, square: true }).catch((e) => { throw new Error(e.message + ' / ' + m3.join(' / ')); });
+    const vt3 = await new mb.Input({ source: new mb.BlobSource(r3.file), formats: mb.ALL_FORMATS }).getPrimaryVideoTrack(); out.sq = { fast: r3.fast, w: vt3.displayWidth, h: vt3.displayHeight };
+    /* pan: ภาพแนวนอน ซ้ายแดง ขวาน้ำเงิน วาดลงจัตุรัส → ภาพคู่ (i=0) เริ่มเห็นฝั่งขวา (น้ำเงิน) แล้วเลื่อนไปฝั่งซ้าย (แดง) · ภาพคี่กลับทิศ · ไม่มีขอบดำ */
+    { const im = document.createElement('canvas'); im.width = 320; im.height = 180; const ix = im.getContext('2d'); ix.fillStyle = '#c00'; ix.fillRect(0, 0, 160, 180); ix.fillStyle = '#00c'; ix.fillRect(160, 0, 160, 180);
+      const cv = document.createElement('canvas'); cv.width = 100; cv.height = 100; const g = cv.getContext('2d');
+      const px = (p, i, x) => { FT.stitch.pan(g, 100, 100, im, 320, 180, p, i); const d = g.getImageData(x, 50, 1, 1).data; return d[0] > 100 ? 'R' : d[2] > 100 ? 'B' : 'K'; };
+      out.pan = px(0, 0, 50) + px(1, 0, 50) + px(0, 1, 50) + px(1, 1, 50) + px(0, 0, 0) + px(1, 0, 99); }
     FT.ui.srcUrl = async () => ({ url: '/ไม่มีไฟล์นี้.mp4' });
     try { const r2 = await FT.stitch.make(list, () => {}, (m) => msgs.push(m), { voice }); out.fb = { fast: !!r2.fast, msgs }; } catch (e) { out.fb = { err: e.message, msgs }; }
     return out;
   });
   check('ตัดต่อในแท็บผู้กำกับ (มีเสียงพากย์): ใช้ทางเร็ว ได้ mp4 ยาว 2 วิ มีเสียง ลำดับช็อตถูก', sfr.fast === true && /\.mp4$/.test(sfr.name) && sfr.steps.join() === '0,1' && Math.abs(sfr.ad - 2) < 0.15 && Math.abs(sfr.vd - 2) < 0.1 && sfr.marks.length === 2 && sfr.marks[0][1] === 1, JSON.stringify(sfr).slice(0, 400));
+  check('ตัดต่อแบบ 2 สไตล์ช่อง (square): ไฟล์ 1:1 ขนาด 1080x1080 ทางเร็ว', !!sfr.sq && sfr.sq.fast === true && sfr.sq.w === 1080 && sfr.sq.h === 1080, JSON.stringify(sfr.sq));
+  check('ตัดต่อแบบ 2: ภาพเลื่อนซ้าย/ขวา (pan) สลับทิศทุกภาพ ไม่มีขอบดำ', sfr.pan === 'BRRBRB', String(sfr.pan));
   check('ตัดต่อในแท็บผู้กำกับ: ไฟล์ต้นทางเปิดไม่ได้ → บอกข้อความว่าตัดแบบเร็วไม่ได้ แล้วถอยไปแบบเดิม (ไม่เงียบ)', !!sfr.fb && sfr.fb.msgs.some((m) => /ตัดแบบเร็วไม่ได้/.test(m)) && sfr.fb.fast !== true, JSON.stringify(sfr.fb).slice(0, 300));
   await sf.close();
   // หน้าตั้งค่าแบบใหม่: เครื่องมือ = อัลบั้ม / ตัดต่ออัตโนมัติ / ซับจอเขียว · ตรวจระบบแอพเป็นแถบเล็กท้ายหน้า (ไม่ใช่กล่องใหญ่) · footage.html?tab=plan เปิดแท็บผู้กำกับตรง · หน้าตรวจระบบเหลือ 3 ข้อ

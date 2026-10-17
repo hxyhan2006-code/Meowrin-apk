@@ -25,7 +25,7 @@
      list = picked() [{ c, sc, from, to, at, t }] (c ว่าง = ช็อตค้างภาพ) · uriOf(c) = ที่อยู่ไฟล์ในมือถือ หรือ null
      มีเสียงพากย์: ช็อตยาวถึงช็อตถัดไป (ช็อตสุดท้ายยาวถึงท้ายเสียง) ช็อตค้างภาพรวมเข้าช็อตก่อนหน้า (เล่นต่อไป) · ไม่มีเสียง: ยาว to-from ต่อกัน */
   function fromPlan(list, opt){
-    opt = opt || {}; var p = blank(opt.name), voice = opt.voice || null, uriOf = opt.uriOf || function(){ return null; };
+    opt = opt || {}; var p = blank(opt.name); if(RATIOS[opt.ratio]) p.ratio = opt.ratio; var voice = opt.voice || null, uriOf = opt.uriOf || function(){ return null; };
     p.voice = voice ? { id:voice.id, name:voice.name || "", dur:voice.dur || 0 } : null;
     list.forEach(function(x, k){
       var len = voice ? (k + 1 < list.length ? list[k + 1].at : voice.dur) - x.at : x.to - x.from;
@@ -33,6 +33,7 @@
       var prev = p.clips[p.clips.length - 1];
       if(!x.c && voice && prev){ prev.len = r2(prev.len + len); }
       else p.clips.push({ id:uid(), uri:x.c ? uriOf(x.c) : null, name:x.c ? x.c.name : "", size:x.c ? x.c.size : 0, from:r2(x.from || 0), len:r2(len), max:x.c && x.c.duration || 0, thumb:x.sc && x.sc.thumb || "", t:x.t || "" });
+      var lt = p.texts[p.texts.length - 1]; if(x.j && lt){ lt.len = r2(lt.len + len); return; } /* ภาพที่ 2+ ของช็อตที่ถูกแบ่ง = ข้อความเดียวกัน ยืดต่อ */
       p.texts.push({ at:r2(voice ? x.at : (p.texts.length ? p.texts[p.texts.length - 1].at + p.texts[p.texts.length - 1].len : 0)), len:r2(len), t:x.t || "" });
     });
     return p;

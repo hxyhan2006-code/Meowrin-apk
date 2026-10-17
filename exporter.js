@@ -1,9 +1,9 @@
 // exporter.js — ส่งออกคลิปแบบเร็ว (ไม่อัดเวลาจริง): ถอดรหัสเฟรมจากคลิปต้นทางทีละช็อตด้วย WebCodecs (ผ่าน mediabunny)
 // วาดลง canvas เดียวกัน แล้วเข้ารหัสต่อกันเป็น mp4 · เครื่องช้า = ใช้เวลานานขึ้น แต่ผลลัพธ์เหมือนเดิมทุกครั้ง ไม่ต้องเปิดหน้าค้างให้เล่นจริง
 // ใช้: const { blob, seconds, ms } = await exportShots({ shots:[{ url, start, dur }], width:1080, height:1920, fps:30, onProgress(p), onLog(text) })
-// url = ที่อยู่คลิป (ไฟล์ในมือถือใช้ MWLocal.fileUrl) · start/dur = วินาที · ช็อตที่ไม่มี url = ค้างภาพก่อนหน้า (ภาพแรกสุดเป็นสีดำ)
+// url = ที่อยู่คลิป (ไฟล์ในมือถือใช้ MWLocal.fileUrl) · start/dur = วินาที · end = ไม่อ่านเลยจุดนี้ (ท้ายฉาก: ช็อตยาวกว่าฉาก = ค้างเฟรมสุดท้าย ไม่ไหลไปฉากอื่น) · ช็อตที่ไม่มี url = ค้างภาพก่อนหน้า (ภาพแรกสุดเป็นสีดำ)
 // voice = Blob เสียงพากย์ (ใส่เป็นแทร็กเสียงของไฟล์) → ช็อตกำหนดเวลาด้วย `at` (วินาทีที่ช็อตเริ่มในเสียง) แทน dur: ยาวถึงช็อตถัดไป ช็อตสุดท้ายยาวถึงจบเสียง
-// draw(ctx, width, height, frameCanvas) = วางภาพเอง (ไม่ใส่ = ครอปกลางเต็มกรอบ) · codec = "auto" เลือกตัวที่เครื่องเข้ารหัสได้ (avc ก่อน เพื่อให้ CapCut อ่านได้) · คืน { blob, seconds, frames, ms, codec, audio }
+// draw(ctx, width, height, frameCanvas, p, i) = วางภาพเอง (p = 0..1 ความคืบหน้าในช็อต, i = ลำดับช็อต — ไว้ทำภาพเคลื่อน) (ไม่ใส่ = ครอปกลางเต็มกรอบ) · codec = "auto" เลือกตัวที่เครื่องเข้ารหัสได้ (avc ก่อน เพื่อให้ CapCut อ่านได้) · คืน { blob, seconds, frames, ms, codec, audio }
 const MB_URL = "./sub/vendor/mediabunny.min.js";
 let mbPromise = null;
 export function loadMediabunny(){ return mbPromise || (mbPromise = import(MB_URL)); }
@@ -48,9 +48,12 @@ export async function exportShots({ shots, voice, width = 1080, height = 1920, f
         const track = await input.getPrimaryVideoTrack();
         if(!track) throw new Error("ช็อต " + (i + 1) + ": ไม่เจอแทร็กภาพในไฟล์");
         const sink = draw ? new mb.CanvasSink(track) : new mb.CanvasSink(track, { width, height, fit: "cover" }); /* draw = วางภาพเอง (สตูดิโอ: เต็มกรอบ + พื้นหลังเบลอ) ได้เฟรมขนาดจริงของคลิป */
-        const stamps = []; for(let k = 0; k < n; k++) stamps.push(s.start + k * frameDur);
+        const stamps = [], last = s.end > s.start ? s.end - frameDur / 2 : Infinity;
+        for(let k = 0; k < n; k++) stamps.push(Math.min(s.start + k * frameDur, last));
+        let fi = 0;
         for await (const w of sink.canvasesAtTimestamps(stamps)){
-          if(w){ if(draw) draw(ctx, width, height, w.canvas); else ctx.drawImage(w.canvas, 0, 0, width, height); got++; } /* เฟรมหาย (เลยท้ายคลิป) = ไม่วาดใหม่ ค้างภาพล่าสุด */
+          if(w){ if(draw) draw(ctx, width, height, w.canvas, n > 1 ? fi / (n - 1) : 0, i); else ctx.drawImage(w.canvas, 0, 0, width, height); got++; } /* เฟรมหาย (เลยท้ายคลิป) = ไม่วาดใหม่ ค้างภาพล่าสุด */
+          fi++;
           await video.add(frames * frameDur, frameDur); frames++;
           if(onProgress && frames % 5 === 0) onProgress(frames / total);
         }
