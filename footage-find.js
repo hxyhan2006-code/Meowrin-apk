@@ -121,6 +121,7 @@
   function arcRank(n){ if(n === UNSURE) return 1000; var i = ARCS.indexOf(n); return i < 0 ? 500 : i; }
   function arcOf(c){ /* { arc, sure } · ที่ผู้ใช้ตั้งเอง (c.arcFixed) ชนะเสมอ · AI: ต้องมีฉากที่บอกภาคพอ (≥25% ของฉาก) และภาคเดียวกัน ≥60% */
     if(c.arcFixed && c.arc) return { arc:c.arc, sure:true };
+    if(c.arcAi && c.arcAi.arc) return { arc:c.arcAi.arc, sure:true }; /* AI ดูภาพคลิปแล้วบอกภาค (ปุ่ม ให้ AI ดูภาค) · ว่าง = ลองแล้วไม่แน่ใจ ไปดูป้ายภาคของฉากต่อ */
     var t = {}, n = 0; (c.scenes || []).forEach(function(sc){ var a = normArc(sc.ai && sc.ai.arc); if(a){ t[a] = (t[a] || 0) + 1; n++; } });
     if(!n) return { arc:"", sure:false };
     var top = Object.keys(t).sort(function(x, y){ return t[y] - t[x]; })[0];

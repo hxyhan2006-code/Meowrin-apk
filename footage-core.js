@@ -263,6 +263,17 @@
     return r;
   }
 
+  async function classifyArcs(items, arcs){ /* items:[{ n, imgs:[รูป ≤3 ฉากต่างกัน], hint }] → r.map: n → ชื่อภาค (ต้องอยู่ใน arcs) หรือ "" = ไม่แน่ใจ · ไม่เดา */
+    var content = [{ type:"text", text:"These are frames from One Piece anime clips. For EACH numbered clip (a few frames from different scenes of the same clip), decide which story arc the clip belongs to, choosing ONLY from this list: " + arcs.join(", ") + ". Decide from recognizable characters in their arc-specific looks/outfits, locations, and canon events. If you are not clearly sure, answer an empty string for that clip (do NOT guess; a wrong arc is worse than an empty one). Return ONLY JSON: {\"r\":[{\"i\":1,\"arc\":\"Alabasta\"}]}" }];
+    items.forEach(function(it){ content.push({ type:"text", text:"Clip " + it.n + (it.hint ? " (" + it.hint + ")" : "") + ":" }); it.imgs.forEach(function(u){ content.push({ type:"image_url", image_url:{ url:u } }); }); });
+    var body = { model:cfg.model, usage:{ include:true }, messages:[{ role:"user", content:content }] };
+    if(/^google\//.test(cfg.model)) body.reasoning = { effort:"low" };
+    var r = await post(body), j;
+    try{ j = parseJSON(r.text); }catch(err){ err.cost = r.cost; throw err; }
+    var ok = {}; arcs.forEach(function(a){ ok[a.toLowerCase()] = a; });
+    r.map = {}; (Array.isArray(j.r) ? j.r : []).forEach(function(x){ r.map[Number(x.i)] = ok[String(x.arc || "").toLowerCase().trim()] || ""; });
+    return r;
+  }
   /* ---------- ผู้กำกับ AI ----------
      1) beats: แบ่งบทเป็นช็อตสั้นๆ (ประโยคย่อย ~1-3 วิ) ตามสไตล์ช่อง: เอ่ยชื่อใคร/อะไร ภาพต้องเป็นสิ่งนั้น (ข้อความล้วน)
      2) direct: ส่งรูปผู้สมัครของแต่ละช็อต (ค้นจากดัชนีในเครื่องแล้ว) ให้ AI ดูภาพจริงแล้วเลือก ทีละชุดหลายช็อต (เห็นบทเต็มเพื่อความต่อเนื่อง) */
@@ -324,5 +335,5 @@
     r.json = j; return r;
   }
 
-  window.FT = { cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize };
+  window.FT = { classifyArcs:classifyArcs, cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize };
 })();

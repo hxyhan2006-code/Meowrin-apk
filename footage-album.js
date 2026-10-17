@@ -117,7 +117,7 @@
     $("alGrid").innerHTML = albums.map(function(a, i){
       return '<button class="alt album" data-i="' + i + '" type="button"><span class="alimg"><img alt="" decoding="async"><i class="alph"></i></span><b>' + esc(a.name) + "</b><small>" + a.items.length + " คลิป" + (mode === "phone" && a.items.some(done) ? " · AI " + a.items.filter(done).length : "") + "</small></button>";
     }).join("");
-    strips();
+    strips(); arcStrip();
     $("alGrid").querySelectorAll("[data-i]").forEach(function(el){ el._cands = albums[+el.dataset.i].items.slice(0, 3); if(io) io.observe(el); else fill(el); });
   }
   function openAlbum(i){
@@ -153,6 +153,34 @@
   $("alvAi").addEventListener("click", onStrip(function(){ return curAlbum ? curAlbum.items : []; }));
   document.addEventListener("ft:search", function(e){ /* พิมพ์ค้น/เลือกชิป = โชว์ผลค้นหา · ว่าง = กลับตารางอัลบั้ม */
     var on = !!(e.detail && e.detail.active); $("alMain").hidden = on; $("results").hidden = !on; $("findInfo").hidden = !on && !$("findInfo").textContent;
+  });
+  /* ---------- ให้ AI ดูภาคของคลิปที่ยังไม่แน่ใจ (โหมดภาค) · ไม่เดา: ไม่แน่ใจ = ว่าง · ผลเก็บที่ c.arcAi · ลองแล้วไม่ซ้ำ ---------- */
+  var arcRun = false, arcStopF = false, arcMsg = "";
+  function arcTodo(){ return allE.filter(function(e){ return done(e) && !arcOf(e.c).sure && !e.c.arcAi && e.c.scenes.some(function(sc){ return sc.img || sc.thumb; }); }); }
+  function arcFrames(c){ var s = c.scenes.filter(function(x){ return x.img || x.thumb; }), pick = s.length <= 3 ? s : [s[0], s[Math.floor(s.length / 2)], s[s.length - 1]]; return pick.map(function(x){ return x.img || x.thumb; }); }
+  function arcStrip(){
+    var el = $("alArc"); el.hidden = mode !== "arc"; if(mode !== "arc") return;
+    var todo = arcTodo().length;
+    el.innerHTML = arcRun ? "<span>AI กำลังดูภาค " + arcMsg + "</span>" + '<button class="btn small ghost" data-act="stop" type="button">หยุด</button>'
+      : todo ? "<span>" + (arcMsg ? arcMsg + " · " : "") + "ยังไม่แน่ใจ " + todo + " คลิป</span>" + '<button class="btn small" data-act="run" type="button">ให้ AI ดูภาค (' + todo + ")</button>"
+      : "<span>" + (arcMsg || "ไม่มีคลิปที่รอ AI ดูภาค") + "</span>";
+  }
+  $("alArc").addEventListener("click", async function(e){
+    var b = e.target.closest("[data-act]"); if(!b) return;
+    if(b.dataset.act === "stop"){ arcStopF = true; return; }
+    var todo = arcTodo(); if(!todo.length || arcRun) return;
+    if(!FT.orKey()){ await MWDialog.alert("ยังไม่มี OpenRouter key ในแอพ ไปใส่ที่ ตั้งค่า > คีย์ API ก่อน"); return; }
+    if(!await MWDialog.confirm("ให้ AI ดูภาคของ " + todo.length + " คลิปที่ยังไม่แน่ใจ?\n\nประมาณ " + U.money(todo.length * 3 * 0.0012) + " (ประมาณการจากราคาต่อรูปของการตรวจตัวละครซ้ำ $0.0012 คูณ 3 รูปต่อคลิป ราคาจริงอาจต่างไป)\n\nAI จะไม่เดา: คลิปที่ไม่แน่ใจจะยังอยู่ในอัลบั้ม ยังไม่แน่ใจ และจะไม่ถูกลองซ้ำ ผลที่ AI ตอบไม่ทับภาคที่คุณย้ายเอง · พักและทำต่อได้ ต้องเปิดแอพค้างไว้", { ok:"เริ่ม" })) return;
+    arcRun = true; arcStopF = false; arcMsg = ""; var n = 0, hit = 0, cost = 0, dirty = []; arcStrip(); await U.wake(true);
+    try{
+      for(var i = 0; i < todo.length && !arcStopF; i += 8){
+        var g = todo.slice(i, i + 8), r = await FT.classifyArcs(g.map(function(en, k){ return { n:k + 1, imgs:arcFrames(en.c), hint:en.c.album }; }), ARCS);
+        cost += r.cost; g.forEach(function(en, k){ var ar = r.map[k + 1] || ""; en.c.arcAi = { arc:ar, at:Date.now() }; if(ar) hit++; dirty.push(en.c); });
+        await FT.store.putMany(dirty); dirty = []; n += g.length; arcMsg = n + "/" + todo.length + " · ได้ภาค " + hit + " · ใช้ " + U.money(cost); build(); arcStrip();
+      }
+      arcMsg = (arcStopF ? "หยุดแล้ว" : "เสร็จรอบนี้") + ": ดู " + n + " คลิป ได้ภาค " + hit + " คลิป ใช้ " + U.money(cost);
+    }catch(err){ arcMsg = (err.budget ? "ถึงเพดานงบ: " : "ไม่สำเร็จ: ") + (err.message || err) + " · ทำไปแล้ว " + n + " คลิป (กดใหม่ทำต่อ)"; }
+    arcRun = false; await U.wake(false); build(); if(view === "home") renderHome();
   });
   var wasRunning = false;
   document.addEventListener("ft:queue", function(){ /* คิวเดินอยู่: อัปเดตแค่แถบ · จบรอบค่อยวาดตารางใหม่ (ไม่ให้กะพริบทุกวินาที) */

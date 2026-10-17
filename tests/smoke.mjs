@@ -320,6 +320,16 @@ try {
   await sq.fill('#q', ''); await sq.waitForTimeout(500);
   const sq2 = await sq.evaluate(() => ({ main: !document.getElementById('alMain').hidden, res: document.getElementById('results').hidden }));
   check('ค้นหาในหน้าอัลบั้ม: ไม่พิมพ์ = ตารางอัลบั้ม · พิมพ์ "ลูฟี่หัวเราะภาคสกายเปีย" = เจอฉากเดียวที่ตรง (ไม่ใช่ฉากโซโร/ภาคอื่น) · ล้างแล้วกลับตารางอัลบั้ม', sq0.main && sq0.res && sq1.main && sq1.cards === 1 && sq1.txt && sq2.main && sq2.res && !sqErr.length, JSON.stringify([sq0, sq1, sq2]) + sqErr.join());
+  // ให้ AI ดูภาคของคลิปที่ยังไม่แน่ใจ (โหมดภาค): ถามราคาก่อน · AI ตอบภาค = เข้าอัลบั้มภาคนั้น (arcAi) · ตอบว่าง = ยังไม่แน่ใจและไม่ลองซ้ำ
+  await sq.evaluate(() => { const c = FT.ui.lib().find((x) => x.name === 'sk.mp4'); c.scenes[0].thumb = 'data:image/jpeg;base64,/9j/4AAQ'; FT.classifyArcs = async (items, arcs) => { window.__arcCalls = (window.__arcCalls || 0) + 1; return { cost: 0.01, map: { 1: 'Alabasta' } }; }; MWStore.set('mw_openrouter_key_v1', 'k'); });
+  await sq.click('#alSeg [data-m=arc]'); await sq.waitForTimeout(300);
+  const ap0 = await sq.evaluate(() => ({ txt: document.getElementById('alArc').textContent, hid: document.getElementById('alArc').hidden }));
+  await sq.click('#alArc [data-act=run]'); await sq.waitForTimeout(300);
+  const apDlg = await sq.evaluate(() => document.body.textContent.includes('ให้ AI ดูภาคของ 1 คลิป') && document.body.textContent.includes('AI จะไม่เดา'));
+  await sq.getByRole('button', { name: 'เริ่ม', exact: true }).click(); await sq.waitForTimeout(800);
+  const ap1 = await sq.evaluate(() => ({ c: FT.ui.lib().find((x) => x.name === 'sk.mp4').arcAi, calls: window.__arcCalls, names: [...document.querySelectorAll('#alGrid .album b')].map((b) => b.textContent).join(','), strip: document.getElementById('alArc').textContent }));
+  check('ให้ AI ดูภาค: ถามราคา+บอกว่าไม่เดาก่อน → เรียก AI 1 รอบ → คลิปได้ภาค Alabasta (arcAi) เข้าอัลบั้มภาค · ไม่มีคลิปรอแล้ว', !ap0.hid && /ยังไม่แน่ใจ 1 คลิป/.test(ap0.txt) && apDlg && ap1.c && ap1.c.arc === 'Alabasta' && ap1.calls === 1 && /Alabasta/.test(ap1.names) && (/ไม่มีคลิปที่รอ/.test(ap1.strip) || /เสร็จรอบนี้/.test(ap1.strip)), JSON.stringify([ap0, apDlg, ap1]));
+  await sq.click('#alSeg [data-m=phone]'); await sq.waitForTimeout(200);
   // ตัวกรองภาค (รวมกับตัวละครได้) + ช่องว่างใต้แผงค้นหา
   await sq.evaluate(() => { FT.ui.lib().push({ id: 'sk2', name: 'sk2.mp4', size: 10, album: 'luffy', duration: 20, status: 'done', lastModified: 2, cover: '', scenes: [{ s: 0, e: 4, thumb: '', ai: { characters: ['Luffy'], arc: 'Skypiea' } }, { s: 4, e: 9, thumb: '', ai: { characters: ['Zoro'], arc: 'Skypiea arc' } }] }); FT.ui.search(); });
   await sq.click('#chips [data-open=r]'); await sq.waitForTimeout(200);
@@ -328,7 +338,7 @@ try {
   const ar1 = await sq.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length, main: document.getElementById('alMain').hidden, chip: [...document.querySelectorAll('#chips .chip')].some((c) => /Skypiea/.test(c.textContent)) }));
   await sq.click('#chips [data-open=c]'); await sq.waitForTimeout(200); await sq.locator('#pkList .alrow', { hasText: 'Zoro' }).click(); await sq.click('#pkDone'); await sq.waitForTimeout(400);
   const ar2 = await sq.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length, gap: parseFloat(getComputedStyle(document.querySelector('#p-album > .panel')).marginBottom) }));
-  check('ตัวกรองภาค: มีรายการภาค (Skypiea 1 คลิป ยังไม่แน่ใจ) · เลือก Skypiea เจอ 2 ฉากของคลิปนั้น · ใส่ตัวละคร Zoro ด้วยเหลือ 1 ฉาก · มีช่องว่างใต้แผงค้นหา', /Skypiea/.test(arcRows) && /ยังไม่แน่ใจ/.test(arcRows) && ar1.cards === 2 && ar1.main && ar1.chip && ar2.cards === 1 && ar2.gap >= 12, JSON.stringify([arcRows, ar1, ar2]));
+  check('ตัวกรองภาค: มีรายการภาค (Skypiea, Alabasta ที่ AI ดูแล้ว) · เลือก Skypiea เจอ 2 ฉากของคลิปนั้น · ใส่ตัวละคร Zoro ด้วยเหลือ 1 ฉาก · มีช่องว่างใต้แผงค้นหา', /Skypiea/.test(arcRows) && /Alabasta/.test(arcRows) && ar1.cards === 2 && ar1.main && ar1.chip && ar2.cards === 1 && ar2.gap >= 12, JSON.stringify([arcRows, ar1, ar2]));
   await sq.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
