@@ -312,3 +312,5 @@ textarea.vtext,#tab-voice textarea.vtext:focus{display:block;width:100%;min-heig
 .hs .hb{display:flex;gap:6px;flex:none}
 .hs .hb .btn{min-height:40px;padding:0 12px;font-size:14px}
 .hs video{width:100%;max-height:50vh;margin-top:8px;border-radius:10px;background:#000}
+
+.tool.exp[hidden]{display:none}

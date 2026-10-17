@@ -4,17 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
-<link rel="manifest" href="manifest.json?v=8.43">
+<link rel="manifest" href="manifest.json?v=8.44">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Meowrin">
-<link rel="icon" type="image/png" href="icon-192.png?v=8.43">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.43">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.44">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.44">
 <title>Meowrin factory</title>
-<link rel="stylesheet" href="fonts.css?v=8.43"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
-<link rel="stylesheet" href="style.css?v=8.43">
-<link rel="stylesheet" href="sheet.css?v=8.43">
+<link rel="stylesheet" href="fonts.css?v=8.44"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
+<link rel="stylesheet" href="style.css?v=8.44">
+<link rel="stylesheet" href="sheet.css?v=8.44">
 </head>
 <body>
 <div class="wrap">
@@ -180,10 +180,11 @@
     <div class="sech first">เครื่องมือ</div>
     <div class="tools">
       <a class="tool" href="footage.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.6"/><path d="m21 15-5-5L5 21"/></svg><b>อัลบั้ม</b><small>คลังวิดีโอ + AI จัดการให้</small></a>
-      <a class="tool" href="footage.html?tab=plan"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg><b>ตัดต่ออัตโนมัติ</b><small>AI ตัดภาพตามบทและเสียง</small></a>
+      <a class="tool exp" hidden href="footage.html?tab=plan"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg><b>ตัดต่ออัตโนมัติ</b><small>AI ตัดภาพตามบทและเสียง</small></a>
       <a class="tool" href="sub/index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 14h6M7 10h10"/></svg><b>ซับจอเขียว</b><small>ทำซับจากเสียงพากย์</small></a>
-      <a class="tool" href="studio.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15h18M8 15v5M14 15v5M10 8.5v3l3-1.5z"/></svg><b>สตูดิโอ</b><small>ตัดต่อเอง + สั่ง AI</small></a>
+      <a class="tool exp" hidden href="studio.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15h18M8 15v5M14 15v5M10 8.5v3l3-1.5z"/></svg><b>สตูดิโอ</b><small>ตัดต่อเอง + สั่ง AI</small></a>
     </div>
+    <button class="btn ghost small" id="expToggle" type="button" style="width:100%;margin:8px 0 4px">เครื่องมือทดลอง: ตัดต่ออัตโนมัติ / สตูดิโอ (ซ่อนไว้)</button>
     <div class="qbk">
       <div><b>สำรองเป็นไฟล์</b><small id="gdQuickInfo">ตรวจสอบ...</small></div>
       <button class="btn small" id="gdQuick" type="button">สำรองตอนนี้</button>
@@ -396,6 +397,6 @@
   </div>
 </div>
 
-<script src="store.js?v=8.43" data-boot="version.js?v=8.43 icons.js?v=8.43 dialog.js?v=8.43 native.js?v=8.43 history.js?v=8.43 history-sheet.js?v=8.43 budget.js?v=8.43 sync.js?v=8.43 app.js?v=8.43 llm.js?v=8.43 ai.js?v=8.43 voicestore.js?v=8.43 tts.js?v=8.43 backup.js?v=8.43 history-ui.js?v=8.43 ota.js?v=8.43"></script>
+<script src="store.js?v=8.44" data-boot="version.js?v=8.44 icons.js?v=8.44 dialog.js?v=8.44 native.js?v=8.44 history.js?v=8.44 history-sheet.js?v=8.44 budget.js?v=8.44 sync.js?v=8.44 app.js?v=8.44 llm.js?v=8.44 ai.js?v=8.44 voicestore.js?v=8.44 tts.js?v=8.44 backup.js?v=8.44 history-ui.js?v=8.44 ota.js?v=8.44"></script>
 </body>
 </html>

@@ -465,6 +465,8 @@
   }
   MWStore.on(settingsTags); settingsTags();
   render(); renderChannels(); renderPick();
+  /* เครื่องมือทดลอง (ตัดต่ออัตโนมัติ/สตูดิโอ) ซ่อนไว้ตั้งแต่ทิศทางแอพคัดแยกฟุต (2026-10-18) · แตะปุ่มเพื่อแสดง/ซ่อน */
+  $("expToggle").addEventListener("click", function(){ var cards = document.querySelectorAll("#tab-settings .tool.exp"), show = cards[0].hidden; cards.forEach(function(a){ a.hidden = !show; }); this.textContent = show ? "ซ่อนเครื่องมือทดลอง" : "เครื่องมือทดลอง: ตัดต่ออัตโนมัติ / สตูดิโอ (ซ่อนไว้)"; });
   /* เปิดแอพ: ถ้ามี key และ (เกิน 6 ชม. หรือมีช่องที่ยังไม่ได้ดึงย้อนหลัง) → อัปเดตให้เอง */
   if(needSync()) syncAll(true);
   /* มือถือพักแท็บเบื้องหลังแล้วการดึงค้าง → กลับมาเปิดแอพแล้วดึงต่อให้ (ข้ามคลิปที่มีแล้ว) */

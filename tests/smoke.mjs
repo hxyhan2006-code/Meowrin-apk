@@ -278,6 +278,10 @@ try {
   await hm.goto(base + '/index.html'); await hm.waitForFunction(() => window.MW, null, { timeout: 20000 }); await hm.click('nav [data-tab=settings]');
   const tl = await hm.evaluate(() => ({ tiles: [...document.querySelectorAll('#tab-settings .tool b')].map((b) => b.textContent), plan: document.querySelector('#tab-settings .tool[href="footage.html?tab=plan"]') ? 1 : 0, chk: [...document.querySelectorAll('#tab-settings a.btn')].some((a) => a.getAttribute('href') === 'check.html' && /ตรวจระบบแอพ/.test(a.textContent)) }));
   check('ตั้งค่า: เครื่องมือเป็น อัลบั้ม / ตัดต่ออัตโนมัติ / ซับจอเขียว / สตูดิโอ และตรวจระบบเป็นแถบเล็กท้ายหน้า', tl.tiles.join('|') === 'อัลบั้ม|ตัดต่ออัตโนมัติ|ซับจอเขียว|สตูดิโอ' && tl.plan === 1 && tl.chk && !hmErr.length, JSON.stringify(tl) + hmErr.join());
+  const ex1 = await hm.evaluate(() => [...document.querySelectorAll('#tab-settings .tool')].filter((a) => a.offsetParent).map((a) => a.querySelector('b').textContent).join('|'));
+  await hm.evaluate(() => document.getElementById('expToggle').click());
+  const ex2 = await hm.evaluate(() => [...document.querySelectorAll('#tab-settings .tool')].filter((a) => a.offsetParent).map((a) => a.querySelector('b').textContent).join('|'));
+  check('ตั้งค่า: ตัดต่ออัตโนมัติ/สตูดิโอซ่อนไว้ (เห็นแค่ อัลบั้ม/ซับจอเขียว) · แตะ เครื่องมือทดลอง = แสดงครบ', ex1 === 'อัลบั้ม|ซับจอเขียว' && ex2 === 'อัลบั้ม|ตัดต่ออัตโนมัติ|ซับจอเขียว|สตูดิโอ', ex1 + ' // ' + ex2);
   await hm.goto(base + '/footage.html?tab=plan'); await hm.waitForFunction(() => window.FT && FT.ui, null, { timeout: 20000 }); await hm.waitForTimeout(500);
   check('footage.html?tab=plan: เปิดโหมดตัดต่ออัตโนมัติ (ผู้กำกับอย่างเดียว ไม่มีแท็บ)', await hm.evaluate(() => document.getElementById('p-plan').classList.contains('on') && document.body.classList.contains('mode-plan') && getComputedStyle(document.querySelector('.tabs')).display === 'none' && document.getElementById('pgTitle').textContent === 'ตัดต่ออัตโนมัติ'));
   await hm.goto(base + '/check.html'); await hm.waitForTimeout(800);
