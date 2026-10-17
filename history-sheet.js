@@ -20,7 +20,7 @@
     + '.mwhs-t{flex:none;width:52px;height:68px;border-radius:8px;background:#1a221f center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#a1a1aa}.mwhs-t svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8}'
     + '.mwhs-i{flex:1;min-width:0}.mwhs-i b{display:block;font-weight:500;overflow-wrap:anywhere}.mwhs-i small{color:#a1a1aa;font-size:12.5px}'
     + '.mwhs-b{display:flex;gap:6px;flex:none}.mwhs-b button{min-height:40px;padding:0 14px;border-radius:10px;border:1px solid rgba(57,217,138,.55);background:rgba(57,217,138,.14);color:#39d98a;font:600 14px "IBM Plex Sans Thai",sans-serif}'
-    + '.mwhs-b button.d{border-color:rgba(255,255,255,.14);background:#1a221f;color:#f4f4f5;font-weight:400}.mwhs-b button.d.arm{border-color:#f59e0b;color:#f59e0b}'
+    + '.mwhs-b button[data-s]{border-color:rgba(255,255,255,.14);background:#1a221f;color:#f4f4f5;font-weight:400}.mwhs-b button.d{border-color:rgba(255,255,255,.14);background:#1a221f;color:#f4f4f5;font-weight:400}.mwhs-b button.d.arm{border-color:#f59e0b;color:#f59e0b}'
     + '.mwhs-m{width:100%;margin:0;color:#f59e0b;font-size:12.5px}'
     + '.mwhp{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px}'
     + '.mwhp-c{width:min(100%,340px);background:#131917;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px}'
@@ -43,7 +43,7 @@
         : x.kind === "studio" ? ((x.data && x.data.clips || []).length) + " คลิป" : (x.file.size ? mb(x.file.size) : x.file.name.split(".").pop());
       return '<div class="mwhs-r" data-id="' + esc(x.id) + '"><div class="mwhs-t"' + (th ? ' style="background-image:url(' + th + ')"' : "") + '>' + (th ? "" : '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18M16 3v18M3 8h5M3 16h5M16 8h5M16 16h5"/></svg>') + '</div>'
         + '<div class="mwhs-i"><b>' + esc(x.title || x.id) + "</b><small>" + when(x.at) + " · " + esc(meta) + (isFile ? " · วิดีโอที่ส่งออก" : "") + '</small></div>'
-        + '<div class="mwhs-b"><button type="button" data-o="1">' + (isFile && !vid ? "ที่อยู่" : "เปิด") + '</button><button type="button" class="d" data-d="1">ลบ</button></div></div>';
+        + '<div class="mwhs-b"><button type="button" data-o="1">' + (isFile && !vid ? "ที่อยู่" : "เปิด") + '</button>' + (x.kind === "plan" ? '<button type="button" data-s="1">สตูดิโอ</button>' : "") + '<button type="button" class="d" data-d="1">ลบ</button></div></div>';
     }).join("") : '<p class="mwhs-e">ยังไม่มีงาน · พอทำงานเสร็จจะขึ้นที่นี่ (เก็บล่าสุด ' + MWHist.max() + ' อัน ตั้งเลขได้ที่ ตั้งค่า > ผลงานล่าสุด)</p>';
   }
   function say(row, t){ var m = row.querySelector(".mwhs-m"); if(!m){ m = document.createElement("p"); m.className = "mwhs-m"; row.appendChild(m); } m.textContent = t; }
@@ -54,7 +54,7 @@
       if(!b.classList.contains("arm")){ b.classList.add("arm"); b.textContent = it.kind === "file" ? "ลบไฟล์จริง?" : "แน่ใจนะ?"; setTimeout(function(){ b.classList.remove("arm"); b.textContent = "ลบ"; }, 3000); return; }
       await MWHist.remove(it.id); render(); return;
     }
-    if(it.kind !== "file"){ close(); openItem(it); return; }
+    if(it.kind !== "file"){ close(); openItem(it, b.dataset.s ? "studio" : ""); return; }
     var msg = playFile(it); if(msg) say(row, msg);
   }
   var player = null, playHook = null;
@@ -73,8 +73,8 @@
     var prev = window.MWBackHook; playHook = function(){ if(player){ closePlayer(); return true; } return prev ? prev() : false; }; playHook.prev = prev; window.MWBackHook = playHook;
     return "";
   }
-  function openItem(it){ /* เปิดงานเก่ากลับมาทำต่อ · รอเขียนฐานข้อมูลแป๊บก่อนเปลี่ยนหน้า */
-    if(it.kind === "plan"){ MWStore.set("mw_footage_direct_v1", it.data); setTimeout(function(){ location.href = P + "footage.html?tab=plan&hist=1"; }, 200); }
+  function openItem(it, then){ /* เปิดงานเก่ากลับมาทำต่อ · then = "studio": ตารางตัดต่อ → ส่งเข้าสตูดิโอต่อเลย · รอเขียนฐานข้อมูลแป๊บก่อนเปลี่ยนหน้า */
+    if(it.kind === "plan"){ MWStore.set("mw_footage_direct_v1", it.data); setTimeout(function(){ location.href = P + "footage.html?tab=plan&hist=1" + (then === "studio" ? "&studio=1" : ""); }, 200); }
     else if(it.kind === "studio"){ MWStore.set("mw_studio_v1", { cur:it.data }); setTimeout(function(){ if(/\/studio\.html$/.test(location.pathname)) location.reload(); else location.href = P + "studio.html"; }, 200); }
   }
   function open(k){

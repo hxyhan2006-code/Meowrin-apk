@@ -697,6 +697,20 @@ try {
     const direct = await context.newPage(); await direct.goto(base + '/studio.html'); await direct.waitForFunction(() => window.MWNative, null, { timeout: 20000 }); await direct.evaluate(() => { Object.defineProperty(history, 'length', { get: () => 1 }); document.querySelector('a.back').click(); }); /* หน้าแรกของแอพจริงมี history.length = 1 (เบราว์เซอร์ทดสอบนับ about:blank ด้วย เลยจำลอง) */ await direct.waitForURL(/index\.html/, { timeout: 8000 });
     check('ปุ่มลูกศรย้อนกลับ: ปิดชีตก่อน แล้วย้อน 1 ขั้นไปหน้าที่มา (ตัดต่ออัตโนมัติ ไม่ใช่หน้าแรก) · เปิดตรงๆ ไม่มีประวัติ = ไปหน้าสำรอง', b1.url === '/studio.html' && !b1.sheet && /footage\.html\?tab=plan/.test(b2) && /#settings$/.test(direct.url()), JSON.stringify([b1, b2, direct.url()]));
     await direct.close();
+    // ปุ่ม "สตูดิโอ" ในแถวตารางตัดต่อของประวัติ: ส่งเข้าสตูดิโอตรงๆ (รอดัชนีโหลด → แปลงตาราง → ไปสตูดิโอ) · เปิดตารางจากประวัติแล้วเลื่อนไปที่ผลลัพธ์
+    await hp.goto(base + '/footage.html?tab=plan'); await hp.waitForFunction(() => window.FT && FT.store && window.MWHist, null, { timeout: 20000 });
+    await hp.evaluate(async () => {
+      await FT.store.put({ id: 'c-st|10|1', name: 'a.mp4', size: 10, lastModified: 1, album: 'x', duration: 8, w: 1, h: 1, status: 'done', imgV: 2, aiV: 2, cover: '', scenes: [{ s: 0, e: 5, thumb: '', img: '', ai: {} }] });
+      const plan = { mode: 'long', voice: null, at: 777, script: 'บทสตูดิโอ', shots: [{ t: 'ช็อตหนึ่ง', want: '', chars: [], keys: [], shot: '', dur: 2, at: 0, why: '', use: true, cands: [{ id: 'c-st|10|1', si: 0 }] }] };
+      MWStore.set('mw_footage_direct_v1', plan); MWHist.add('plan', { key: 777, title: 'บทสตูดิโอ', data: plan });
+    });
+    await hp.reload(); await hp.waitForFunction(() => window.FT && window.MWHistSheet, null, { timeout: 20000 }); await hp.waitForTimeout(400);
+    await hp.click('#planHistBtn'); await hp.waitForTimeout(200);
+    const hasBtn = await hp.evaluate(() => !!document.querySelector('.mwhs [data-id="plan-777"] [data-s]'));
+    await hp.evaluate(() => document.querySelector('.mwhs [data-id="plan-777"] [data-s]').click()); await hp.waitForURL(/studio\.html/, { timeout: 15000 }); await hp.waitForFunction(() => window.MWStudioUI, null, { timeout: 20000 });
+    const proj2 = await hp.evaluate(() => { const p = MWStore.get('mw_studio_v1').cur; return { n: p.clips.length, name: p.clips[0].name, t: p.texts[0] && p.texts[0].t, title: document.getElementById('stName').textContent }; });
+    check('ประวัติตัดต่ออัตโนมัติ: แถวตารางมีปุ่ม "สตูดิโอ" → กดแล้วส่งเข้าสตูดิโอเลย (ได้โปรเจกต์จากตารางนั้น)', hasBtn && proj2.n === 1 && proj2.name === 'a.mp4' && proj2.t === 'ช็อตหนึ่ง' && /บทสตูดิโอ/.test(proj2.title), JSON.stringify([hasBtn, proj2]));
+    await hp.evaluate(() => { MWStore.del('mw_footage_direct_v1'); });
     await hp.evaluate(() => { MWStore.del('mw_hist_v1'); MWStore.del('mw_studio_v1'); MWStore.del('mw_footage_direct_v1'); });
     await hp.close();
   }

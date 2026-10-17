@@ -64,11 +64,16 @@
       voiceSel = String(rec.id); await refreshVoices(); voiceSel = String(rec.id); showVoice(); render();
     }catch(err){ say("เปิดเสียงที่เลือกไม่ได้: " + err.message, "err"); }
   })();
-  if(new URLSearchParams(location.search).get("hist") && plan){ /* เปิดจากประวัติงาน (ตั้งค่า > ผลงานล่าสุด): ใส่บท/แบบ/เสียงของรอบนั้นให้ ตารางช็อตเดิมก็กลับมา */
+  var hq = new URLSearchParams(location.search);
+  if(hq.get("hist") && plan){ /* เปิดจากประวัติงาน (ตั้งค่า > ผลงานล่าสุด): ใส่บท/แบบ/เสียงของรอบนั้นให้ ตารางช็อตเดิมก็กลับมา */
     history.replaceState(null, "", location.pathname + "?tab=plan");
     mode = plan.mode === "fast" ? "fast" : "long"; showMode(); $("plText").value = plan.script || "";
     var hv = plan.voice ? String(plan.voice.id) : ""; voiceSel = hv;
-    refreshVoices().then(function(){ voiceSel = hv; showVoice(); render(); });
+    refreshVoices().then(function(){ voiceSel = hv; showVoice(); render(); afterHist(!!hq.get("studio")); });
+  }
+  function afterHist(studio){ /* รอดัชนีโหลดแล้ววาดตาราง → เลื่อนไปที่ผลลัพธ์ · studio = ปุ่ม "สตูดิโอ" ในประวัติ: ส่งเข้าสตูดิโอต่อเลย */
+    var go = function(){ render(); var o = $("plOut"); if(o.hidden) return; o.scrollIntoView({ block:"start" }); if(studio) sendToStudio(); };
+    if(U.lib().length) go(); else document.addEventListener("ft:lib", function once(){ document.removeEventListener("ft:lib", once); go(); });
   }
   $("plText").addEventListener("input", function(){ if(mode === "fast") autoVoice(); if($("plOut").hidden === sameScript()) render(); });
   async function audioDur(blob){ return new Promise(function(ok){ var a = new Audio(), u = URL.createObjectURL(blob); a.preload = "metadata"; a.src = u;
@@ -288,13 +293,13 @@
     $("plProg").hidden = true;
   });
   $("plBatches").addEventListener("click", function(e){ if(cuts && e.target.closest("#plSave")) FT.stitch.save(cuts.file, say); });
-  $("plStudio").addEventListener("click", async function(){ /* ส่งตารางช็อตไปแก้ต่อในสตูดิโอ (studio.html) · ภาพตามคลิปที่เลือก เสียงพากย์ (แบบ 2) ข้อความของช็อต */
+  async function sendToStudio(){ /* ส่งตารางช็อตไปแก้ต่อในสตูดิโอ (studio.html) · ภาพตามคลิปที่เลือก เสียงพากย์ (แบบ 2) ข้อความของช็อต · โปรเจกต์เดิมที่ค้างอยู่ไม่หาย (อยู่ในประวัติ) */
     var list = picked(); if(!list.length) return;
-    if(MWStudio.load() && !(await MWDialog.confirm("แทนโปรเจกต์ที่ค้างอยู่ในสตูดิโอด้วยตารางช็อตนี้ไหม?", { ok:"แทนเลย", cancel:"ไม่" }))) return;
     var name = String(plan.script || "").replace(/\s+/g, " ").trim().slice(0, 40) || "โปรเจกต์ใหม่";
     MWStudio.save(MWStudio.fromPlan(list, { name:name, voice:!isLong() && plan.voice ? plan.voice : null, uriOf:function(c){ return window.MWLocal ? MWLocal.uriOf(c) : null; } }));
-    location.href = "studio.html";
-  });
+    setTimeout(function(){ location.href = "studio.html"; }, 200);
+  }
+  $("plStudio").addEventListener("click", sendToStudio);
   $("plCopy").addEventListener("click", function(){
     var txt = plan.shots.map(function(x, k){ var ch = x.use && chosen(x), r = ch && cut(x, ch);
       return (k + 1) + ". " + x.t + "\n   → " + (ch ? ch.c.name + " ช่วง " + U.tm(r.from) + "–" + U.tm(r.to) + " (" + (r.to - r.from).toFixed(1) + " วิ)" : "ไม่มีในคลัง: " + x.want); }).join("\n");
