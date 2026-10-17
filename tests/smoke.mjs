@@ -679,6 +679,24 @@ try {
     check('ประวัติในซับจอเขียว: ปุ่มสามขีด + ชีตโชว์ไฟล์ซับ (mp4/srt) เท่านั้น · หน้าไม่ล้นจอ', sb === '2' && /green_screen_subtitle\.mp4/.test(srows) && /subtitle\.srt/.test(srows) && !/ตารางทดสอบ|meowrin_1234/.test(srows) && !sov, JSON.stringify([sb, srows, sov]));
     await hp.evaluate(() => { const d = document.querySelector('.mwhs [data-d]'); d.click(); d.click(); }); await hp.waitForTimeout(150);
     check('ประวัติ: ลบด้วยการแตะสองครั้ง (แตะครั้งเดียวไม่ลบ)', (await rows(hp)).split('|').length === 1);
+    // เล่นวิดีโอจากประวัติ = เต็มจอ (ปุ่มปิด + ย้อนของมือถือปิดก่อน) ไม่ยัดในแถว
+    await hp.evaluate(() => { window.Capacitor = { convertFileSrc: (u) => 'about:blank#' + u }; }); await hp.waitForTimeout(100);
+    await hp.evaluate(() => document.querySelector('.mwhs [data-o]').click()); await hp.waitForTimeout(200);
+    const pl = await hp.evaluate(() => { const p = document.querySelector('.mwhp'); return { has: !!p, src: p && p.querySelector('video').getAttribute('src'), inRow: !!document.querySelector('.mwhs-r video'), full: p && getComputedStyle(p).position === 'fixed' }; });
+    const hooked = await hp.evaluate(async () => { const r = await window.MWBackHook(); return { r, gone: !document.querySelector('.mwhp') }; });
+    check('ประวัติ: กดเปิดวิดีโอ = เต็มจอ (ไม่ยัดในแถว) · ปุ่มย้อนของมือถือปิดตัวเล่นก่อน', pl.has && /subtitle|green_screen|file:/.test(pl.src || '') && !pl.inRow && pl.full && hooked.r === true && hooked.gone, JSON.stringify([pl, hooked]));
+    await hp.evaluate(() => { delete window.Capacitor; });
+    // ปุ่มลูกศรมุมซ้ายบน = ย้อน 1 ขั้นเหมือนปุ่มย้อนของมือถือ (ไม่ใช่ไปหน้าแรกของแอพ) · ให้หน้านั้นปิดชั้นของตัวเองก่อน · เปิดหน้านี้ตรงๆ = ไปหน้าสำรอง
+    await hp.goto(base + '/footage.html?tab=plan'); await hp.waitForFunction(() => window.FT && window.MWNative, null, { timeout: 20000 });
+    await hp.evaluate(() => { location.href = 'studio.html'; }); await hp.waitForURL(/studio\.html/); await hp.waitForFunction(() => window.MWNative && window.MWHistSheet, null, { timeout: 20000 });
+    await hp.click('#stHist'); await hp.waitForTimeout(200);
+    await hp.evaluate(() => document.querySelector('a.back').click()); await hp.waitForTimeout(300);
+    const b1 = await hp.evaluate(() => ({ url: location.pathname, sheet: !document.querySelector('.mwhs').hidden }));
+    await hp.evaluate(() => document.querySelector('a.back').click()); await hp.waitForURL(/footage\.html/, { timeout: 8000 });
+    const b2 = hp.url();
+    const direct = await context.newPage(); await direct.goto(base + '/studio.html'); await direct.waitForFunction(() => window.MWNative, null, { timeout: 20000 }); await direct.evaluate(() => { Object.defineProperty(history, 'length', { get: () => 1 }); document.querySelector('a.back').click(); }); /* หน้าแรกของแอพจริงมี history.length = 1 (เบราว์เซอร์ทดสอบนับ about:blank ด้วย เลยจำลอง) */ await direct.waitForURL(/index\.html/, { timeout: 8000 });
+    check('ปุ่มลูกศรย้อนกลับ: ปิดชีตก่อน แล้วย้อน 1 ขั้นไปหน้าที่มา (ตัดต่ออัตโนมัติ ไม่ใช่หน้าแรก) · เปิดตรงๆ ไม่มีประวัติ = ไปหน้าสำรอง', b1.url === '/studio.html' && !b1.sheet && /footage\.html\?tab=plan/.test(b2) && /#settings$/.test(direct.url()), JSON.stringify([b1, b2, direct.url()]));
+    await direct.close();
     await hp.evaluate(() => { MWStore.del('mw_hist_v1'); MWStore.del('mw_studio_v1'); MWStore.del('mw_footage_direct_v1'); });
     await hp.close();
   }

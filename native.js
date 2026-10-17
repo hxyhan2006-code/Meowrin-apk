@@ -42,6 +42,13 @@
     if(navigator.share){ await navigator.share({ files:[new File([blob], name, { type:blob.type })], title:title || name }); return; }
     throw new Error("เครื่องนี้แชร์ไฟล์ไม่ได้ ใช้ปุ่มบันทึกแทน");
   }
+  /* ย้อนกลับ 1 ขั้นเหมือนกดปุ่มย้อนของมือถือ: ให้หน้านั้นปิดชั้นของตัวเองก่อน (window.MWBackHook: ชีต/หน้าต่าง/ชั้นอัลบั้ม ฯลฯ) ไม่มีอะไรให้ปิด = history.back() · เปิดหน้านี้ตรงๆ (ไม่มีประวัติ) = ไปที่ fallback
+     ปุ่มลูกศรมุมซ้ายบนของทุกหน้าใส่ data-back (href = fallback) ตัวนี้จับคลิกให้เอง ไม่ใช่ลิงก์ไปหน้าแรกของแอพอีกต่อไป */
+  async function goBack(fallback){
+    try{ if(window.MWBackHook && await window.MWBackHook()) return; }catch(e){}
+    if(history.length > 1) history.back(); else location.href = fallback || "/";
+  }
+  document.addEventListener("click", function(e){ var a = e.target.closest && e.target.closest("a[data-back]"); if(!a) return; e.preventDefault(); goBack(a.getAttribute("href")); });
   /* ปุ่มย้อนของมือถือ (ปลั๊กอิน @capacitor/app): หน้าที่ลงทะเบียน window.MWBackHook ปิดชั้นของตัวเองก่อน (คืน true) · ไม่มีอะไรให้ปิด: หน้าย่อย → ย้อนไปหน้าก่อนหน้า · หน้าแรก → ถามก่อนออกแอพ
      (ไม่มีปลั๊กอิน = ใช้พฤติกรรมเดิมของ Android ย้อนแล้วออกเลย · ต้องติดตั้ง APK ที่มีปลั๊กอินนี้) */
   (function(){
@@ -52,11 +59,11 @@
       try{
         if(window.MWBackHook && await window.MWBackHook()) return;
         var path = location.pathname.replace(/\/+$/, "");
-        if(path !== "" && path !== "/index.html"){ /* หน้าแรกจริงๆ เท่านั้นที่ถามออกแอพ · sub/index.html ก็ลงท้าย index.html แต่ไม่ใช่หน้าแรก */ if(history.length > 1) history.back(); else location.href = "/"; return; }
+        if(path !== "" && path !== "/index.html"){ /* หน้าแรกจริงๆ เท่านั้นที่ถามออกแอพ · sub/index.html ก็ลงท้าย index.html แต่ไม่ใช่หน้าแรก */ await goBack("/"); return; }
         var ok = window.MWDialog ? await MWDialog.confirm("ออกจากแอพไหม?", { ok:"ออก", cancel:"อยู่ต่อ" }) : true;
         if(ok) App.exitApp();
       } finally { busy = false; }
     });
   })();
-  window.MWNative = { isNative:isNative, save:save, share:share, canShare:canShare };
+  window.MWNative = { goBack:goBack, isNative:isNative, save:save, share:share, canShare:canShare };
 })();

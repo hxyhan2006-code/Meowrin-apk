@@ -21,7 +21,9 @@
     + '.mwhs-i{flex:1;min-width:0}.mwhs-i b{display:block;font-weight:500;overflow-wrap:anywhere}.mwhs-i small{color:#a1a1aa;font-size:12.5px}'
     + '.mwhs-b{display:flex;gap:6px;flex:none}.mwhs-b button{min-height:40px;padding:0 14px;border-radius:10px;border:1px solid rgba(57,217,138,.55);background:rgba(57,217,138,.14);color:#39d98a;font:600 14px "IBM Plex Sans Thai",sans-serif}'
     + '.mwhs-b button.d{border-color:rgba(255,255,255,.14);background:#1a221f;color:#f4f4f5;font-weight:400}.mwhs-b button.d.arm{border-color:#f59e0b;color:#f59e0b}'
-    + '.mwhs-r video{width:100%;max-height:44vh;border-radius:10px;background:#000}.mwhs-m{width:100%;margin:0;color:#f59e0b;font-size:12.5px}';
+    + '.mwhs-m{width:100%;margin:0;color:#f59e0b;font-size:12.5px}'
+    + '.mwhp{position:fixed;inset:0;z-index:9500;background:#000;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}.mwhp-h{display:flex;align-items:center;gap:10px;padding:10px 12px;color:#f4f4f5;font:500 15px "IBM Plex Sans Thai",sans-serif}.mwhp-h b{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+    + '.mwhp video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}.mwhp .mwhs-m{padding:10px 16px}';
   function ensure(){
     if(sheet) return;
     sheet = document.createElement("div"); sheet.className = "mwhs"; sheet.hidden = true;
@@ -51,10 +53,22 @@
       await MWHist.remove(it.id); render(); return;
     }
     if(it.kind !== "file"){ close(); openItem(it); return; }
-    var v = row.querySelector("video"); if(v){ v.pause(); v.remove(); return; }
-    if(!/\.(mp4|webm|mov)$/i.test(it.file.name) || !window.Capacitor || !it.file.uri){ say(row, "ไฟล์อยู่ที่ Documents/" + it.file.rel + " (เปิดจากแอพไฟล์ของมือถือ)"); return; }
-    v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = Capacitor.convertFileSrc(it.file.uri); row.appendChild(v); v.play().catch(function(){});
-    v.onerror = function(){ say(row, "เล่นไฟล์นี้ไม่ได้ (ไฟล์ถูกย้ายหรือลบไปแล้ว?)"); v.remove(); };
+    var msg = playFile(it); if(msg) say(row, msg);
+  }
+  var player = null, playHook = null;
+  function closePlayer(){ if(!player) return; var v = player.querySelector("video"); if(v){ v.pause(); v.removeAttribute("src"); v.load(); } player.remove(); player = null; if(window.MWBackHook === playHook) window.MWBackHook = playHook.prev; }
+  function playFile(it){ /* เล่นวิดีโอที่ส่งออกแบบเต็มจอ (ปุ่มปิด + ปุ่มย้อนของมือถือ) · คืนข้อความถ้าเล่นไม่ได้ */
+    if(!/\.(mp4|webm|mov)$/i.test(it.file.name) || !window.Capacitor || !Capacitor.convertFileSrc || !it.file.uri) return "ไฟล์อยู่ที่ Documents/" + it.file.rel + " (เปิดจากแอพไฟล์ของมือถือ)";
+    ensure(); closePlayer();
+    player = document.createElement("div"); player.className = "mwhp";
+    player.innerHTML = '<div class="mwhp-h"><b></b><button class="mwhs-x" type="button" aria-label="ปิด">ปิด</button></div><video controls playsinline autoplay></video><p class="mwhs-m" hidden></p>';
+    player.querySelector("b").textContent = it.title || it.file.name;
+    var v = player.querySelector("video"); v.src = Capacitor.convertFileSrc(it.file.uri);
+    v.onerror = function(){ var m = player.querySelector(".mwhs-m"); m.hidden = false; m.textContent = "เล่นไฟล์นี้ไม่ได้ (ไฟล์ถูกย้ายหรือลบไปแล้ว?) · Documents/" + it.file.rel; };
+    player.querySelector(".mwhs-x").addEventListener("click", closePlayer);
+    document.body.appendChild(player);
+    var prev = window.MWBackHook; playHook = function(){ if(player){ closePlayer(); return true; } return prev ? prev() : false; }; playHook.prev = prev; window.MWBackHook = playHook;
+    return "";
   }
   function openItem(it){ /* เปิดงานเก่ากลับมาทำต่อ · รอเขียนฐานข้อมูลแป๊บก่อนเปลี่ยนหน้า */
     if(it.kind === "plan"){ MWStore.set("mw_footage_direct_v1", it.data); setTimeout(function(){ location.href = P + "footage.html?tab=plan&hist=1"; }, 200); }
@@ -64,7 +78,7 @@
     ensure(); cur = k; document.getElementById("mwhsT").textContent = TOOLS[k].title + " ล่าสุด"; render(); sheet.hidden = false;
     prevHook = window.MWBackHook; window.MWBackHook = function(){ if(!sheet.hidden){ close(); return true; } return prevHook ? prevHook() : false; }; /* ปุ่มย้อนของมือถือปิดชีตก่อน */
   }
-  function close(){ if(!sheet || sheet.hidden) return; sheet.hidden = true; sheet.querySelectorAll("video").forEach(function(v){ v.pause(); }); window.MWBackHook = prevHook; }
+  function close(){ if(!sheet || sheet.hidden) return; sheet.hidden = true; window.MWBackHook = prevHook; }
   function badge(btn){ var n = items(btn.dataset.hist).length, i = btn.querySelector(".mwhs-n"); if(!i){ i = document.createElement("i"); i.className = "mwhs-n"; btn.appendChild(i); } i.hidden = !n; i.textContent = n > 99 ? "99+" : n; }
   function init(){
     if(!document.querySelector("[data-hist]")) return;
@@ -74,6 +88,6 @@
       MWHist.onChange(function(){ badge(btn); }); MWHist.ready.then(function(){ badge(btn); });
     });
   }
-  window.MWHistSheet = { open:open, close:close, openItem:openItem };
+  window.MWHistSheet = { open:open, close:close, openItem:openItem, playFile:playFile };
   if(window.MWHist) init();
 })();

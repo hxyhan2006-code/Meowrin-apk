@@ -33,10 +33,7 @@
     }
     if(it.kind !== "file"){ MWHistSheet.openItem(it); return; } /* ตารางตัดต่อ/โปรเจกต์สตูดิโอ: ตัวเดียวกับปุ่มประวัติในแต่ละเครื่องมือ */
     /* ไฟล์ */
-    var old = row.querySelector("video"); if(old){ old.pause(); old.remove(); return; }
-    if(!/\.(mp4|webm|mov)$/i.test(it.file.name) || !window.Capacitor || !it.file.uri){ msg("ไฟล์อยู่ที่ Documents/" + it.file.rel + " (เปิดจากแอพไฟล์ของมือถือ)"); return; }
-    var v = document.createElement("video"); v.controls = true; v.playsInline = true; v.src = Capacitor.convertFileSrc(it.file.uri); row.appendChild(v); v.play().catch(function(){});
-    v.onerror = function(){ msg("เล่นไฟล์นี้ไม่ได้ (ไฟล์ถูกย้ายหรือลบไปแล้ว?) · ที่อยู่เดิม Documents/" + it.file.rel); v.remove(); };
+    var why = MWHistSheet.playFile(it); if(why) msg(why); /* เล่นเต็มจอ เหมือนปุ่มประวัติในแต่ละเครื่องมือ */
   });
   $("hsMax").addEventListener("change", function(){ MWHist.setMax(this.value); render(); });
   $("hsPurge").addEventListener("click", async function(){
