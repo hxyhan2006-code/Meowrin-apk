@@ -413,6 +413,14 @@ try {
   await hb.goBack(); await hb.waitForFunction(() => window.MW, null, { timeout: 20000 }); await hb.waitForTimeout(400);
   check('ย้อนจากหน้าเครื่องมือ → กลับมาแท็บตั้งค่า (ไม่เด้งไปแท็บคลิป)', await hb.evaluate(() => document.querySelector('nav button[aria-selected=true]').dataset.tab === 'settings'));
   await hb.close();
+  const hp = await browser.newPage({ viewport: { width: 380, height: 820 } });
+  await hp.route(/\/app\.js/, (r) => r.abort()); // บล็อก app.js: ถ้าแท็บเป็นตั้งค่าแล้ว แปลว่า store.js ตั้งให้ก่อน
+  await hp.goto(base + '/index.html#settings', { waitUntil: 'commit' });
+  await hp.waitForSelector('#tab-settings', { state: 'attached' });
+  await hp.waitForFunction(() => document.readyState !== 'loading'); await hp.waitForTimeout(300);
+  const early = await hp.evaluate(() => document.getElementById('tab-settings').classList.contains('on') && !!document.getElementById('tab-clips') && !document.getElementById('tab-clips').classList.contains('on'));
+  check('เปิดหน้าแรกด้วย #settings → วาดแท็บตั้งค่าเลย (store.js ตั้งก่อนข้อมูลโหลด ไม่แว้บแท็บคลิป)', early);
+  await hp.close();
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

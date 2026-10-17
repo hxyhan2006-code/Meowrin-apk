@@ -4,6 +4,8 @@
    ครั้งแรก: คัดลอกทุก key mw_* จาก localStorage เข้ามา (ไม่ลบของเดิม) · ขอ storage.persist() กันเบราว์เซอร์ลบเองตอนเครื่องเต็ม
    หลายแท็บ (แอพหลัก + หน้าฟุตเทจ) อัปเดตกันผ่าน BroadcastChannel
    โหลดเสร็จค่อยโหลดสคริปต์ที่เหลือตามลำดับใน data-boot (สคริปต์อื่นเลยใช้ MWStore.get ได้ทันทีตอนเริ่ม) */
+/* กลับมาแท็บเดิมก่อนวาดหน้าแรก (ลิงก์ #settings ที่ app.js showTab ตั้งไว้) ไม่งั้นเห็นแท็บคลิปแว้บหนึ่งระหว่างรอข้อมูลโหลด */
+(function(){ try{ var t = location.hash.slice(1), sec = t && document.getElementById("tab-" + t); if(!sec || !document.querySelector("nav button[data-tab]")) return; document.querySelectorAll("section").forEach(function(x){ x.classList.toggle("on", x === sec); }); document.querySelectorAll("nav button[data-tab]").forEach(function(b){ b.setAttribute("aria-selected", b.dataset.tab === t ? "true" : "false"); }); }catch(e){} })();
 (function(){
   "use strict";
   var DB = "mw_store_v1", ST = "kv", MIG = "__migrated", mem = {}, db = null, dirty = {}, timer = 0, listeners = [];
