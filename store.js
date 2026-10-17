@@ -4,6 +4,17 @@
    ครั้งแรก: คัดลอกทุก key mw_* จาก localStorage เข้ามา (ไม่ลบของเดิม) · ขอ storage.persist() กันเบราว์เซอร์ลบเองตอนเครื่องเต็ม
    หลายแท็บ (แอพหลัก + หน้าฟุตเทจ) อัปเดตกันผ่าน BroadcastChannel
    โหลดเสร็จค่อยโหลดสคริปต์ที่เหลือตามลำดับใน data-boot (สคริปต์อื่นเลยใช้ MWStore.get ได้ทันทีตอนเริ่ม) */
+/* กันหน้าไม่มีสไตล์ (เจอบนมือถือหลังอัปเดตแอพ · สาเหตุจริงยังไม่รู้): โหลดเสร็จแล้วไฟล์ css ของเราเองโหลดไม่ติด → โหลดหน้าซ้ำ 1 รอบ แล้วจดลง log ของ OTA (ตั้งค่า > สถานะชุดไฟล์) · ซ้ำอีก = ขึ้นปุ่มให้แตะโหลดใหม่ */
+window.addEventListener("load", function(){ try{
+  var bad = [].filter.call(document.querySelectorAll('link[rel="stylesheet"]'), function(l){ if(l.href.indexOf(location.origin) !== 0) return false; try{ return !l.sheet || l.sheet.cssRules.length === 0; }catch(e){ return true; } /* โหลดพังก็ยังมี sheet แต่ว่าง/อ่านกฎไม่ได้ */ }).map(function(l){ return l.getAttribute("href").split("?")[0]; });
+  if(!bad.length) return;
+  var again = sessionStorage.getItem("mw_css_retry") === "1";
+  try{ var m = JSON.parse(localStorage.getItem("ota_state_v1") || "{}") || {}; m.css = (again ? "ซ้ำ" : "ครั้งแรก") + " · " + bad.join(",") + " · " + new Date().toLocaleTimeString("th-TH"); localStorage.setItem("ota_state_v1", JSON.stringify(m)); }catch(e){}
+  if(!again){ sessionStorage.setItem("mw_css_retry", "1"); location.reload(); return; }
+  var b = document.createElement("button"); b.textContent = "หน้าโหลดไม่ครบ แตะเพื่อโหลดใหม่"; b.style.cssText = "position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;padding:14px;font-size:16px";
+  b.onclick = function(){ sessionStorage.removeItem("mw_css_retry"); location.reload(); }; document.body.appendChild(b);
+}catch(e){} });
+
 /* กลับมาแท็บเดิมก่อนวาดหน้าแรก (ลิงก์ #settings ที่ app.js showTab ตั้งไว้) ไม่งั้นเห็นแท็บคลิปแว้บหนึ่งระหว่างรอข้อมูลโหลด */
 (function(){ try{ var t = location.hash.slice(1), sec = t && document.getElementById("tab-" + t); if(!sec || !document.querySelector("nav button[data-tab]")) return; document.querySelectorAll("section").forEach(function(x){ x.classList.toggle("on", x === sec); }); document.querySelectorAll("nav button[data-tab]").forEach(function(b){ b.setAttribute("aria-selected", b.dataset.tab === t ? "true" : "false"); }); }catch(e){} })();
 (function(){

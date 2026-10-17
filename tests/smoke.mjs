@@ -387,6 +387,18 @@ try {
   const r2r = await r2p.evaluate(() => { const full = { account: 'a', bucket: 'b', keyId: 'k', secret: 's' }; const old = R2.cfg(); R2.setCfg({ ...full }); const off = R2.ready(); R2.setCfg({ ...full, on: true }); const on = R2.ready(); R2.setCfg(old); const f = [...document.querySelectorAll('details.fold')].find((d) => /Cloudflare R2/.test(d.textContent)); return { off, on, panelHidden: !!f && getComputedStyle(f).display === 'none', bg: getComputedStyle(document.getElementById('bgR2')).display }; });
   check('R2: ตั้งค่าครบแต่ไม่มี on → ไม่ทำงาน (ready=false) · on:true ถึงเปิดได้ · แผงตั้งค่า R2 และช่องเพดาน R2 ซ่อนอยู่', r2r.off === false && r2r.on === true && r2r.panelHidden && r2r.bg === 'none', JSON.stringify(r2r));
   await r2p.close();
+  // หน้าไม่มีสไตล์ (css โหลดไม่ติดครั้งแรก) → โหลดซ้ำ 1 รอบเอง + จดลง log · ติดทุกครั้ง = ขึ้นปุ่มโหลดใหม่ ไม่วนลูป
+  const csx = await browser.newContext({ viewport: { width: 380, height: 820 }, serviceWorkers: 'block' }); const csp = await csx.newPage(); let cssHits = 0;
+  await csp.route(/\/style\.css/, (r) => { cssHits++; return cssHits === 1 ? r.abort() : r.continue(); });
+  await csp.goto(base + '/index.html'); await csp.waitForFunction(() => window.MW, null, { timeout: 20000 }); await csp.waitForTimeout(500);
+  const cs1 = await csp.evaluate(() => ({ styled: !!getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(), log: JSON.parse(localStorage.getItem('ota_state_v1') || '{}').css || '', btn: [...document.querySelectorAll('button')].some((b) => /โหลดไม่ครบ/.test(b.textContent)) }));
+  check('css โหลดไม่ติดครั้งแรก → โหลดหน้าซ้ำเอง 1 รอบจนมีสไตล์ · จดลง log (ไม่ขึ้นปุ่มเตือน)', cs1.styled && /ครั้งแรก · style\.css/.test(cs1.log) && cssHits === 2 && !cs1.btn, JSON.stringify([cs1, cssHits]));
+  await csp.close();
+  const csq = await csx.newPage(); await csq.route(/\/style\.css/, (r) => r.abort());
+  await csq.goto(base + '/index.html'); await csq.waitForFunction(() => window.MW, null, { timeout: 20000 }).catch(() => {}); await csq.waitForTimeout(1200);
+  const cs2 = await csq.evaluate(() => ({ btn: [...document.querySelectorAll('button')].some((b) => /โหลดไม่ครบ/.test(b.textContent)), log: JSON.parse(localStorage.getItem('ota_state_v1') || '{}').css || '' }));
+  check('css โหลดไม่ติดซ้ำสองรอบ → ขึ้นปุ่ม "แตะเพื่อโหลดใหม่" ไม่วนลูปโหลดหน้า', cs2.btn && /ซ้ำ/.test(cs2.log), JSON.stringify(cs2));
+  await csq.close(); await csx.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
   await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });

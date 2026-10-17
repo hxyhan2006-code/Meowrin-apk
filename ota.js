@@ -99,7 +99,7 @@
     var info = document.getElementById("otaInfo"), row = document.getElementById("otaBtn"); if(!info) return;
     row.hidden = !usable();
     var l = LOCAL || {}, m = meta(); info.className = "hint" + (bad ? " bad" : "");
-    info.textContent = msg || ("ชุดไฟล์ที่ใช้: v" + (l.version || window.MW_VERSION || "?") + (l.id ? " (" + l.id.slice(0, 8) + ")" : "") + " · " + (PATH.indexOf("/" + DIR + "/") >= 0 ? "จากโฟลเดอร์ที่ดาวน์โหลด" : "จากไฟล์ที่ห่อมากับ APK") + (m.persisted ? " · จำไว้แล้ว" : "") + (m.log ? " · " + m.log : "") + (m.boot ? " · [" + m.boot + "]" : "") + " · path=" + (PATH ? PATH.split("/").slice(-2).join("/") : "-"));
+    info.textContent = msg || ("ชุดไฟล์ที่ใช้: v" + (l.version || window.MW_VERSION || "?") + (l.id ? " (" + l.id.slice(0, 8) + ")" : "") + " · " + (PATH.indexOf("/" + DIR + "/") >= 0 ? "จากโฟลเดอร์ที่ดาวน์โหลด" : "จากไฟล์ที่ห่อมากับ APK") + (m.persisted ? " · จำไว้แล้ว" : "") + (m.log ? " · " + m.log : "") + (m.boot ? " · [" + m.boot + "]" : "") + (m.css ? " · สไตล์โหลดไม่ติด: " + m.css : "") + " · path=" + (PATH ? PATH.split("/").slice(-2).join("/") : "-"));
   }
   async function manual(){
     var btn = document.getElementById("otaBtn"); btn.disabled = true;
