@@ -3,17 +3,27 @@
    หลังก๊อปเสร็จสแกนใหม่ → local.js เล่นจากสำเนาก่อน · แผงอยู่ footage.html แท็บตั้งค่า (#libGo #libStop #libInfo #tagLib) */
 (function(){
   "use strict";
-  var $ = function(id){ return document.getElementById(id); }, busy = false, stopF = false, msg = "";
+  var $ = function(id){ return document.getElementById(id); }, busy = false, stopF = false, msg = "", hidMsg = ""; /* hidMsg = ผลการซ่อนจากแกลเลอรี โชว์ท้ายข้อความในแผง */
   var ROOT = "/Gallery/owner/";
   function F(){ return window.MWLocal && MWLocal.plug ? MWLocal.plug("Filesystem") : null; }
   function safe(n){ return String(n).replace(/[\\/:*?"<>|]/g, "_").trim() || "ไม่ระบุ"; }
   function gb(b){ return b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : Math.max(1, Math.round(b / 1e6)) + " MB"; }
+  async function hide(){ /* ไฟล์ .nomedia ในโฟลเดอร์สำเนา: แกลเลอรีของมือถือไม่แสดงสำเนา (ไม่งั้นสำเนาที่สร้างวันนี้ลอยขึ้นบนสุดดันรูปส่วนตัวลงล่าง) · แอพอ่านไฟล์ตรงจากโฟลเดอร์ ไม่ผ่านแกลเลอรี จึงยังเล่นได้ปกติ · ลบไฟล์นี้ = แกลเลอรีเห็นสำเนากลับมา */
+    var fs = F(); if(!fs) return; var path = MWLocal.LIBROOT + "/.nomedia";
+    try{ await fs.stat({ path:path, directory:"DOCUMENTS" }); hidMsg = "ซ่อนจากแกลเลอรีแล้ว (มีไฟล์ .nomedia อยู่)"; }
+    catch(e){
+      try{ await fs.writeFile({ path:path, data:"\n", directory:"DOCUMENTS", encoding:"utf8", recursive:true }); hidMsg = "สร้างไฟล์ .nomedia แล้ว (แกลเลอรีจะซ่อนสำเนาหลังสแกนใหม่/รีสตาร์ทมือถือ)"; }
+      catch(err){ hidMsg = "สร้างไฟล์ .nomedia ไม่ได้: " + ((err && (err.message || err.errorMessage)) || err); }
+    }
+    render();
+  }
+  function miss(t){ var g = {}; t.forEach(function(f){ g[f.album] = (g[f.album] || 0) + 1; }); return Object.keys(g).sort(function(a, b){ return g[b] - g[a]; }).slice(0, 4).map(function(k){ return k + " " + g[k]; }).join(", "); } /* ขาดสำเนาเยอะสุด 4 อัลบั้ม (ไว้หาสาเหตุ) */
   function todo(){ return (window.MWLocal ? MWLocal.list() : []).filter(function(f){ return !f.lib && f.dir && f.dir.indexOf(ROOT) >= 0; }); } /* ยังไม่มีสำเนาในแอพ */
   function total(){ return (window.MWLocal ? MWLocal.list() : []).filter(function(f){ return f.dir && f.dir.indexOf(ROOT) >= 0 || f.lib; }); }
   function render(){
     var info = $("libInfo"); if(!info) return;
     var t = todo(), all = total(), bytes = t.reduce(function(a, f){ return a + (f.size || 0); }, 0), ok = !!F();
-    info.textContent = msg || (!ok ? "ใช้ได้เฉพาะในแอพ APK" : !all.length ? "ยังไม่ได้สแกน · สแกนวิดีโอในมือถือก่อน (แผงด้านบน)" : t.length ? "ยังไม่มีสำเนา " + t.length + "/" + all.length + " คลิป (" + gb(bytes) + ") · ต้นฉบับไม่ถูกแตะ ก๊อปแล้วจะกินพื้นที่เพิ่มเท่ากัน" : "ก๊อปครบแล้ว " + all.length + " คลิป");
+    info.textContent = (msg || (!ok ? "ใช้ได้เฉพาะในแอพ APK" : !all.length ? "ยังไม่ได้สแกน · สแกนวิดีโอในมือถือก่อน (แผงด้านบน)" : t.length ? "ยังไม่มีสำเนา " + t.length + "/" + all.length + " คลิป (" + gb(bytes) + ") · ต้นฉบับไม่ถูกแตะ ก๊อปแล้วจะกินพื้นที่เพิ่มเท่ากัน" : "ก๊อปครบแล้ว " + all.length + " คลิป")) + (hidMsg ? " · " + hidMsg : "") + (t.length ? " · ขาดสำเนาในอัลบั้ม: " + miss(t) + " · เจอไฟล์ในโฟลเดอร์สำเนา " + MWLocal.libInfo().files + (MWLocal.libInfo().bad.length ? " · อ่านไม่ได้: " + MWLocal.libInfo().bad.join("; ") : "") : "");
     $("tagLib").textContent = !ok ? "เฉพาะแอพ" : busy ? "กำลังก๊อป" : all.length ? (all.length - t.length) + "/" + all.length : "-"; $("tagLib").className = "state " + (ok && all.length && !t.length ? "ok" : "idle");
     $("libGo").disabled = busy || !ok || !t.length; $("libStop").hidden = !busy;
   }
@@ -29,6 +39,7 @@
     var bytes = t.reduce(function(a, f){ return a + (f.size || 0); }, 0);
     if(!(await MWDialog.confirm("ก๊อป " + t.length + " คลิป (" + gb(bytes) + ") เข้าแอพ?\nต้นฉบับไม่ถูกแตะ แต่จะกินพื้นที่มือถือเพิ่มเท่ากัน · หยุดได้ ทำต่อได้ · ใช้เวลาสักพัก ควรเสียบสายชาร์จ", { ok:"เริ่มก๊อป", cancel:"ยกเลิก" }))) return;
     busy = true; stopF = false; var done = 0, doneB = 0, fail = 0, last = "";
+    await hide();
     try{ if(window.FT && FT.ui && FT.ui.wake) await FT.ui.wake(true); }catch(e){}
     render();
     for(var i = 0; i < t.length && !stopF; i++){
@@ -46,5 +57,6 @@
     $("libGo").addEventListener("click", run); $("libStop").addEventListener("click", function(){ stopF = true; msg = "กำลังหยุดหลังคลิปนี้..."; render(); });
     $("libFold").addEventListener("toggle", function(){ if(this.open){ if(!busy) render(); } });
     document.addEventListener("ft:scan", function(){ if(!busy) render(); }); render();
+    setTimeout(function(){ hide().catch(function(){}); }, 1500); /* เปิดหน้ามาแล้วยังไม่มีไฟล์ = สร้างให้ (คนที่ก๊อปไว้ก่อนอัปเดตนี้ก็ได้ด้วย) */
   }
 })();

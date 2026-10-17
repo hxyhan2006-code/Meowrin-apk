@@ -355,6 +355,7 @@ try {
         readdir: async ({ path, directory }) => { if (directory === 'DOCUMENTS') { if (path === 'Meowrin/library') return { files: Object.keys(fsx.lib).map((k) => ({ name: k.split('/').pop(), type: 'directory' })) }; if (fsx.lib[path]) return { files: fsx.lib[path] }; throw new Error('nope'); }
           if (path.includes('/Meowrin/library/')) return { files: [{ name: 'old.mp4', type: 'file', size: 50, uri: 'file:///docs/Meowrin/library/luffy/old.mp4' }, ...(fsx.lib['Meowrin/library/luffy'] || []).filter((f) => f.name !== 'old.mp4')] }; /* MediaStore เห็นโฟลเดอร์สำเนาเป็นอัลบั้มด้วย */
           return { files: [{ name: 'old.mp4', type: 'file', size: 50, uri: 'file:///storage/Pictures/Gallery/owner/luffy/old.mp4' }, { name: 'new1.mp4', type: 'file', size: 70, uri: 'file:///storage/Pictures/Gallery/owner/luffy/new1.mp4' }, { name: 'new2.mp4', type: 'file', size: 80, uri: 'file:///storage/Pictures/Gallery/owner/luffy/new2.mp4' }] }; },
+        stat: async (o) => { if (fsx.hidden && o.path === 'Meowrin/library/.nomedia') return {}; throw new Error('nope'); }, writeFile: async (o) => { fsx.ops.push(['write', o.path, o.directory]); if (o.path === 'Meowrin/library/.nomedia') fsx.hidden = 1; },
         mkdir: async (o) => { fsx.ops.push(['mkdir', o.path]); }, deleteFile: async (o) => { fsx.ops.push(['del', o.path]); throw new Error('no such'); },
         copy: async (o) => { fsx.ops.push(['copy', o.from, o.to]); }, rename: async (o) => { fsx.ops.push(['rename', o.from, o.to]); const d = o.to.replace(/\/[^/]+$/, ''), n = o.to.split('/').pop(); (fsx.lib[d] = fsx.lib[d] || []).push({ name: n, type: 'file', size: n === 'new1.mp4' ? 70 : 80, uri: 'file:///docs/' + o.to }); } } } }; });
   await lb.goto(base.replace('localhost', '127.0.0.1') + '/footage.html'); await lb.waitForFunction(() => window.MWLib && window.MWLocal && window.FT && FT.ui, null, { timeout: 20000 });
@@ -367,6 +368,10 @@ try {
   const l1 = await lb.evaluate(() => ({ ops: window.__fs.ops.filter((o) => o[0] === 'copy' || o[0] === 'rename').map((o) => o.slice(1).join('>')), info: document.getElementById('libInfo').textContent, todo: MWLib.todo().length, url: MWLocal.urlOf({ name: 'new1.mp4', size: 70 }), n: MWLocal.list().length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
   check('เก็บคลิปไว้ในแอพ: ข้ามคลิปที่มีสำเนาแล้ว (old) · ถามก่อนพร้อมบอกว่าต้นฉบับไม่ถูกแตะ · ก๊อป 2 คลิปไปชื่อ .part แล้วเปลี่ยนชื่อ · สแกนใหม่แล้วเล่นจากสำเนา · ไม่ลบต้นฉบับ',
     l0.todo.join() === 'new1.mp4,new2.mp4' && l0.info.includes('1/3') === false && lDlg && l1.ops.length === 4 && l1.ops[0] === 'file:///storage/Pictures/Gallery/owner/luffy/new1.mp4>Meowrin/library/luffy/new1.mp4.part' && l1.ops[1] === 'Meowrin/library/luffy/new1.mp4.part>Meowrin/library/luffy/new1.mp4' && l1.todo === 0 && /ก๊อปครบแล้ว 3 คลิป/.test(l1.info) && /docs\/Meowrin\/library\/luffy\/new1\.mp4$/.test(l1.url || '') && l1.n === 3 && !l1.over && !lbE.length, JSON.stringify([l0, l1]) + lbE.join());
+  const nm = await lb.evaluate(() => window.__fs.ops.filter((o) => o[0] === 'write').map((o) => o.join('|')));
+  const nmInfo = await lb.evaluate(() => document.getElementById('libInfo').textContent);
+  check('เก็บคลิปไว้ในแอพ: แผงบอกผลการซ่อนจากแกลเลอรี (ให้ Han เห็นเองไม่ต้องเปิดดูไฟล์)', /สร้างไฟล์ \.nomedia แล้ว|ซ่อนจากแกลเลอรีแล้ว/.test(nmInfo), nmInfo);
+  check('เก็บคลิปไว้ในแอพ: สร้าง .nomedia ในโฟลเดอร์สำเนา (ซ่อนจากแกลเลอรี) ครั้งเดียว ไม่เขียนซ้ำ', nm.length === 1 && nm[0] === 'write|Meowrin/library/.nomedia|DOCUMENTS', JSON.stringify(nm));
   await lb.close();
   // เสียงพากย์: สร้างแล้วเก็บเป็นไฟล์ใน Documents/Meowrin/voice ด้วย (mp3+json) · IndexedDB ว่าง + มีไฟล์ = ดึงกลับให้เอง
   const vcx = await browser.newContext({ viewport: { width: 380, height: 820 } }); const vp = await vcx.newPage();
@@ -440,6 +445,15 @@ try {
   const sbr = await sb.evaluate(() => ({ path: location.pathname, dlg: document.body.textContent.includes('ออกจากแอพไหม') }));
   check('ปุ่มย้อนมือถือในหน้าซับจอเขียว → กลับหน้าแรก ไม่ถามออกแอพ', sbr.path === '/index.html' && !sbr.dlg, JSON.stringify(sbr));
   await sb.close();
+  // คลิปชื่อ+ขนาดเดียวกันอยู่ 2 อัลบั้ม (ซ้ำข้ามอัลบั้ม) + มีสำเนาในโฟลเดอร์สำเนา → ทั้งสองรายการต้องนับว่ามีสำเนา (เดิมนับตกอันหนึ่ง = "ยังไม่มีสำเนา 99") · โฟลเดอร์สำเนาอ่านไม่ได้ต้องจดไว้
+  const dq = await context.newPage();
+  await dq.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { Media: { getAlbums: async () => ({ albums: [{ name: 'luffy', identifier: '/s/Pictures/Gallery/owner/luffy' }, { name: 'zoro', identifier: '/s/Pictures/Gallery/owner/zoro' }] }) },
+    Filesystem: { stat: async () => { throw new Error('nope'); }, writeFile: async () => {}, readdir: async ({ path, directory }) => { if (directory === 'DOCUMENTS') { if (path === 'Meowrin/library') return { files: [{ name: 'luffy', type: 'directory' }, { name: 'bad', type: 'directory' }] }; if (path === 'Meowrin/library/luffy') return { files: [{ name: 'dup.mp4', type: 'file', size: 90, uri: 'file:///docs/Meowrin/library/luffy/dup.mp4' }] }; throw new Error('EACCES'); }
+      return { files: [{ name: 'dup.mp4', type: 'file', size: 90, uri: 'file:///s/Pictures/Gallery/owner/x/dup.mp4' }] }; } } } }; });
+  await dq.goto(base.replace('localhost', '127.0.0.1') + '/footage.html'); await dq.waitForFunction(() => window.MWLib && window.MWLocal && window.FT && FT.ui, null, { timeout: 20000 });
+  const dqr = await dq.evaluate(async () => { await MWLocal.scan(); return { todo: MWLib.todo().length, list: MWLocal.list().filter((f) => f.name === 'dup.mp4').length, bad: MWLocal.libInfo().bad }; });
+  check('สแกนสำเนา: คลิปซ้ำข้ามอัลบั้มนับว่ามีสำเนาทั้งสองรายการ · โฟลเดอร์สำเนาที่อ่านไม่ได้ถูกจดไว้', dqr.todo === 0 && dqr.list === 2 && dqr.bad.length === 1 && /^bad:/.test(dqr.bad[0]), JSON.stringify(dqr));
+  await dq.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
   await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });
