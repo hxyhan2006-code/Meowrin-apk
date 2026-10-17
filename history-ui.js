@@ -31,8 +31,7 @@
       if(ok){ await MWHist.remove(it.id); render(); }
       return;
     }
-    if(it.kind === "plan"){ MWStore.set("mw_footage_direct_v1", it.data); location.href = "footage.html?tab=plan&hist=1"; return; }
-    if(it.kind === "studio"){ MWStore.set("mw_studio_v1", { cur:it.data }); location.href = "studio.html"; return; }
+    if(it.kind !== "file"){ MWHistSheet.openItem(it); return; } /* ตารางตัดต่อ/โปรเจกต์สตูดิโอ: ตัวเดียวกับปุ่มประวัติในแต่ละเครื่องมือ */
     /* ไฟล์ */
     var old = row.querySelector("video"); if(old){ old.pause(); old.remove(); return; }
     if(!/\.(mp4|webm|mov)$/i.test(it.file.name) || !window.Capacitor || !it.file.uri){ msg("ไฟล์อยู่ที่ Documents/" + it.file.rel + " (เปิดจากแอพไฟล์ของมือถือ)"); return; }

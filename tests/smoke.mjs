@@ -654,6 +654,31 @@ try {
     await hp.click('nav button[data-tab="settings"]'); await hp.evaluate(() => { document.getElementById('hsFold').open = true; document.querySelector('#hsList .hs[data-id="studio-p1"] [data-o]').click(); });
     await hp.waitForURL(/studio\.html/); await hp.waitForFunction(() => window.MWStudioUI, null, { timeout: 20000 });
     check('ประวัติงาน: เปิดโปรเจกต์สตูดิโอเก่าจากประวัติ → สตูดิโอเปิดโปรเจกต์นั้น · ไม่มี error', (await hp.evaluate(() => document.getElementById('stName').textContent)) === 'โปรเจกต์ทดสอบ' && !hErr.length, hErr.join(' | '));
+    // ปุ่มประวัติสามขีดในแต่ละเครื่องมือ (history-sheet.js): สตูดิโอ (ว่างก็มี) · ตัดต่ออัตโนมัติ (เฉพาะโหมดตัดต่อ) · ซับจอเขียว
+    const rows = (p) => p.evaluate(() => [...document.querySelectorAll('.mwhs .mwhs-r b')].map((b) => b.textContent).join('|'));
+    const badge = (p, sel) => p.evaluate((sel) => { const b = document.querySelector(sel + ' .mwhs-n'); return b && !b.hidden ? b.textContent : ''; }, sel);
+    await hp.evaluate(() => { MWStore.del('mw_studio_v1'); }); await hp.reload(); await hp.waitForFunction(() => window.MWHistSheet && document.getElementById('stEmpty'), null, { timeout: 20000 }); await hp.waitForTimeout(400);
+    const st0 = await hp.evaluate(() => ({ empty: !document.getElementById('stEmpty').hidden, btn: !!document.getElementById('stHist').offsetParent }));
+    await hp.click('#stHist'); await hp.waitForTimeout(200);
+    const stb = await badge(hp, '#stHist'), strows = await rows(hp);
+    check('ประวัติในสตูดิโอ: ไม่มีโปรเจกต์ก็มีปุ่มสามขีด + ป้ายจำนวน · ชีตโชว์โปรเจกต์เก่า (มีรูปย่อ/จำนวนคลิป)', st0.empty && st0.btn && stb === '1' && strows === 'โปรเจกต์ทดสอบ', JSON.stringify([st0, stb, strows]));
+    await hp.evaluate(() => document.querySelector('.mwhs [data-o]').click()); await hp.waitForFunction(() => window.MWStudioUI, null, { timeout: 20000 });
+    check('ประวัติในสตูดิโอ: แตะ "เปิด" → โปรเจกต์นั้นเปิดขึ้นมา', (await hp.evaluate(() => document.getElementById('stName').textContent)) === 'โปรเจกต์ทดสอบ');
+    await hp.goto(base + '/footage.html?tab=plan'); await hp.waitForFunction(() => window.FT && window.MWHistSheet, null, { timeout: 20000 }); await hp.waitForTimeout(400);
+    await hp.click('#planHistBtn'); await hp.waitForTimeout(200);
+    const pb = await badge(hp, '#planHistBtn'), prows = await rows(hp);
+    check('ประวัติในตัดต่ออัตโนมัติ: ปุ่มสามขีดโชว์เฉพาะโหมดตัดต่อ · ชีตมีตารางช็อต + วิดีโอที่ส่งออกของเครื่องมือนี้ (ไม่มีโปรเจกต์สตูดิโอปน)', pb === '2' && /ตารางทดสอบ/.test(prows) && /meowrin_1234\.mp4/.test(prows) && !/โปรเจกต์ทดสอบ/.test(prows), JSON.stringify([pb, prows]));
+    await hp.evaluate(() => document.querySelector('.mwhs [data-id="plan-1"] [data-o]').click()); await hp.waitForURL(/hist=1/); await hp.waitForFunction(() => document.getElementById('plText'), null, { timeout: 20000 }); await hp.waitForTimeout(500);
+    check('ประวัติในตัดต่ออัตโนมัติ: แตะ "เปิด" ตาราง → ใส่บทกลับมา', (await hp.evaluate(() => document.getElementById('plText').value)) === 'บทจากประวัติ');
+    await hp.goto(base + '/footage.html'); await hp.waitForFunction(() => window.FT, null, { timeout: 20000 });
+    check('ประวัติ: หน้าอัลบั้ม (ไม่ใช่โหมดตัดต่อ) ไม่มีปุ่มสามขีดของตัดต่ออัตโนมัติ', !(await hp.evaluate(() => !!document.getElementById('planHistBtn').offsetParent)));
+    await hp.goto(base + '/sub/index.html'); await hp.waitForFunction(() => window.MWHistSheet && window.MWHist, null, { timeout: 20000 });
+    await hp.evaluate(() => { MWHist.addFile({ name: 'green_screen_subtitle.mp4', rel: 'Meowrin/green_screen_subtitle.mp4', uri: 'file:///g.mp4', size: 2097152 }); MWHist.addFile({ name: 'subtitle.srt', rel: 'Meowrin/subtitle.srt', uri: 'file:///s.srt', size: 900 }); }); await hp.waitForTimeout(300);
+    await hp.click('#subHist'); await hp.waitForTimeout(200);
+    const sb = await badge(hp, '#subHist'), srows = await rows(hp), sov = await hp.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
+    check('ประวัติในซับจอเขียว: ปุ่มสามขีด + ชีตโชว์ไฟล์ซับ (mp4/srt) เท่านั้น · หน้าไม่ล้นจอ', sb === '2' && /green_screen_subtitle\.mp4/.test(srows) && /subtitle\.srt/.test(srows) && !/ตารางทดสอบ|meowrin_1234/.test(srows) && !sov, JSON.stringify([sb, srows, sov]));
+    await hp.evaluate(() => { const d = document.querySelector('.mwhs [data-d]'); d.click(); d.click(); }); await hp.waitForTimeout(150);
+    check('ประวัติ: ลบด้วยการแตะสองครั้ง (แตะครั้งเดียวไม่ลบ)', (await rows(hp)).split('|').length === 1);
     await hp.evaluate(() => { MWStore.del('mw_hist_v1'); MWStore.del('mw_studio_v1'); MWStore.del('mw_footage_direct_v1'); });
     await hp.close();
   }

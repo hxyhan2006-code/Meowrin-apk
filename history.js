@@ -9,6 +9,7 @@
   var timers = {}, listeners = [];
   function fsx(){ var c = window.Capacitor; return c && c.isNativePlatform && c.isNativePlatform() && c.Plugins && c.Plugins.Filesystem && (!c.isPluginAvailable || c.isPluginAvailable("Filesystem")) ? c.Plugins.Filesystem : null; }
   function st(){ var s = MWStore.get(KEY, {}) || {}; if(!Array.isArray(s.items)) s.items = []; if(!(s.max >= MIN_MAX)) s.max = 30; return s; }
+  function stamp(s){ var t = Date.now(); s.items.forEach(function(x){ if(x.at >= t) t = x.at + 1; }); return t; } /* เวลาไม่ซ้ำกัน (เพิ่มเร็วกว่า 1 มิลลิวิ = เรียงลำดับเพี้ยน ตัดผิดอัน) */
   function put(s){ MWStore.set(KEY, s); listeners.forEach(function(f){ try{ f(); }catch(e){} }); }
   function safe(k){ return String(k).replace(/[^\w-]/g, "_"); }
   function mname(it){ return it.kind + "-" + safe(it.key) + ".json"; }
@@ -44,14 +45,14 @@
   function add(kind, o){ /* o = { key, title, data } · key เดิม = แก้ของเดิมแล้วขึ้นบนสุด */
     var s = st(), key = String(o.key), old = s.items.find(function(x){ return x.kind === kind && String(x.key) === key; });
     if(old) s.items.splice(s.items.indexOf(old), 1);
-    var it = { id:kind + "-" + key, kind:kind, key:key, at:Date.now(), title:o.title || "", data:o.data };
+    var it = { id:kind + "-" + key, kind:kind, key:key, at:stamp(s), title:o.title || "", data:o.data };
     s.items.push(it); prune(s); put(s); mirror(it); return it;
   }
   function addFile(o){ /* o = { name, uri, rel, size } จาก MWNative.save · ไม่ใช่วิดีโอ/srt = ไม่เก็บ */
     if(!o || !o.name || !EXT.test(o.name)) return null;
     var s = st(), id = "file-" + (o.rel || o.name), old = s.items.find(function(x){ return x.id === id; });
     if(old) s.items.splice(s.items.indexOf(old), 1);
-    var it = { id:id, kind:"file", key:o.rel || o.name, at:Date.now(), title:o.name, tool:toolOf(o.name), file:{ rel:o.rel || "Meowrin/" + o.name, uri:o.uri || "", name:o.name, size:o.size || 0 } };
+    var it = { id:id, kind:"file", key:o.rel || o.name, at:stamp(s), title:o.name, tool:toolOf(o.name), file:{ rel:o.rel || "Meowrin/" + o.name, uri:o.uri || "", name:o.name, size:o.size || 0 } };
     s.items.push(it); prune(s); put(s); return it;
   }
 

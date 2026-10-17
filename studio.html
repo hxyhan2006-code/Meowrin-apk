@@ -5,21 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
 <title>สตูดิโอ · Meowrin factory</title>
-<link rel="icon" type="image/png" href="icon-192.png?v=8.31">
-<link rel="stylesheet" href="fonts.css?v=8.31"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google) -->
-<link rel="stylesheet" href="studio.css?v=8.31">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.32">
+<link rel="stylesheet" href="fonts.css?v=8.32"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google) -->
+<link rel="stylesheet" href="studio.css?v=8.32">
 </head>
 <body>
 <header>
   <a class="back" href="index.html#settings" aria-label="กลับแอพ"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></a>
   <h1 id="stName">สตูดิโอ</h1>
+  <button class="ib" id="stHist" type="button" data-hist="studio" aria-label="โปรเจกต์ล่าสุด"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <button class="export" id="stExport" type="button" hidden>ส่งออก</button>
 </header>
 
 <section id="stEmpty" class="empty" hidden>
   <svg class="ic big" aria-hidden="true"><use href="#i-film"/></svg>
   <h2>ยังไม่มีโปรเจกต์</h2>
-  <p>ให้ AI ตัดต่อให้ก่อนที่ <b>ตัดต่ออัตโนมัติ</b> แล้วกดปุ่ม "แก้ต่อในสตูดิโอ" ใต้ตารางช็อต</p>
+  <p>เปิดโปรเจกต์เก่าได้จากปุ่มสามขีดมุมขวาบน หรือให้ AI ตัดต่อให้ก่อนที่ <b>ตัดต่ออัตโนมัติ</b> แล้วกดปุ่ม "แก้ต่อในสตูดิโอ" ใต้ตารางช็อต</p>
   <a class="btn" href="footage.html?tab=plan">ไปที่ตัดต่ออัตโนมัติ</a>
 </section>
 
@@ -47,6 +48,6 @@
   </nav>
 </main>
 
-<script src="store.js?v=8.31" data-boot="version.js?v=8.31 icons.js?v=8.31 dialog.js?v=8.31 native.js?v=8.31 history.js?v=8.31 local.js?v=8.31 voicestore.js?v=8.31 studio-model.js?v=8.31 studio-player.js?v=8.31 studio.js?v=8.31"></script>
+<script src="store.js?v=8.32" data-boot="version.js?v=8.32 icons.js?v=8.32 dialog.js?v=8.32 native.js?v=8.32 history.js?v=8.32 history-sheet.js?v=8.32 local.js?v=8.32 voicestore.js?v=8.32 studio-model.js?v=8.32 studio-player.js?v=8.32 studio.js?v=8.32"></script>
 </body>
 </html>

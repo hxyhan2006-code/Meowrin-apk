@@ -167,6 +167,7 @@ details.fold>summary .state:not(.warn):not(.err){display:none} /* ป้าย�
 /* ปุ่มโชว์/ซ่อนคำอธิบาย: ปิดไว้เป็นค่าเริ่ม (ซ่อนเฉพาะ .hint.tip = คำอธิบายถาวร ไม่ซ่อนตัวเลข/สถานะ) */
 header button.tipbtn{flex:none;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--muted);padding:0}
 header button.tipbtn .ic{margin:0;width:20px;height:20px}
+body:not(.mode-plan) #planHistBtn{display:none}
 header button.tipbtn.on{color:var(--accent);border-color:rgba(57,217,138,.55);background:var(--accent-soft)}
 html:not(.tips) .hint.tip{display:none}
 /* ชีตเลือกอัลบั้ม (แท็บตั้งค่า) + ปุ่มเลือกอัลบั้ม */
