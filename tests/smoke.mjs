@@ -231,6 +231,21 @@ try {
   check('ตัดต่อในแท็บผู้กำกับ (มีเสียงพากย์): ใช้ทางเร็ว ได้ mp4 ยาว 2 วิ มีเสียง ลำดับช็อตถูก', sfr.fast === true && /\.mp4$/.test(sfr.name) && sfr.steps.join() === '0,1' && Math.abs(sfr.ad - 2) < 0.15 && Math.abs(sfr.vd - 2) < 0.1 && sfr.marks.length === 2 && sfr.marks[0][1] === 1, JSON.stringify(sfr).slice(0, 400));
   check('ตัดต่อในแท็บผู้กำกับ: ไฟล์ต้นทางเปิดไม่ได้ → บอกข้อความว่าตัดแบบเร็วไม่ได้ แล้วถอยไปแบบเดิม (ไม่เงียบ)', !!sfr.fb && sfr.fb.msgs.some((m) => /ตัดแบบเร็วไม่ได้/.test(m)) && sfr.fb.fast !== true, JSON.stringify(sfr.fb).slice(0, 300));
   await sf.close();
+  // ตัวทดสอบก๊อปวิดีโอเข้าคลังของแอพ (check.js "copylib"): หยุดที่ประมาณ 1 GB · ก๊อปด้วย fs.copy ลง Documents/Meowrin/library/<อัลบั้ม> · รอบสองข้ามไฟล์ที่ขนาดเท่ากัน
+  const cp = await context.newPage(); const cpErr = []; cp.on('pageerror', (e) => cpErr.push(e.message));
+  await cp.addInitScript(() => { const files = ['a', 'b', 'c'].map((n) => ({ name: n + '.mp4', type: 'file', size: 600 * 1048576, uri: 'file:///storage/emulated/0/Pictures/Gallery/owner/usopp/' + n + '.mp4' }));
+    window.__cp = { copies: [], store: {}, mk: [] };
+    window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { Media: { getAlbums: async () => ({ albums: [] }) },
+      Filesystem: { readdir: async () => ({ files }), mkdir: async (o) => { window.__cp.mk.push(o.path); }, stat: async (o) => { if (window.__cp.store[o.path] == null) throw new Error('nope'); return { size: window.__cp.store[o.path] }; },
+        deleteFile: async (o) => { delete window.__cp.store[o.path]; }, getUri: async (o) => ({ uri: 'file:///data/Documents/' + o.path }),
+        copy: async (o) => { window.__cp.copies.push(o); const f = files.find((x) => o.from.endsWith(x.name)); window.__cp.store[o.to] = f.size; } } } }; });
+  await cp.goto(base + '/check.html'); await cp.waitForTimeout(800);
+  const cpOut = async () => { await cp.click('#copyPath ~ .tc-b button'); await cp.waitForFunction(() => { const c = [...document.querySelectorAll('.tc')].find((x) => x.querySelector('#copyPath')); return c && c.dataset.s && c.dataset.s !== 'run' && c.dataset.s !== 'idle'; }, null, { timeout: 20000 }); return cp.evaluate(() => [...document.querySelectorAll('.tc')].find((x) => x.querySelector('#copyPath')).querySelector('.tc-r').textContent); };
+  const cp1 = await cpOut(), cpd = await cp.evaluate(() => window.__cp);
+  check('ตัวทดสอบก๊อปเข้าคลัง: หยุดที่ ~1 GB (2 จาก 3 ไฟล์) ก๊อปลง Documents/Meowrin/library/usopp ด้วย fs.copy ขนาดตรง', cpd.copies.length === 2 && cpd.copies.every((c) => c.toDirectory === 'DOCUMENTS' && /^Meowrin\/library\/usopp\/[ab]\.mp4$/.test(c.to)) && cpd.mk.includes('Meowrin/library/usopp') && /จะก๊อป 2 ไฟล์/.test(cp1) && /ก๊อปสำเร็จ 2 ไฟล์ \(ข้ามเพราะมีแล้ว 0\)/.test(cp1) && /ประมาณการก๊อป 100 GB/.test(cp1), cp1.slice(0, 500));
+  const cp2 = await cpOut(), cpd2 = await cp.evaluate(() => window.__cp.copies.length);
+  check('ตัวทดสอบก๊อปเข้าคลัง: รอบสองข้ามไฟล์ที่ก๊อปแล้วขนาดเท่ากัน ไม่ก๊อปซ้ำ', cpd2 === 2 && /ข้ามเพราะมีแล้ว 2/.test(cp2) && !cpErr.length, cp2.slice(0, 400) + cpErr.join());
+  await cp.close();
   // อัปเดตแอพเอง (ota.js): เช็ก files.json → ดาวน์โหลดลงโฟลเดอร์ + ตรวจ sha1 → สลับ · ไฟล์ถูกแก้ = ยกเลิกทั้งชุดไม่สลับ · บูตสำเร็จ = จำชุดใหม่ + ลบชุดเก่า
   const { createHash } = await import('node:crypto'); const sha = (b) => createHash('sha1').update(b).digest('hex');
   const REM = 'https://hxyhan2006-code.github.io/Meowrin-apk/', NEWID = 'newid1234567890abcdef';

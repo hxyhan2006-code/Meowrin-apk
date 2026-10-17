@@ -282,6 +282,48 @@
     return ask(out.join("\n") + "\nเปิดไฟล์ดู: ภาพ 5 ช็อตต่อกันถูกต้อง ไม่ค้าง ไม่เพี้ยนไหม");
   } });
 
+  TESTS.push({ id:"copylib", title:"ก๊อปวิดีโอเข้าคลังของแอพ (ทดสอบความเร็ว ~1 GB) — สำคัญ", desc:"ก๊อปวิดีโอจากอัลบั้มที่พิมพ์ (เช่น Pictures/Gallery/owner/usopp) ไปที่ Documents/Meowrin/library/<ชื่ออัลบั้ม>/ ด้วยคำสั่งก๊อปของระบบ จนครบประมาณ 1 GB แล้ววัดความเร็ว + ลองเล่นไฟล์ที่ก๊อปแล้ว · ไฟล์ที่ก๊อปจะเป็นส่วนหนึ่งของคลังจริง (ไม่ต้องลบ) · ไฟล์ที่ก๊อปไว้แล้วขนาดเท่ากันจะข้าม", input:"copyPath", ph:"Pictures/Gallery/owner/usopp", run: async function(){
+    var fs = plug("Filesystem"); if(!fs) return bad("ไม่มีปลั๊กอิน Filesystem (ต้องอยู่ในแอพ)");
+    var perm = await askMedia(), el = ui.copylib.out, LIMIT = 1073741824, MAXN = 60;
+    var p = ($("copyPath").value || "").trim().replace(/^\/+|\/+$/g, "") || "Pictures/Gallery/owner/usopp", album = p.split("/").pop(), out = [perm.t], r;
+    function pick(x){ return (x.files || []).filter(function(f){ return f.type !== "directory" && VEXT.test(f.name) && f.uri; }); }
+    try{ r = await fs.readdir({ path:p, directory:"EXTERNAL_STORAGE" }); }catch(e){ return bad(out.join("\n") + "\nอ่านโฟลเดอร์ " + p + " ไม่ได้: " + errText(e)); }
+    var vids = pick(r);
+    if(!vids.length){ var al = perm.albums.filter(function(a){ return a.name === album; })[0];
+      if(al){ try{ vids = pick(await fs.readdir({ path:al.identifier })); out.push("อ่านด้วยที่อยู่เต็ม " + al.identifier); }catch(e){} } }
+    if(!vids.length) return bad(out.join("\n") + "\nไม่เจอวิดีโอใน " + p);
+    var use = [], tot = 0; vids.sort(function(a, b){ return a.name < b.name ? -1 : 1; });
+    for(var i = 0; i < vids.length && use.length < MAXN && tot < LIMIT; i++){ use.push(vids[i]); tot += vids[i].size || 0; }
+    out.push("จะก๊อป " + use.length + " ไฟล์ รวม " + mb(tot) + " จาก " + p + " (ในอัลบั้มมีวิดีโอ " + vids.length + " ไฟล์)");
+    var dirP = "Meowrin/library/" + album;
+    try{ await fs.mkdir({ path:dirP, directory:"DOCUMENTS", recursive:true }); }catch(e){ /* มีอยู่แล้ว */ }
+    var done = 0, skipped = 0, bytes = 0, fails = [], t0 = performance.now(), first = null, how = "";
+    for(var k = 0; k < use.length; k++){
+      var v = use[k], to = dirP + "/" + v.name, ex = null;
+      try{ ex = await fs.stat({ path:to, directory:"DOCUMENTS" }); }catch(e){}
+      if(ex && ex.size === v.size){ skipped++; if(!first) first = to; continue; }
+      if(ex){ try{ await fs.deleteFile({ path:to, directory:"DOCUMENTS" }); }catch(e){} }
+      var ok1 = false, errs = [];
+      var tries = [["ที่อยู่ file://", { from:v.uri, to:to, toDirectory:"DOCUMENTS" }], ["ที่อยู่เต็มไม่มี file://", { from:String(v.uri).replace(/^file:\/\//, ""), to:to, toDirectory:"DOCUMENTS" }]];
+      for(var q = 0; q < tries.length && !ok1; q++){
+        try{ await fs.copy(tries[q][1]); ok1 = true; how = how || tries[q][0]; }catch(e){ errs.push(tries[q][0] + ": " + errText(e)); }
+      }
+      if(!ok1){ fails.push(v.name + " → " + errs.join(" | ")); if(fails.length >= 3) break; continue; }
+      try{ var st = await fs.stat({ path:to, directory:"DOCUMENTS" }); if(st.size !== v.size){ fails.push(v.name + " ขนาดไม่ตรง (ต้นฉบับ " + v.size + " ได้ " + st.size + ")"); continue; } }catch(e){ fails.push(v.name + " ก๊อปแล้วแต่ตรวจไม่ได้: " + errText(e)); continue; }
+      done++; bytes += v.size || 0; if(!first) first = to;
+      var sec = (performance.now() - t0) / 1000;
+      el.textContent = out.join("\n") + "\nก๊อปแล้ว " + done + "/" + use.length + " ไฟล์ · " + mb(bytes) + " · ความเร็ว " + (bytes / 1048576 / Math.max(sec, 0.1)).toFixed(0) + " MB/วิ";
+    }
+    var secs = (performance.now() - t0) / 1000, speed = bytes / 1048576 / Math.max(secs, 0.1);
+    out.push("ก๊อปสำเร็จ " + done + " ไฟล์ (ข้ามเพราะมีแล้ว " + skipped + ") รวม " + mb(bytes) + " ใช้ " + secs.toFixed(1) + " วิ" + (bytes ? " · เฉลี่ย " + speed.toFixed(0) + " MB/วิ" : ""));
+    if(how) out.push("วิธีที่ใช้ได้: " + how);
+    if(bytes && speed > 0) out.push("ประมาณการก๊อป 100 GB ≈ " + (102400 / speed / 60).toFixed(0) + " นาที (ถ้าความเร็วคงที่)");
+    if(fails.length) out.push("ผิดพลาด " + fails.length + " ไฟล์:\n" + fails.join("\n"));
+    if(!first) return bad(out.join("\n"));
+    var pr; try{ var u = (await fs.getUri({ path:first, directory:"DOCUMENTS" })).uri; pr = await playTest(MWLocal.fileUrl(u), "เล่นไฟล์ที่ก๊อปแล้ว " + first.split("/").pop()); out.push(pr.t); }catch(e){ out.push("ขอที่อยู่ไฟล์ที่ก๊อปไม่ได้: " + errText(e)); pr = { s:"bad" }; }
+    return { s:fails.length || (pr && pr.s !== "ok") ? "bad" : "ok", t:out.join("\n") };
+  } });
+
   /* ---------------- วาดหน้า ---------------- */
   var LABEL = { ok:"ได้", bad:"ไม่ได้", info:"ข้อมูล", ask:"รอคุณตอบ", run:"กำลังทดสอบ", idle:"ยังไม่ได้ลอง" };
   function render(t){
@@ -292,7 +334,7 @@
   function setRes(t, r){ res[t.id] = r; render(t); }
   async function runOne(t){
     setRes(t, { s:"run", t:"" });
-    var card = ui[t.id].card; if($("tcVid") && t.id !== "pick" && t.id !== "media" && t.id !== "fsdir" && t.id !== "export") $("tcVid").hidden = true; else card.appendChild($("tcVid"));
+    var card = ui[t.id].card; if($("tcVid") && t.id !== "pick" && t.id !== "media" && t.id !== "fsdir" && t.id !== "export" && t.id !== "copylib") $("tcVid").hidden = true; else card.appendChild($("tcVid"));
     try{ setRes(t, await t.run()); }catch(e){ setRes(t, bad("พังกลางทาง: " + errText(e))); }
   }
   function build(){
