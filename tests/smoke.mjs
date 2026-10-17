@@ -123,7 +123,7 @@ try {
   await main.page.click('#histClose');
   await finishPage(main);
   // หน้าซับ (?voice=)
-  const sub = await open('/sub/?voice=1700000000001', 'หน้าซับ');
+  const sub = await open('/sub/index.html?voice=1700000000001', 'หน้าซับ');
   await sub.page.waitForTimeout(1500);
   check('หน้าซับ: ?voice= ใส่เสียงและบทให้', (await sub.page.textContent('#fileInfo')).includes('take.mp3') && (await sub.page.inputValue('#rawScript')) === 'บทของเทคนี้');
   const subAlign = await sub.page.evaluate(() => { const c = (e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; }; return Math.abs(c(document.querySelector('.back-link')) - c(document.querySelector('.topbar h1'))); });
@@ -423,6 +423,18 @@ try {
   }
   const tg = [await stTagFor(0), await stTagFor(Date.now() - 5 * 864e5), await stTagFor(Date.now() - 3600e3)];
   check('ป้ายสำรองข้อมูล (ในแอพ): ไม่เคยสำรอง = "ยังไม่เคยสำรอง" · เกิน 3 วัน = "สำรองนานแล้ว" · เพิ่งสำรอง = "ปกติ"', tg[0] === 'ยังไม่เคยสำรอง' && tg[1] === 'สำรองนานแล้ว' && tg[2] === 'ปกติ', JSON.stringify(tg));
+  // ลิงก์ไปหน้าในโฟลเดอร์ต้องระบุ index.html ตรงๆ: ตัวเสิร์ฟของ Capacitor ตอบ index.html ของแอพหลักให้ทุก URL ที่ไม่มีนามสกุล (เช่น sub/) → ซับจอเขียวขึ้นเป็นหน้าแรกไม่มีสไตล์
+  const dirLinks = [];
+  for (const f of ['index.html', 'footage.html', 'check.html', 'sub/index.html', ...jsAll.filter((x) => !x.startsWith('sub') && !x.includes('vendor'))]) for (const m of text(f).matchAll(/(?:href=|\.href = )["']((?:\.\.\/|\.\/)?(?:sub\/)?)(\?[^"']*)?["']/g)) if (/^(sub\/|\.\.\/|\.\/)$/.test(m[1]) && f !== 'footage.html' && f !== 'check.html') dirLinks.push(f + ': ' + m[0]);
+  check('ลิงก์ที่ชี้โฟลเดอร์ (sub/ หรือ ../) ต้องมี index.html — ไม่งั้นในแอพขึ้นหน้าแรกซ้อนแบบไม่มีสไตล์', !dirLinks.length, dirLinks.join(' | '));
+  // ปุ่มย้อนในหน้าซับจอเขียว (sub/index.html): กลับหน้าแรก ไม่ใช่ถามออกแอพ
+  const sb = await context.newPage();
+  await sb.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = 1; } } } }; });
+  await sb.goto(base + '/index.html'); await sb.waitForFunction(() => window.MW, null, { timeout: 20000 }); await sb.goto(base + '/sub/index.html'); await sb.waitForFunction(() => window.__bb, null, { timeout: 20000 });
+  await sb.evaluate(() => { window.__bb(); }); await sb.waitForTimeout(800);
+  const sbr = await sb.evaluate(() => ({ path: location.pathname, dlg: document.body.textContent.includes('ออกจากแอพไหม') }));
+  check('ปุ่มย้อนมือถือในหน้าซับจอเขียว → กลับหน้าแรก ไม่ถามออกแอพ', sbr.path === '/index.html' && !sbr.dlg, JSON.stringify(sbr));
+  await sb.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
   await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });

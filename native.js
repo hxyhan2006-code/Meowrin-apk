@@ -50,7 +50,7 @@
       try{
         if(window.MWBackHook && await window.MWBackHook()) return;
         var path = location.pathname.replace(/\/+$/, "");
-        if(path !== "" && !/\/index\.html$/.test(path)){ if(history.length > 1) history.back(); else location.href = "/"; return; }
+        if(path !== "" && path !== "/index.html"){ /* หน้าแรกจริงๆ เท่านั้นที่ถามออกแอพ · sub/index.html ก็ลงท้าย index.html แต่ไม่ใช่หน้าแรก */ if(history.length > 1) history.back(); else location.href = "/"; return; }
         var ok = window.MWDialog ? await MWDialog.confirm("ออกจากแอพไหม?", { ok:"ออก", cancel:"อยู่ต่อ" }) : true;
         if(ok) App.exitApp();
       } finally { busy = false; }
