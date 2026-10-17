@@ -192,3 +192,28 @@ html:has(.asheet:not([hidden])),html:has(.big:not([hidden])){overflow:hidden}
 .big{overscroll-behavior:contain}
 .pkhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}.pkhead h3{margin:0}
 #pkInfo{font-size:14px;color:var(--accent)}#pkInfo.zero{color:var(--warn,#f59e0b)}
+
+/* ---------- แท็บ อัลบั้ม (footage-album.js) ---------- */
+.alhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 12px}
+.alhead>div{min-width:0}.alhead b{display:block;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.alhead small{color:var(--muted);font-size:12.5px}
+.algrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.alt{display:flex;flex-direction:column;gap:5px;padding:0;border:0;background:none;color:var(--text);font:inherit;text-align:left;min-width:0}
+.alt b{font-size:13.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.alt small{color:var(--muted);font-size:12px;margin-top:-3px}
+.alimg{position:relative;display:block;aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:var(--field);border:1px solid var(--line-strong)}
+.alimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.alimg img:not([src]){display:none}
+.alph{position:absolute;inset:0;background:linear-gradient(160deg,rgba(57,217,138,.10),rgba(57,217,138,.02))}
+.alimg img[src]+.alph{display:none}
+.dur{position:absolute;right:6px;bottom:6px;padding:1px 6px;border-radius:8px;background:rgba(0,0,0,.65);color:#fff;font-size:11.5px;font-style:normal;line-height:1.5}
+.dur:empty{display:none}
+.alback{width:42px;height:42px;flex:none;display:grid;place-items:center;border-radius:12px;border:1px solid var(--line-strong);background:var(--field);color:var(--text)}
+.alback .ic{margin:0}
+#alView .alhead{justify-content:flex-start}
+.alplay{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column;overscroll-behavior:contain}
+.alplay[hidden]{display:none}
+.alpbar{display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 12px 10px}
+.alpbar>div{min-width:0}.alpbar b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.alpbar small{color:var(--muted);font-size:12px}
+.alplay video{flex:1;min-height:0;width:100%;background:#000;object-fit:contain}
+.alplay .hint{margin:8px 14px 14px;text-align:center}
+html:has(.alplay:not([hidden])){overflow:hidden}
+.tabs button{font-size:14px}

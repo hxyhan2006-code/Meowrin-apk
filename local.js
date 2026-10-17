@@ -4,7 +4,7 @@
    ตั้งค่า mw_local_v1 { auto } (สแกนสำเร็จครั้งแรกแล้ว = สแกนเองตอนเปิดหน้า) · แผงอยู่ footage.html แท็บตั้งค่า (#locScan #locInfo #tagLoc) */
 (function(){
   "use strict";
-  var KEY = "mw_local_v1", VEXT = /\.(mp4|mov|m4v|mkv|webm|3gp)$/i, map = {}, st = { albums:0, files:0, at:0 }, busy = false;
+  var KEY = "mw_local_v1", VEXT = /\.(mp4|mov|m4v|mkv|webm|3gp)$/i, map = {}, all = [], st = { albums:0, files:0, at:0 }, busy = false;
   var $ = function(id){ return document.getElementById(id); };
   function cap(){ return window.Capacitor || null; }
   function plug(n){ var c = cap(); return c && c.isNativePlatform && c.isNativePlatform() && c.Plugins && c.Plugins[n] && (!c.isPluginAvailable || c.isPluginAvailable(n)) ? c.Plugins[n] : null; }
@@ -17,13 +17,13 @@
   function urlOf(c){ var u = c && map[key(c.name, c.size)]; return u ? fileUrl(u) : null; } /* ที่อยู่ที่ <video> เล่นได้ หรือ null */
   async function scan(onStep){
     var M = plug("Media"), F = plug("Filesystem"); if(!M || !F) throw new Error("ใช้ได้เฉพาะในแอพ APK");
-    var albums = (await M.getAlbums()).albums || [], next = {}, seen = {}, files = 0, n = 0;
+    var albums = (await M.getAlbums()).albums || [], next = {}, items = [], seen = {}, files = 0, n = 0;
     for(var i = 0; i < albums.length; i++){
       var p = albums[i].identifier; if(!p || seen[p]) continue; seen[p] = 1; n++; if(onStep) onStep(i + 1, albums.length);
-      try{ ((await F.readdir({ path:p })).files || []).forEach(function(f){ if(f.type !== "directory" && f.uri && VEXT.test(f.name)){ next[key(f.name, f.size)] = f.uri; files++; } }); }
+      try{ ((await F.readdir({ path:p })).files || []).forEach(function(f){ if(f.type !== "directory" && f.uri && VEXT.test(f.name)){ next[key(f.name, f.size)] = f.uri; items.push({ name:f.name, size:f.size, uri:f.uri, album:albums[i].name || p.split("/").pop(), dir:p + "/" }); files++; } }); }
       catch(e){ /* โฟลเดอร์ที่อ่านไม่ได้ ข้าม */ }
     }
-    map = next; st = { albums:n, files:files, at:Date.now() }; MWStore.set(KEY, { auto:true });
+    map = next; all = items; st = { albums:n, files:files, at:Date.now() }; MWStore.set(KEY, { auto:true });
     document.dispatchEvent(new CustomEvent("ft:files", { detail:files })); /* แท็บผู้กำกับอัปเดตสถานะไฟล์ที่พร้อมใช้ */
     return st;
   }
@@ -43,7 +43,7 @@
     try{ await scan(function(i, n){ render("กำลังสแกนอัลบั้ม " + i + "/" + n + "..."); }); busy = false; render(); }
     catch(e){ busy = false; render("สแกนไม่ได้: " + (e && (e.message || e.errorMessage) || e) + " · ถ้าเคยกดไม่อนุญาต ให้เปิดสิทธิ์ที่ ตั้งค่ามือถือ > แอป > Meowrin > สิทธิ์ แล้วลองใหม่", true); }
   }
-  window.MWLocal = { native:native, scan:scan, urlOf:urlOf, fileUrl:fileUrl, count:function(){ return st.files; } };
+  window.MWLocal = { native:native, scan:scan, list:function(){ return all; }, urlOf:urlOf, fileUrl:fileUrl, count:function(){ return st.files; } };
   if($("locScan")){
     $("locScan").addEventListener("click", run);
     $("locFold").addEventListener("toggle", function(){ if(this.open) render(); }); /* ดัชนีโหลดทีหลัง ตัวเลขจับคู่อัปเดตตอนเปิดแผง */

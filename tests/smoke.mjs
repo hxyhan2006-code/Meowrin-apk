@@ -241,6 +241,27 @@ try {
   await hm.goto(base + '/check.html'); await hm.waitForTimeout(800);
   check('หน้าตรวจระบบ: เหลือ 3 ข้อ (ข้อมูลเครื่อง / API / สิทธิ์ดูวิดีโอ)', await hm.evaluate(() => document.querySelectorAll('.tc').length === 3));
   await hm.close();
+  // แท็บอัลบั้ม (footage-album.js): ตารางอัลบั้มจากไฟล์ที่สแกน (เฉพาะใต้ Gallery/owner) → เข้าอัลบั้มเห็นคลิป → แตะเล่นเต็มจอ → ปุ่มย้อนปิดทีละชั้น
+  const al = await context.newPage(); const alErr = []; al.on('pageerror', (e) => alErr.push(e.message));
+  await al.goto(base + '/footage.html'); await al.waitForFunction(() => window.FT && FT.ui && document.getElementById('alGrid'), null, { timeout: 20000 }); await al.waitForTimeout(500);
+  await al.evaluate(() => { const D = '/storage/emulated/0/Pictures/Gallery/owner/'; const mk = (d, n, a) => ({ name: n, size: 1000 + n.length, uri: 'file://' + D + d + '/' + n, album: a, dir: D + d + '/' });
+    window.MWLocal.list = () => [mk('luffy', 'a.mp4', 'luffy'), mk('luffy', 'b.mp4', 'luffy'), mk('zoro', 'c.mp4', 'zoro'), { name: 'x.mp4', size: 5, uri: 'file:///storage/emulated/0/DCIM/Camera/x.mp4', album: 'Camera', dir: '/storage/emulated/0/DCIM/Camera/' }];
+    window.MWLocal.fileUrl = (u) => '/ไม่มีไฟล์.mp4?u=' + encodeURIComponent(u); document.dispatchEvent(new CustomEvent('ft:files', { detail: 3 })); });
+  await al.waitForTimeout(300);
+  const a1 = await al.evaluate(() => ({ names: [...document.querySelectorAll('#alGrid .album b')].map((b) => b.textContent), sub: document.getElementById('alSub').textContent }));
+  check('แท็บอัลบั้ม: โชว์เฉพาะอัลบั้มใต้ Gallery/owner (luffy 2, zoro 1) ไม่โชว์โฟลเดอร์อื่น', a1.names.join(',') === 'luffy,zoro' && /2 อัลบั้ม · 3 คลิป/.test(a1.sub), JSON.stringify(a1));
+  await al.click('#alGrid .album'); await al.waitForTimeout(200);
+  const a2 = await al.evaluate(() => ({ view: !document.getElementById('alView').hidden, home: document.getElementById('alHome').hidden, clips: document.querySelectorAll('#alvGrid .clip').length, t: document.getElementById('alvTitle').textContent }));
+  check('แท็บอัลบั้ม: แตะอัลบั้มเข้าไปเห็นคลิปในอัลบั้ม', a2.view && a2.home && a2.clips === 2 && a2.t === 'luffy', JSON.stringify(a2));
+  await al.click('#alvGrid .clip'); await al.waitForTimeout(200);
+  const a3 = await al.evaluate(() => ({ open: !document.getElementById('alPlay').hidden, src: document.getElementById('alVid').getAttribute('src') || '', title: document.getElementById('alpT').textContent }));
+  check('แท็บอัลบั้ม: แตะคลิปเปิดตัวเล่นเต็มจอ (ใส่ที่อยู่ไฟล์ในมือถือ)', a3.open && /a\.mp4/.test(a3.src) && a3.title === 'a.mp4', JSON.stringify(a3));
+  await al.goBack(); await al.waitForTimeout(300);
+  const a4 = await al.evaluate(() => ({ play: document.getElementById('alPlay').hidden, view: !document.getElementById('alView').hidden, vsrc: document.getElementById('alVid').getAttribute('src') }));
+  await al.goBack(); await al.waitForTimeout(300);
+  const a5 = await al.evaluate(() => ({ home: !document.getElementById('alHome').hidden, view: document.getElementById('alView').hidden, url: location.pathname }));
+  check('แท็บอัลบั้ม: ปุ่มย้อนปิดทีละชั้น (ตัวเล่น → อัลบั้ม → หน้าอัลบั้มทั้งหมด) และไม่หลุดออกจากหน้า', a4.play && a4.view && a4.vsrc === null && a5.home && a5.view && /footage\.html$/.test(a5.url) && !alErr.length, JSON.stringify([a4, a5]) + alErr.join());
+  await al.close();
   // อัปเดตแอพเอง (ota.js): เช็ก files.json → ดาวน์โหลดลงโฟลเดอร์ + ตรวจ sha1 → สลับ · ไฟล์ถูกแก้ = ยกเลิกทั้งชุดไม่สลับ · บูตสำเร็จ = จำชุดใหม่ + ลบชุดเก่า
   const { createHash } = await import('node:crypto'); const sha = (b) => createHash('sha1').update(b).digest('hex');
   const REM = 'https://hxyhan2006-code.github.io/Meowrin-apk/', NEWID = 'newid1234567890abcdef';
