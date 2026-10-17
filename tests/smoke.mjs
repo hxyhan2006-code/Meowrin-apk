@@ -339,6 +339,12 @@ try {
   await sq.click('#chips [data-open=c]'); await sq.waitForTimeout(200); await sq.locator('#pkList .alrow', { hasText: 'Zoro' }).click(); await sq.click('#pkDone'); await sq.waitForTimeout(400);
   const ar2 = await sq.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length, gap: parseFloat(getComputedStyle(document.querySelector('#p-album > .panel')).marginBottom) }));
   check('ตัวกรองภาค: มีรายการภาค (Skypiea, Alabasta ที่ AI ดูแล้ว) · เลือก Skypiea เจอ 2 ฉากของคลิปนั้น · ใส่ตัวละคร Zoro ด้วยเหลือ 1 ฉาก · มีช่องว่างใต้แผงค้นหา', /Skypiea/.test(arcRows) && /Alabasta/.test(arcRows) && ar1.cards === 2 && ar1.main && ar1.chip && ar2.cards === 1 && ar2.gap >= 12, JSON.stringify([arcRows, ar1, ar2]));
+  // ตัวเลขในชีตตามที่เลือกอยู่: เลือกภาค Skypiea แล้วดูตัวละคร = นับเฉพาะในภาคนั้น เรียงมากไปน้อย · ตัวละครที่ไม่มีในภาค = 0 ฉากล่างสุดจาง
+  await sq.click('#chips [data-open=c]'); await sq.waitForTimeout(200); await sq.click('#pkClear'); await sq.waitForTimeout(200);
+  const cr = await sq.evaluate(() => [...document.querySelectorAll('#pkList .alrow')].map((r) => ({ n: r.querySelector('b').textContent, c: +(r.querySelector('i')?.textContent.match(/\d+/) || [-1])[0], dim: r.classList.contains('dim') })));
+  const sorted = cr.every((r, i) => i === 0 || cr[i - 1].c >= r.c || cr[i - 1].n === 'ไม่ระบุตัวละคร');
+  await sq.click('#pkDone'); await sq.waitForTimeout(200);
+  check('ชีตตัวละคร/ภาค: ตัวเลขนับตามที่เลือกอยู่ เรียงมากไปน้อย ตัวที่ 0 ฉากอยู่ล่างสุดและจาง', cr.length > 1 && sorted && cr.filter((r) => r.c === 0).every((r) => r.dim), JSON.stringify(cr));
   await sq.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));

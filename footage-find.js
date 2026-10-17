@@ -156,12 +156,23 @@
   function matchCount(){ /* จำนวนฉากที่ผ่านตัวกรองอัลบั้ม/ตัวละคร/จำนวนคนตอนนี้ (ยังไม่นับคำค้นในช่องค้นหา) */
     var n = 0; U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return; c.scenes.forEach(function(sc){ if(passSc(sc, c)) n++; }); }); return n;
   }
+  function ctxCounts(skipArc){ /* นับฉากตามที่เลือกอยู่ตอนนี้ (ชีตตัวละครนับในภาคที่เลือก · ชีตภาคนับเฉพาะตัวละครที่เลือก) → { chars:{key:n}, arcs:{arc:n}, all:n } */
+    var chars = {}, arcs = {}, all = 0;
+    U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return; var ar = arcOf(c), ak = ar.sure ? ar.arc : UNSURE;
+      if(!skipArc && arcSel.length && arcSel.indexOf(ak) < 0) return;
+      c.scenes.forEach(function(sc){ var cs = sceneChars(sc);
+        if(sel.length && !sel.every(function(k){ return k === "?" ? !cs.length : cs.indexOf(k) >= 0; })) return;
+        if(sizeSel && !(cs.length && sizeOf(cs.length) === sizeSel)) return;
+        all++; arcs[ak] = (arcs[ak] || 0) + 1; cs.forEach(function(k){ chars[k] = (chars[k] || 0) + 1; }); }); });
+    return { chars:chars, arcs:arcs, all:all };
+  }
   function pickChars(){ /* เลือกหลายคนได้ = ฉากต้องมีทุกคนที่เลือก · "ไม่ระบุตัวละคร" เลือกร่วมกับตัวอื่นไม่ได้ */
     FT.pick.open({ title:"เลือกตัวละคร", placeholder:"พิมพ์ชื่อเพื่อหา เช่น Zoro หรือ โซโร", icon:"user", multi:true, count:matchCount,
-      items:function(q){
+      items:function(q){ var cx = ctxCounts(false), n = function(k){ return cx.chars[k] || 0; };
         var rows = dat.ks.filter(function(k){ var nx = NAMEX.find(function(x){ return x.key === k; }); return !q || (enName(k) + " " + k + " " + (labelOf[k] || "") + " " + (nx ? nx.ths.join(" ") : "")).toLowerCase().indexOf(q) >= 0; })
-          .map(function(k){ return { k:k, name:enName(k), sub:dat.cnt[k] + " ฉาก", on:sel.indexOf(k) >= 0 }; });
-        rows = rows.filter(function(r){ return dat.cnt[r.k] >= MINSC || r.on; }).concat(rows.filter(function(r){ return dat.cnt[r.k] < MINSC && !r.on; })); /* เจอบ่อยก่อน (A-Z) ที่เจอแค่ 1-2 ฉากต่อท้าย (A-Z) */
+          .map(function(k){ var on = sel.indexOf(k) >= 0, c = on ? cx.all : n(k); return { k:k, name:enName(k), sub:c + " ฉาก", on:on, dim:!on && !c, n:c }; });
+        rows = rows.filter(function(r){ return r.on || r.n || dat.cnt[r.k] >= MINSC; }); /* เรียงมากไปน้อยตามที่เลือกอยู่ · 0 ฉากอยู่ล่างสุดสีจาง */
+        rows.sort(function(a, b){ return b.n - a.n || enName(a.k).localeCompare(enName(b.k)); });
         if(dat.none && (!q || "ไม่ระบุตัวละคร unknown".indexOf(q) >= 0)) rows.push({ k:"?", name:"ไม่ระบุตัวละคร", sub:dat.none + " ฉาก", on:sel.indexOf("?") >= 0 }); /* ล่างสุด */
         return rows; },
       onPick:function(k){ var i = sel.indexOf(k);
@@ -171,8 +182,10 @@
   }
   function pickArcs(){ /* เลือกภาคได้หลายภาค · รวมกับตัวละครได้ (ลูฟี่ + Skypiea) · "ยังไม่แน่ใจ" = คลิปที่ AI ยังบอกภาคไม่ได้ */
     FT.pick.open({ title:"เลือกภาค", placeholder:"พิมพ์ชื่อภาค เช่น Skypiea", icon:"folder", multi:true, count:matchCount,
-      items:function(q){ var ks = Object.keys(dat.ac).sort(function(a, b){ return arcRank(a) - arcRank(b) || a.localeCompare(b); });
-        return ks.filter(function(k){ return !q || k.toLowerCase().indexOf(q) >= 0; }).map(function(k){ return { k:k, name:k, sub:dat.ac[k] + " คลิป", on:arcSel.indexOf(k) >= 0 }; }); },
+      items:function(q){ var cx = ctxCounts(true), ks = Object.keys(dat.ac);
+        ks.forEach(function(k){ if(arcSel.indexOf(k) >= 0 && !(k in cx.arcs)) cx.arcs[k] = 0; });
+        return ks.filter(function(k){ return !q || k.toLowerCase().indexOf(q) >= 0; }).map(function(k){ var on = arcSel.indexOf(k) >= 0, c = cx.arcs[k] || 0; return { k:k, name:k, sub:c + " ฉาก", on:on, dim:!on && !c, n:c }; })
+          .sort(function(a, b){ return b.n - a.n || arcRank(a.k) - arcRank(b.k) || a.k.localeCompare(b.k); }); }, /* มากไปน้อย · ภาคที่ไม่มีตัวละครที่เลือก (0 ฉาก) อยู่ล่างสุดสีจาง */
       onPick:function(k){ var i = arcSel.indexOf(k); if(i >= 0) arcSel.splice(i, 1); else arcSel.push(k); chipMax = 40; search(); },
       onClear:function(){ arcSel = []; chipMax = 40; search(); } });
   }

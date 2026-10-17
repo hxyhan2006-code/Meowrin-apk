@@ -182,6 +182,7 @@ html:not(.tips) .hint.tip{display:none}
 .fsel{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:0 14px;border-radius:var(--rc);border:1px solid var(--line-strong);background:var(--field);color:var(--text);font:inherit;text-align:left;cursor:pointer}
 .fsel span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fsel .ic{margin:0;flex:none;color:var(--muted)}.fsel.empty span{color:var(--muted)}.fsel:active{border-color:rgba(57,217,138,.55)}.fsel:disabled{opacity:.45}
 .mrow{display:flex;gap:8px}.mrow input{flex:1;min-width:0}.mrow .btn{flex:none}
+.alrow.dim:not(.on){opacity:.45}
 .alrow.on{background:var(--accent-soft);border-color:rgba(57,217,138,.55);color:var(--accent)}
 /* ชีตเลือก (footage-pick.js): รายการเลื่อนเองให้ช่องค้นหากับปุ่มล่างอยู่กับที่ */
 #pkQ{margin-bottom:8px}#pkList{max-height:46vh;overflow-y:auto;overscroll-behavior:contain}
