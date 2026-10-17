@@ -4,7 +4,7 @@
    ตั้งค่า mw_local_v1 { auto } (สแกนสำเร็จครั้งแรกแล้ว = สแกนเองตอนเปิดหน้า) · แผงอยู่ footage.html แท็บตั้งค่า (#locScan #locInfo #tagLoc) */
 (function(){
   "use strict";
-  var KEY = "mw_local_v1", VEXT = /\.(mp4|mov|m4v|mkv|webm|3gp)$/i, map = {}, all = [], st = { albums:0, files:0, at:0 }, busy = false;
+  var KEY = "mw_local_v1", LIBROOT = "Meowrin/library", VEXT = /\.(mp4|mov|m4v|mkv|webm|3gp)$/i, map = {}, all = [], st = { albums:0, files:0, at:0 }, busy = false;
   var $ = function(id){ return document.getElementById(id); };
   function cap(){ return window.Capacitor || null; }
   function plug(n){ var c = cap(); return c && c.isNativePlatform && c.isNativePlatform() && c.Plugins && c.Plugins[n] && (!c.isPluginAvailable || c.isPluginAvailable(n)) ? c.Plugins[n] : null; }
@@ -23,7 +23,13 @@
       try{ ((await F.readdir({ path:p })).files || []).forEach(function(f){ if(f.type !== "directory" && f.uri && VEXT.test(f.name)){ next[key(f.name, f.size)] = f.uri; items.push({ name:f.name, size:f.size, mtime:f.mtime || 0, uri:f.uri, album:albums[i].name || p.split("/").pop(), dir:p + "/" }); files++; } }); }
       catch(e){ /* โฟลเดอร์ที่อ่านไม่ได้ ข้าม */ }
     }
-    map = next; all = items; st = { albums:n, files:files, at:Date.now() }; MWStore.set(KEY, { auto:true, st:st, list:items }); /* จำรายการไว้ เปิดหน้าครั้งถัดไปโชว์ได้ทันทีก่อนสแกนเสร็จ */
+    var byK = {}; items.forEach(function(it){ byK[key(it.name, it.size)] = it; }); var inLib = 0;
+    try{ var top = (await F.readdir({ path:LIBROOT, directory:"DOCUMENTS" })).files || []; /* สำเนาในแอพ (v8.10): เล่นจากสำเนาก่อนไฟล์ต้นฉบับ · ต้นฉบับถูกลบแล้วก็ยังอยู่ในอัลบั้ม */
+      for(var d = 0; d < top.length; d++){ if(top[d].type !== "directory") continue;
+        try{ ((await F.readdir({ path:LIBROOT + "/" + top[d].name, directory:"DOCUMENTS" })).files || []).forEach(function(f){ if(f.type === "directory" || !f.uri || !VEXT.test(f.name)) return; var k = key(f.name, f.size), ex = byK[k]; inLib++; next[k] = f.uri;
+          if(ex) ex.lib = true; else { var it = { name:f.name, size:f.size, mtime:f.mtime || 0, uri:f.uri, album:top[d].name, dir:LIBROOT + "/" + top[d].name + "/", lib:true }; items.push(it); byK[k] = it; files++; } }); }catch(e){}
+      } }catch(e){ /* ยังไม่มีโฟลเดอร์สำเนา */ }
+    map = next; all = items; st = { albums:n, files:files, lib:inLib, at:Date.now() }; MWStore.set(KEY, { auto:true, st:st, list:items }); /* จำรายการไว้ เปิดหน้าครั้งถัดไปโชว์ได้ทันทีก่อนสแกนเสร็จ */
     document.dispatchEvent(new CustomEvent("ft:files", { detail:files })); /* แท็บผู้กำกับอัปเดตสถานะไฟล์ที่พร้อมใช้ */
     return st;
   }
@@ -46,7 +52,7 @@
     try{ await scan(function(i, n){ render("กำลังสแกนอัลบั้ม " + i + "/" + n + "..."); }); busy = false; render(); ping(); }
     catch(e){ busy = false; ping(); render("สแกนไม่ได้: " + (e && (e.message || e.errorMessage) || e) + " · ถ้าเคยกดไม่อนุญาต ให้เปิดสิทธิ์ที่ ตั้งค่ามือถือ > แอป > Meowrin > สิทธิ์ แล้วลองใหม่", true); }
   }
-  window.MWLocal = { native:native, scan:scan, list:function(){ return all; }, scanning:function(){ return busy; }, urlOf:urlOf, fileUrl:fileUrl, count:function(){ return st.files; } };
+  window.MWLocal = { LIBROOT:LIBROOT, plug:plug, native:native, scan:scan, list:function(){ return all; }, scanning:function(){ return busy; }, urlOf:urlOf, fileUrl:fileUrl, count:function(){ return st.files; } };
   if($("locScan")){
     $("locScan").addEventListener("click", run);
     $("locFold").addEventListener("toggle", function(){ if(this.open) render(); }); /* ดัชนีโหลดทีหลัง ตัวเลขจับคู่อัปเดตตอนเปิดแผง */

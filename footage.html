@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
 <title>ฟุตเทจ · Meowrin factory</title>
-<link rel="icon" type="image/png" href="icon-192.png?v=8.9">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.9">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.10">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.10">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Mitr:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="footage.css?v=8.9">
+<link rel="stylesheet" href="footage.css?v=8.10">
 </head>
 <body>
 <header>
@@ -159,6 +159,12 @@
       <button class="btn" id="locScan" type="button" style="width:100%">สแกนวิดีโอในมือถือ</button>
       <p class="hint" id="locInfo"></p>
     </div></details>
+    <details class="panel fold" id="libFold"><summary><span>เก็บคลิปไว้ในแอพ</span><em class="state idle" id="tagLib">...</em></summary><div class="fbody">
+      <p class="hint tip" style="margin-top:0">ก๊อปคลิปจากอัลบั้มในมือถือเข้าโฟลเดอร์ของแอพ (Documents/Meowrin/library) แล้วเล่น/ตัดต่อจากสำเนา · ต้นฉบับไม่ถูกแตะ ลบไฟล์ในแกลเลอรีทีหลังก็ยังอยู่ในอัลบั้มของแอพ</p>
+      <button class="btn" id="libGo" type="button" style="width:100%">ก๊อปคลิปเข้าแอพ</button>
+      <button class="btn" id="libStop" type="button" style="width:100%;margin-top:8px" hidden>หยุด</button>
+      <p class="hint" id="libInfo"></p>
+    </div></details>
     <details class="panel fold"><summary><span>คลังวิดีโอ (Cloudflare R2)</span><em class="state idle" id="tagR2">ยังไม่ตั้ง</em></summary><div class="fbody">
       <p class="hint tip" style="margin-top:0">เก็บฟุตเทจไว้บนคลาวด์ เล่น/ต่อฉาก/ทำดัชนีจากคลังได้เลย · โฟลเดอร์ในคลัง = อัลบั้ม · คีย์เก็บในเครื่องนี้เท่านั้น ไม่ขึ้น Drive</p>
       <label for="r2Account">Account ID</label>
@@ -268,6 +274,6 @@
 <video id="vid" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:2px;height:2px"></video>
 
 <div class="asheet" id="pkSheet" hidden><div class="abox" role="dialog"><div class="pkhead"><h3 id="pkTitle"></h3><span id="pkInfo"></span></div><input id="pkQ" type="search" autocomplete="off"><div id="pkList"></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="pkClear" type="button">ล้างที่เลือก</button><button class="btn" id="pkDone" type="button">เสร็จ</button></div></div></div>
-<script src="store.js?v=8.9" data-boot="icons.js?v=8.9 dialog.js?v=8.9 native.js?v=8.9 budget.js?v=8.9 footage-core.js?v=8.9 footage-pick.js?v=8.9 r2.js?v=8.9 footage.js?v=8.9 local.js?v=8.9 footage-find.js?v=8.9 footage-album.js?v=8.9 footage-dup.js?v=8.9 footage-audit.js?v=8.9 footage-cloud.js?v=8.9 mp4fix.js?v=8.9 footage-stitch.js?v=8.9 voicestore.js?v=8.9 footage-plan.js?v=8.9 gdrive.js?v=8.9"></script>
+<script src="store.js?v=8.10" data-boot="icons.js?v=8.10 dialog.js?v=8.10 native.js?v=8.10 budget.js?v=8.10 footage-core.js?v=8.10 footage-pick.js?v=8.10 r2.js?v=8.10 footage.js?v=8.10 local.js?v=8.10 library.js?v=8.10 footage-find.js?v=8.10 footage-album.js?v=8.10 footage-dup.js?v=8.10 footage-audit.js?v=8.10 footage-cloud.js?v=8.10 mp4fix.js?v=8.10 footage-stitch.js?v=8.10 voicestore.js?v=8.10 footage-plan.js?v=8.10 gdrive.js?v=8.10"></script>
 </body>
 </html>

@@ -16,7 +16,7 @@
     var byKey = {}, other = {}, out = [], loc = window.MWLocal && MWLocal.list ? MWLocal.list() : [];
     loc.forEach(function(f){
       var e = { k:f.name + "|" + f.size, name:f.name, size:f.size, mtime:f.mtime, album:f.album, uri:f.uri, c:null };
-      if(f.dir.indexOf(ROOT) < 0){ other[e.k] = e; return; } /* ไฟล์นอกโฟลเดอร์หลัก: โชว์เฉพาะที่อยู่ในดัชนี */
+      if(f.dir.indexOf(ROOT) < 0 && !f.lib){ other[e.k] = e; return; } /* ไฟล์นอกโฟลเดอร์หลัก: โชว์เฉพาะที่อยู่ในดัชนี */
       byKey[e.k] = e; out.push(e);
     });
     U.lib().forEach(function(c){
