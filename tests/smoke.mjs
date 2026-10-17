@@ -406,6 +406,13 @@ try {
   check('อัปเดตแอพ (ota.js): ชุดที่ดาวน์โหลดไว้ไม่มี index.html → ไม่สลับ (ไม่ทำให้หน้าพัง)', /หาย/.test(o7.err || '') && o7.sb === 0, JSON.stringify(o7));
   await o7p.close();
   await otaCtx.close();
+  // ไปหน้าเครื่องมือจากแท็บตั้งค่า แล้วกดย้อน → ต้องกลับมาแท็บตั้งค่า (ไม่ใช่แท็บคลิป)
+  const hb = await browser.newPage({ viewport: { width: 380, height: 820 } });
+  await hb.goto(base + '/index.html'); await hb.waitForFunction(() => window.MW, null, { timeout: 20000 });
+  await hb.click('nav button[data-tab="settings"]'); await hb.click('#tab-settings .tool[href="footage.html"]'); await hb.waitForURL(/footage\.html/); await hb.waitForTimeout(400);
+  await hb.goBack(); await hb.waitForFunction(() => window.MW, null, { timeout: 20000 }); await hb.waitForTimeout(400);
+  check('ย้อนจากหน้าเครื่องมือ → กลับมาแท็บตั้งค่า (ไม่เด้งไปแท็บคลิป)', await hb.evaluate(() => document.querySelector('nav button[aria-selected=true]').dataset.tab === 'settings'));
+  await hb.close();
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

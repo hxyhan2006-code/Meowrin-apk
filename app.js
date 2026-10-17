@@ -28,11 +28,13 @@
     document.querySelectorAll("section").forEach(function(s){ s.classList.toggle("on", s.id === "tab-"+name); });
     renderPick(); /* แถบคลิปที่เลือกโชว์เฉพาะแท็บ คลิป */
     $("chanBtn").hidden = name !== "clips"; /* ปุ่มจัดการช่องอยู่มุมขวาบนของแท็บคลิป */
+    try{ history.replaceState(history.state, "", name === "clips" ? location.pathname + location.search : "#" + name); }catch(e){} /* จำแท็บไว้ในลิงก์ ไปหน้าเครื่องมือแล้วกดย้อนจะกลับมาแท็บเดิม (ตั้งค่า) */
     document.dispatchEvent(new CustomEvent("mw:tab", { detail: name }));
   }
   document.querySelectorAll("nav button").forEach(function(b){
     b.addEventListener("click", function(){ showTab(b.dataset.tab); });
   });
+  var hashTab = location.hash.slice(1); if(hashTab && hashTab !== "clips" && document.getElementById("tab-" + hashTab)) showTab(hashTab);
   $("chanBtn").addEventListener("click", function(){ showTab("channels"); });
   $("chanBack").addEventListener("click", function(){ showTab("clips"); });
 
