@@ -137,7 +137,7 @@ try {
   await foot.page.click('#plModeBtn'); check('หน้าฟุตเทจ: ช่องเลือกแบบเปิดชีตของแอพ', (await foot.page.evaluate(() => document.querySelectorAll('#pkList .alrow').length)) === 2); await foot.page.click('#pkDone');
   const footAlign = await foot.page.evaluate(() => { const c = (e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; }; return Math.abs(c(document.querySelector('header a.back')) - c(document.querySelector('header h1'))); });
   check('หน้าฟุตเทจ: ปุ่มย้อนกลับกับชื่อหน้าอยู่กึ่งกลางแนวเดียวกัน', footAlign < 3, `ต่างกัน ${footAlign.toFixed(1)}px`);
-  await foot.page.click('nav button[data-p="set"]'); await foot.page.waitForTimeout(300);
+  await foot.page.evaluate(() => document.querySelector('nav button[data-p="set"]').click()); await foot.page.waitForTimeout(300); /* โหมดตัดต่ออัตโนมัติซ่อนแท็บ → สั่งคลิกผ่านโค้ด */
   check('หน้าฟุตเทจ: วิดีโอในมือถือ ในเบราว์เซอร์ปุ่มปิด บอกว่าใช้ได้เฉพาะแอพ', await foot.page.evaluate(() => document.getElementById('locScan').disabled && /เฉพาะแอพ/.test(document.getElementById('tagLoc').textContent)));
   await finishPage(foot);
   // วิดีโอในมือถือ (MWLocal) ในแอพ: ปลั๊กอินจำลอง → สแกน ข้ามโฟลเดอร์ที่อ่านไม่ได้ จับคู่ ชื่อ|ขนาด ได้ ไม่ล้น
@@ -237,7 +237,7 @@ try {
   const tl = await hm.evaluate(() => ({ tiles: [...document.querySelectorAll('#tab-settings .tool b')].map((b) => b.textContent), plan: document.querySelector('#tab-settings .tool[href="footage.html?tab=plan"]') ? 1 : 0, chk: [...document.querySelectorAll('#tab-settings a.btn')].some((a) => a.getAttribute('href') === 'check.html' && /ตรวจระบบแอพ/.test(a.textContent)) }));
   check('ตั้งค่า: เครื่องมือเป็น อัลบั้ม / ตัดต่ออัตโนมัติ / ซับจอเขียว และตรวจระบบเป็นแถบเล็กท้ายหน้า', tl.tiles.join('|') === 'อัลบั้ม|ตัดต่ออัตโนมัติ|ซับจอเขียว' && tl.plan === 1 && tl.chk && !hmErr.length, JSON.stringify(tl) + hmErr.join());
   await hm.goto(base + '/footage.html?tab=plan'); await hm.waitForFunction(() => window.FT && FT.ui, null, { timeout: 20000 }); await hm.waitForTimeout(500);
-  check('footage.html?tab=plan: เปิดแท็บผู้กำกับตรง', await hm.evaluate(() => document.getElementById('p-plan').classList.contains('on') && document.querySelector('.tabs button[data-p="plan"]').classList.contains('on')));
+  check('footage.html?tab=plan: เปิดโหมดตัดต่ออัตโนมัติ (ผู้กำกับอย่างเดียว ไม่มีแท็บ)', await hm.evaluate(() => document.getElementById('p-plan').classList.contains('on') && document.body.classList.contains('mode-plan') && getComputedStyle(document.querySelector('.tabs')).display === 'none' && document.getElementById('pgTitle').textContent === 'ตัดต่ออัตโนมัติ'));
   await hm.goto(base + '/check.html'); await hm.waitForTimeout(800);
   check('หน้าตรวจระบบ: เหลือ 3 ข้อ (ข้อมูลเครื่อง / API / สิทธิ์ดูวิดีโอ)', await hm.evaluate(() => document.querySelectorAll('.tc').length === 3));
   await hm.close();
@@ -298,7 +298,7 @@ try {
   // v8.2: แท็บเหลือ 4 (อัลบั้ม/ค้นหา/ผู้กำกับ/ตั้งค่า) · ชื่อหัวหน้าตามแท็บ · ส่วนทำดัชนีเองย้ายเป็นแถบพับในตั้งค่า (ปุ่มเดิมยังอยู่ครบ)
   await al.click('.tabs [data-p=set]'); await al.waitForTimeout(150);
   const t82 = await al.evaluate(() => ({ tabs: [...document.querySelectorAll('.tabs button')].map((b) => b.textContent).join('|'), h1: document.getElementById('pgTitle').textContent, inSet: !!document.querySelector('#p-set #p-idx #startBtn') && !!document.querySelector('#p-set #p-idx #filesDocsBtn') }));
-  check('footage: แท็บเหลือ 4, ชื่อหัวหน้าตามแท็บ, ทำดัชนีเองอยู่ในตั้งค่า', t82.tabs === 'อัลบั้ม|ค้นหา|ผู้กำกับ|ตั้งค่า' && t82.h1 === 'ตั้งค่า' && t82.inSet, JSON.stringify(t82));
+  check('footage: โหมดอัลบั้มมีแท็บ อัลบั้ม/ตั้งค่า (ไม่มีผู้กำกับ), ชื่อหัวหน้าตามแท็บ, ทำดัชนีเองอยู่ในตั้งค่า', t82.tabs === 'อัลบั้ม|ตั้งค่า' && t82.h1 === 'ตั้งค่า' && t82.inSet, JSON.stringify(t82));
   await al.close();
   // v8.0: ชื่อไฟล์ยาวไม่มีเว้นวรรคในกล่องข้อความ ไม่ทำให้หน้าล้นจอ · อัลบั้มโชว์ผลสแกนรอบก่อนทันทีที่เปิด · ชีตจำนวนคนไม่มีช่องค้นหา
   const v8 = await browser.newContext({ viewport: { width: 380, height: 800 } }); const v8p = await v8.newPage(); const v8Err = []; v8p.on('pageerror', (e) => v8Err.push(e.message));
@@ -310,6 +310,31 @@ try {
   const rs = await v8p.evaluate(() => [...document.querySelectorAll('#alGrid .album')].map((a) => a.querySelector('b').textContent + ':' + a.querySelector('small').textContent).join(','));
   check('อัลบั้ม: เปิดหน้าแล้วโชว์อัลบั้มจากผลสแกนรอบก่อนทันที (ไม่ต้องรอสแกนใหม่)', /nami:2 คลิป/.test(rs), rs);
   await v8.close();
+  // v8.3: ค้นหาในหน้าอัลบั้ม (พิมพ์ค้นแล้วโชว์ฉาก ล้างแล้วกลับตารางอัลบั้ม) · ค้นด้วยชื่อภาคไทย (สกายเปีย ↔ Skypiea)
+  const sq = await context.newPage(); const sqErr = []; sq.on('pageerror', (e) => sqErr.push(e.message));
+  await sq.goto(base + '/footage.html'); await sq.waitForFunction(() => window.FT && FT.ui && FT.ui.search, null, { timeout: 20000 }); await sq.waitForTimeout(400);
+  await sq.evaluate(() => { FT.ui.lib().push({ id: 'sk1', name: 'sk.mp4', size: 9, album: 'luffy', duration: 20, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 0, e: 4, thumb: '', ai: { characters: ['Luffy'], characters_th: ['ลูฟี่'], emotion: 'laughing', summary_th: 'ลูฟี่หัวเราะ', arc: 'Skypiea arc' } }, { s: 4, e: 9, thumb: '', ai: { characters: ['Zoro'], emotion: 'angry', arc: 'Alabasta' } }] }); FT.ui.search(); });
+  const sq0 = await sq.evaluate(() => ({ main: !document.getElementById('alMain').hidden, res: document.getElementById('results').hidden }));
+  await sq.fill('#q', 'ลูฟี่หัวเราะภาคสกายเปีย'); await sq.waitForTimeout(700);
+  const sq1 = await sq.evaluate(() => ({ main: document.getElementById('alMain').hidden, cards: document.querySelectorAll('#results .card').length, txt: document.getElementById('results').textContent.includes('ลูฟี่หัวเราะ') }));
+  await sq.fill('#q', ''); await sq.waitForTimeout(500);
+  const sq2 = await sq.evaluate(() => ({ main: !document.getElementById('alMain').hidden, res: document.getElementById('results').hidden }));
+  check('ค้นหาในหน้าอัลบั้ม: ไม่พิมพ์ = ตารางอัลบั้ม · พิมพ์ "ลูฟี่หัวเราะภาคสกายเปีย" = เจอฉากเดียวที่ตรง (ไม่ใช่ฉากโซโร/ภาคอื่น) · ล้างแล้วกลับตารางอัลบั้ม', sq0.main && sq0.res && sq1.main && sq1.cards === 1 && sq1.txt && sq2.main && sq2.res && !sqErr.length, JSON.stringify([sq0, sq1, sq2]) + sqErr.join());
+  await sq.close();
+  // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
+  const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
+  await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });
+  await bk.goto(base + '/index.html'); await bk.waitForFunction(() => window.MW && window.__bb, null, { timeout: 20000 });
+  await bk.click('nav [data-tab=settings]'); await bk.evaluate(() => window.__bb()); await bk.waitForTimeout(200);
+  const b1 = await bk.evaluate(() => document.querySelector('nav button[aria-selected=true]').dataset.tab);
+  await bk.evaluate(() => { window.__bb(); }); await bk.waitForTimeout(300); /* ไม่รอผล: จะค้างที่กล่องถามออกแอพ */
+  const b2 = await bk.evaluate(() => ({ ask: document.body.textContent.includes('ออกจากแอพไหม?'), exit: window.__exit || 0 }));
+  await bk.getByRole('button', { name: 'อยู่ต่อ' }).click(); await bk.waitForTimeout(200);
+  const b3 = await bk.evaluate(() => window.__exit || 0);
+  await bk.evaluate(() => { window.__bb(); }); await bk.waitForTimeout(300); await bk.getByRole('button', { name: 'ออก', exact: true }).click(); await bk.waitForTimeout(200);
+  const b4 = await bk.evaluate(() => window.__exit || 0);
+  check('ปุ่มย้อนของมือถือ: ในแท็บตั้งค่า → กลับแท็บคลิป · ที่หน้าแรก → ถาม "ออกจากแอพไหม?" · อยู่ต่อ = ไม่ออก · ออก = ออกแอพ', b1 === 'clips' && b2.ask && b2.exit === 0 && b3 === 0 && b4 === 1 && !bkE.length, JSON.stringify([b1, b2, b3, b4]) + bkE.join());
+  await bk.close();
   // อัปเดตแอพเอง (ota.js): เช็ก files.json → ดาวน์โหลดลงโฟลเดอร์ + ตรวจ sha1 → สลับ · ไฟล์ถูกแก้ = ยกเลิกทั้งชุดไม่สลับ · บูตสำเร็จ = จำชุดใหม่ + ลบชุดเก่า
   const { createHash } = await import('node:crypto'); const sha = (b) => createHash('sha1').update(b).digest('hex');
   const REM = 'https://hxyhan2006-code.github.io/Meowrin-apk/', NEWID = 'newid1234567890abcdef';

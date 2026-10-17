@@ -190,6 +190,11 @@
   function closePlayer(){ $("pFrame").innerHTML = ""; closeModal("player"); playing = null; } /* ล้าง iframe เพื่อหยุดเสียง */
   $("pClose").addEventListener("click", closePlayer);
   $("player").addEventListener("click", function(e){ if(e.target === this) closePlayer(); });
+  window.MWBackHook = async function(){ /* ปุ่มย้อนของมือถือ (native.js): ปิดหน้าต่างที่เปิดอยู่ก่อน แล้วกลับแท็บ คลิป · คืน false = ไม่มีอะไรให้ปิด (native.js ถามออกแอพ) */
+    var m = document.querySelector(".modal:not([hidden])"); if(m){ if(m.id === "player") closePlayer(); else if(m.id === "selSheet") closeSheet(); else closeModal(m.id); return true; }
+    var cur = document.querySelector("nav button[aria-selected=true]"); if(cur && cur.dataset.tab !== "clips"){ showTab("clips"); return true; }
+    return false;
+  };
   document.addEventListener("keydown", function(e){
     if(e.key !== "Escape") return;
     if(!$("vSheet").hidden) closeModal("vSheet"); else if(!$("selSheet").hidden) closeSheet(); else if(playing) closePlayer();

@@ -32,7 +32,8 @@
   SYN.push(["พายเรือ","ล่องเรือ","แล่นเรือ","เรือ","พาย","boat","ship","row","sail","raft"],["ทะเล","มหาสมุทร","คลื่น","sea","ocean","wave"],["ป่า","ต้นไม้","forest","jungle"],
     ["เมือง","หมู่บ้าน","ชาวบ้าน","town","village"],["นอน","หลับ","เตียง","sleep","bed"],["พูด","คุย","บอก","talk","speak","say"],["ร้อง","ตะโกน","scream","shout","yell"],["ร้องเพลง","เพลง","sing","song"],
     ["ซ่อน","แอบ","hide","sneak"],["กอด","hug","embrace"],["วิ่ง","หนี","run","flee","chase"]);
-  var STOP = ["ฉาก","ฉากที่","ที่","ซึ่ง","อยู่","กับ","และ","ของ","ใน","ตอน","ตอนที่","แบบ","มี","เป็น","ให้","ไป","มา","คือ","หา","อยาก","ได้","เวลา","เจอ","ครับ","ค่ะ","หน่อย","ด้วย","แล้ว","จะ","ก็","ไหม","มั้ย","อะ","นะ","เมื่อ","กำลัง","แต่","หรือ","กัน","เรื่อง","ภาพ","คลิป","ช่วง","ที"];
+  SYN.push(["สกายเปีย","เกาะบนฟ้า","skypiea","sky island"],["อลาบาสต้า","อลาบาสตา","อาราบาสต้า","alabasta","arabasta"],["เอนิเอสล็อบบี้","เอเนียสล็อบบี้","เอนีส","enies lobby","buster call"],["วอเตอร์เซเว่น","วอเตอร์ 7","water 7","water seven"],["มารีนฟอร์ด","มารีนฟอร์ต","สงครามสูงสุด","marineford","summit war"],["อิมเพลดาวน์","impel down"],["เกาะมนุษย์เงือก","ฟิชแมน","fish-man","fishman","fish man"],["พังค์ฮาซาร์ด","พังก์ฮาซาร์ด","punk hazard"],["เดรสโรซา","dressrosa"],["โฮลเค้ก","ฮอลเค้ก","whole cake"],["วาโนะ","วาโนคุนิ","wano"],["เอ้กเฮด","egghead"],["ธริลเลอร์บาร์ค","thriller bark"],["ชาบอนดี้","ซาโบดี้","sabaody"],["อเมซอนลิลลี่","amazon lily"],["บาราตี้","baratie"],["อาร์ลองปาร์ค","arlong park"],["ล็อกทาวน์","logue town","loguetown"],["ดรัมไอส์แลนด์","เกาะดรัม","drum island"],["ลิตเติ้ลการ์เด้น","little garden"],["วิสกี้พีค","whisky peak"],["จายา","jaya"],["ลองริงลองแลนด์","long ring long land"],["โรแมนซ์ดอว์น","romance dawn"],["ออเรนจ์ทาวน์","orange town"],["ซีรัป","หมู่บ้านซีรัป","syrup village"],["ริเวิร์สเมาน์เทน","reverse mountain"]); /* ชื่อภาค ไทย↔อังกฤษ (ป้าย arc ของ AI เป็นอังกฤษ) */
+  var STOP = ["ภาค","ฉาก","ฉากที่","ที่","ซึ่ง","อยู่","กับ","และ","ของ","ใน","ตอน","ตอนที่","แบบ","มี","เป็น","ให้","ไป","มา","คือ","หา","อยาก","ได้","เวลา","เจอ","ครับ","ค่ะ","หน่อย","ด้วย","แล้ว","จะ","ก็","ไหม","มั้ย","อะ","นะ","เมื่อ","กำลัง","แต่","หรือ","กัน","เรื่อง","ภาพ","คลิป","ช่วง","ที"];
   var seg = null; try{ seg = new Intl.Segmenter("th", { granularity:"word" }); }catch(e){}
   /* ปรับข้อความให้เทียบกันได้แม้สะกดต่าง: ตัดวรรณยุกต์/ไม้ยมก · เลขไทย→อารบิก · สอง/สาม/หนึ่ง→2/3/1 · compact = ตัดช่องว่างด้วย (ภาษาไทยไม่เว้นวรรคสม่ำเสมอ) */
   var NZC = {};
@@ -76,7 +77,7 @@
     var a = sc.ai || {};
     return [ (a.characters || []).concat(a.characters_th || []).join(" "),
              (a.tags_en || []).concat(a.tags_th || [], [a.action, a.emotion, a.mood], a.objects || []).join(" "),
-             [a.summary_th, a.location, a.arc, a.event, a.text].concat((a.fr || []).map(function(f){ return f.d; })).join(" ") ].map(nzc); /* mood/arc/event มีเฉพาะดัชนีรุ่นละเอียด */ /* ระดับฉากเท่านั้น: ไม่รวมสรุปทั้งคลิป (ไม่งั้นทุกฉากในคลิปที่มีลูฟี่ตรงหมด) และไม่รวมชื่ออัลบั้ม */
+             [a.summary_th, a.location, a.arc, c && c.arcFixed ? c.arc : "", a.event, a.text].concat((a.fr || []).map(function(f){ return f.d; })).join(" ") ].map(nzc); /* mood/arc/event มีเฉพาะดัชนีรุ่นละเอียด */ /* ระดับฉากเท่านั้น: ไม่รวมสรุปทั้งคลิป (ไม่งั้นทุกฉากในคลิปที่มีลูฟี่ตรงหมด) และไม่รวมชื่ออัลบั้ม */
   }
   /* "ลูฟี่ตกใจ" ต้องหมายถึงลูฟี่เป็นคนตกใจ ไม่ใช่แค่มีลูฟี่อยู่ในฉากแล้วคนอื่นตกใจ → ดูว่าชื่อตัวละครตามด้วยคำอารมณ์ติดกันในสรุปของฉาก (ไม่เกิน NEAR ตัวอักษร) */
   var NEAR = 24;
@@ -94,7 +95,7 @@
   var NAMEX = NAMES.map(function(g){ var en = g.filter(function(n){ return /^[a-z ]+$/.test(n); }); /* ชื่ออังกฤษทุกแบบในกลุ่ม · ที่เหลือเป็นชื่อไทย */
     return { key:g[0], th:g[1], en:new RegExp("(^|[^a-z])(" + en.join("|") + ")([^a-z]|$)"), ths:g.filter(function(n){ return !/^[a-z ]+$/.test(n); }) }; });
   var MINSC = 3, SKIPN = /^(unknown|none|n\/a|na|-|unnamed)$/;
-  var chipCache = new WeakMap(), labelOf = {}, sel = [], only = false, sizeSel = "", albumSel = ""; /* albumSel = อัลบั้มที่ Han จัดไว้ (ชื่อตอนอัป) */
+  var chipCache = new WeakMap(), labelOf = {}, sel = [], only = false, sizeSel = "";
   NAMEX.forEach(function(n){ labelOf[n.key] = n.th; });
   function sceneChars(sc){ /* คืนรายการ key ตัวละครในฉากนี้ (จากป้าย AI) */
     var r = chipCache.get(sc); if(r) return r;
@@ -119,27 +120,20 @@
   function enName(k){ return /^[\x20-\x7e]+$/.test(k) ? k.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }) : (labelOf[k] || k); } /* ชื่อ canon อังกฤษ */
   var SIZES = [["", "ทุกจำนวนคน"], ["1", "เดี่ยว"], ["2", "คู่"], ["3", "กลุ่ม 3-4"], ["5", "หมู่ 5+"]];
   function renderChips(){
-    var cnt = {}, none = 0, total = 0, sz = { "1":0, "2":0, "3":0, "5":0 }, al = {};
-    U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return; al[c.album] = (al[c.album] || 0) + 1; /* อัลบั้มที่จัดเอง: นับเป็นคลิป */
+    var cnt = {}, none = 0, total = 0, sz = { "1":0, "2":0, "3":0, "5":0 };
+    U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return;
       c.scenes.forEach(function(sc){ total++; var cs = sceneChars(sc); if(!cs.length) none++; else sz[sizeOf(cs.length)]++; cs.forEach(function(k){ cnt[k] = (cnt[k] || 0) + 1; }); }); });
     if(!total){ $("chips").innerHTML = ""; $("onlyRow").hidden = true; return; }
     var ks = Object.keys(cnt).filter(function(k){ return cnt[k] >= MINSC || labelOf[k] && NAMEX.some(function(n){ return n.key === k; }) || sel.indexOf(k) >= 0; }).sort(function(x, y){ return enName(x).localeCompare(enName(y)); });
-    dat = { ks:ks, cnt:cnt, none:none, sz:sz, al:al };
+    dat = { ks:ks, cnt:cnt, none:none, sz:sz };
     var btn = function(w, icon, lab, on){ return '<button class="chip fbtn' + (on ? " on" : "") + '" data-open="' + w + '">' + MWIcon(icon) + "<span>" + esc(lab) + "</span></button>"; };
-    var albs = Object.keys(al).length > 1;
-    $("chips").innerHTML = (albs ? btn("a", "folder", albumSel || "อัลบั้ม", albumSel) : "")
-      + btn("c", "user", !sel.length ? "ตัวละคร" : sel.map(function(k){ return k === "?" ? "ไม่ระบุตัวละคร" : enName(k); }).join(", "), sel.length)
+    $("chips").innerHTML = btn("c", "user", !sel.length ? "ตัวละคร" : sel.map(function(k){ return k === "?" ? "ไม่ระบุตัวละคร" : enName(k); }).join(", "), sel.length)
       + btn("z", "sliders", sizeSel ? SIZES.find(function(x){ return x[0] === sizeSel; })[1] : "จำนวนคน", sizeSel)
-      + (albumSel || sel.length || sizeSel ? '<button class="chip" data-clr="1">ล้างทั้งหมด</button>' : "");
+      + (sel.length || sizeSel ? '<button class="chip" data-clr="1">ล้างทั้งหมด</button>' : "");
     $("onlyRow").hidden = !sel.length || sel.indexOf("?") >= 0; $("onlySel").checked = only;
   }
   function matchCount(){ /* จำนวนฉากที่ผ่านตัวกรองอัลบั้ม/ตัวละคร/จำนวนคนตอนนี้ (ยังไม่นับคำค้นในช่องค้นหา) */
-    var n = 0; U.lib().forEach(function(c){ if(c.status !== "done" || c.hide || albumSel && c.album !== albumSel) return; c.scenes.forEach(function(sc){ if(passSc(sc)) n++; }); }); return n;
-  }
-  function pickAlbum(){
-    FT.pick.open({ title:"เลือกอัลบั้ม", placeholder:"พิมพ์ชื่ออัลบั้มเพื่อหา", icon:"folder", count:matchCount,
-      items:function(q){ var r = [{ k:"", name:"ทุกอัลบั้ม", sub:"", on:!albumSel }].concat(Object.keys(dat.al).sort().map(function(a){ return { k:a, name:a, sub:dat.al[a] + " คลิป", on:albumSel === a }; })); return r.filter(function(x){ return !q || x.name.toLowerCase().indexOf(q) >= 0; }); },
-      onPick:function(k){ albumSel = k === albumSel ? "" : k; chipMax = 40; search(); } }); /* แตะตัวที่เลือกอยู่ซ้ำ = ยกเลิก (กลับเป็นทั้งหมด) */
+    var n = 0; U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return; c.scenes.forEach(function(sc){ if(passSc(sc)) n++; }); }); return n;
   }
   function pickChars(){ /* เลือกหลายคนได้ = ฉากต้องมีทุกคนที่เลือก · "ไม่ระบุตัวละคร" เลือกร่วมกับตัวอื่นไม่ได้ */
     FT.pick.open({ title:"เลือกตัวละคร", placeholder:"พิมพ์ชื่อเพื่อหา เช่น Zoro หรือ โซโร", icon:"user", multi:true, count:matchCount,
@@ -160,16 +154,17 @@
       onPick:function(k){ sizeSel = k === sizeSel ? "" : k; chipMax = 40; search(); } });
   }
   $("chips").addEventListener("click", function(e){
-    if(e.target.closest("[data-clr]")){ albumSel = sizeSel = ""; sel = []; chipMax = 40; search(); return; }
+    if(e.target.closest("[data-clr]")){ sizeSel = ""; sel = []; chipMax = 40; search(); return; }
     var b = e.target.closest("[data-open]"); if(!b) return;
-    ({ a:pickAlbum, c:pickChars, z:pickSize })[b.dataset.open]();
+    ({ c:pickChars, z:pickSize })[b.dataset.open]();
   });
   $("onlySel").addEventListener("change", function(){ only = this.checked; chipMax = 40; search(); });
   var sT = 0, shown = [], lastQ = "", showPartial = false, chipMax = 40; /* shown = รายการที่โชว์อยู่ (ให้ปุ่มดูรูปใหญ่อ้างถึง) */
   $("q").addEventListener("input", function(){ clearTimeout(sT); sT = setTimeout(search, 250); });
   function search(){
     var q = $("q").value.trim();
-    var clips = U.lib().filter(function(c){ return c.status === "done" && !c.hide && (!albumSel || c.album === albumSel); }); /* c.hide = ซ่อนเพราะซ้ำ (footage-dup.js) */
+    document.dispatchEvent(new CustomEvent("ft:search", { detail:{ active:!!q || filtering() } })); /* หน้าอัลบั้มสลับระหว่างตารางอัลบั้ม/ผลค้นหา */
+    var clips = U.lib().filter(function(c){ return c.status === "done" && !c.hide ; }); /* c.hide = ซ่อนเพราะซ้ำ (footage-dup.js) */
     renderChips();
     if(!q){ return browse(clips); }
     var ts = terms(q), hits = [];
@@ -202,23 +197,13 @@
     if(e.target.closest("#partialBtn")){ showPartial = !showPartial; search(); }
     if(e.target.closest("#moreBtn")){ chipMax += 40; search(); }
   });
-  function browse(clips){ /* ไม่พิมพ์คำค้น = โชว์ทุกคลิปพร้อมสรุป · เลือกชิป = โชว์เป็นฉาก (ใหม่สุดก่อน) */
-    if(filtering() || albumSel){
-      if(!filtering()){ /* เลือกอัลบั้มอย่างเดียว = โชว์เป็นคลิป */
-        $("findInfo").textContent = "อัลบั้ม " + albumSel + " · " + clips.length + " คลิป · พิมพ์คำค้นหรือแตะชิปตัวละครเพื่อกรองฉาก";
-        $("results").innerHTML = clips.slice().sort(function(a, b){ return b.lastModified - a.lastModified; }).map(function(c){ return card(c, null); }).join("") || '<p class="empty">ไม่มีคลิป</p>';
-        return;
-      }
-      var sc = []; clips.forEach(function(c){ c.scenes.forEach(function(s){ if(passSc(s)) sc.push({ c:c, sc:s }); }); });
-      sc.sort(function(a, b){ return (b.c.lastModified || 0) - (a.c.lastModified || 0) || a.sc.s - b.sc.s; });
-      $("findInfo").textContent = sc.length + " ฉากตามชิปที่เลือก (จากป้ายตัวละครที่ AI ติดให้) · พิมพ์คำค้นเพื่อกรองต่อ" + (sc.length > chipMax ? " · โชว์ " + chipMax + " ฉากแรก" : "");
-      $("results").innerHTML = sc.slice(0, chipMax).map(function(h){ return card(h.c, h.sc); }).join("")
-        + (sc.length > chipMax ? '<button class="btn ghost small" id="moreBtn" style="width:100%">ดูเพิ่ม 40 ฉาก</button>' : "") || '<p class="empty">ไม่มีฉาก</p>';
-      return;
-    }
-    clips = clips.slice().sort(function(a, b){ return a.album.localeCompare(b.album) || b.lastModified - a.lastModified; });
-    $("findInfo").textContent = clips.length + " คลิปในดัชนี · พิมพ์คำค้นเพื่อหาฉาก";
-    $("results").innerHTML = clips.length ? clips.map(function(c){ return card(c, null); }).join("") : '<p class="empty">ยังไม่มีคลิปในดัชนี ไปที่แท็บ อัปโหลด ก่อน</p>';
+  function browse(clips){ /* ไม่พิมพ์คำค้น = ไม่โชว์ผล (หน้าอัลบั้มโชว์แทน) · เลือกชิป = โชว์เป็นฉาก (ใหม่สุดก่อน) */
+    if(!filtering()){ $("results").innerHTML = ""; $("findInfo").textContent = ""; return; }
+    var sc = []; clips.forEach(function(c){ c.scenes.forEach(function(s){ if(passSc(s)) sc.push({ c:c, sc:s }); }); });
+    sc.sort(function(a, b){ return (b.c.lastModified || 0) - (a.c.lastModified || 0) || a.sc.s - b.sc.s; });
+    $("findInfo").textContent = sc.length + " ฉากตามชิปที่เลือก (จากป้ายตัวละครที่ AI ติดให้) · พิมพ์คำค้นเพื่อกรองต่อ";
+    $("results").innerHTML = sc.slice(0, chipMax).map(function(h){ return card(h.c, h.sc); }).join("")
+      + (sc.length > chipMax ? '<button class="btn ghost small" id="moreBtn" style="width:100%">ดูเพิ่ม 40 ฉาก</button>' : "") || '<p class="empty">ไม่มีฉาก</p>';
   }
   function strip(c){
     return '<div class="strip">' + c.scenes.map(function(s){
@@ -321,5 +306,5 @@
   }
   Object.assign(U, { addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
                      openFiles:function(docs){ $(docs ? "pickDocs" : "playFiles").click(); } });
-  if($("p-find").classList.contains("on")) search();
+  search();
 })();

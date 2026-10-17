@@ -32,7 +32,7 @@ jobs:
           rsync -a --exclude '.git' --exclude '.github' --exclude 'wrap' --exclude 'tests' --exclude 'tools' --exclude '*.md' --exclude '*.mjs' --exclude '*.test.mjs' ./ wrap/www/
           cd wrap
           npm init -y >/dev/null
-          npm install --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7 @capacitor-community/keep-awake@7 @capacitor-community/media@8.0.1
+          npm install --no-audit --no-fund @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7 @capacitor/app@7 @capacitor-community/keep-awake@7 @capacitor-community/media@8.0.1
           python3 - <<'PY1'
           import json, os
           cfg = {"appId": "com.han.meowrin", "appName": "Meowrin App", "webDir": "www", "backgroundColor": "#0b0e0d",

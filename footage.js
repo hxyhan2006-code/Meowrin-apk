@@ -34,16 +34,16 @@
   }
 
   /* ---------- แท็บ ---------- */
-  var tabQ = new URLSearchParams(location.search).get("tab"); /* footage.html?tab=plan เปิดตรงแท็บนั้น (กล่อง ตัดต่ออัตโนมัติ ในหน้าตั้งค่า) */
+  var qs = new URLSearchParams(location.search), tabQ = qs.get("tab") || (qs.get("voice") ? "plan" : ""); /* ?tab=plan (หรือมี ?voice=) = โหมด "ตัดต่ออัตโนมัติ": โชว์เฉพาะผู้กำกับ ไม่มีแท็บ · ไม่มี = โหมด "อัลบั้ม" */
+  if(tabQ === "plan"){ document.body.classList.add("mode-plan"); document.querySelectorAll(".page").forEach(function(p){ p.classList.toggle("on", p.id === "p-plan"); }); $("pgTitle").textContent = "ตัดต่ออัตโนมัติ"; }
   document.querySelector(".tabs").addEventListener("click", function(e){
     var b = e.target.closest("button[data-p]"); if(!b) return;
     document.querySelectorAll(".tabs button").forEach(function(x){ x.classList.toggle("on", x === b); });
     document.querySelectorAll(".page").forEach(function(p){ p.classList.toggle("on", p.id === "p-" + b.dataset.p); });
     if(b.dataset.t) $("pgTitle").textContent = b.dataset.t; /* ชื่อหัวหน้าตามแท็บ */
-    if(b.dataset.p === "find" && FT.ui.search) FT.ui.search(); /* footage-find.js */
     window.scrollTo(0, 0);
   });
-  if(tabQ){ var tb = document.querySelector('.tabs button[data-p="' + tabQ + '"]'); if(tb) tb.click(); }
+  if(tabQ && tabQ !== "plan"){ var tb = document.querySelector('.tabs button[data-p="' + tabQ + '"]'); if(tb) tb.click(); }
 
   /* ---------- เลือกไฟล์ → คิว ---------- */
   var VIDEO = /\.(mp4|m4v|mov|webm|mkv|3gp)$/i;
@@ -475,7 +475,7 @@
   function applyTips(){ document.documentElement.classList.toggle("tips", !!cfg.tips); $("tipBtn").classList.toggle("on", !!cfg.tips); }
   $("tipBtn").addEventListener("click", function(){ cfg.tips = !cfg.tips; FT.saveCfg(); applyTips(); });
   applyTips();
-  function renderAll(){ renderAlbums(); renderQueue(); renderStats(); renderDb(); if($("p-find").classList.contains("on") && FT.ui.search) FT.ui.search(); }
+  function renderAll(){ renderAlbums(); renderQueue(); renderStats(); renderDb(); if(FT.ui.search) FT.ui.search(); }
 
   refreshLib().then(function(){ /* เปิดหน้าครั้งไหน ถ้ามีรายการซ้ำเก่าค้าง รวมให้เองเลย (ลบแค่รายการดัชนีที่ซ้ำ ไม่แตะไฟล์วิดีโอ) */
     var d = findDupes(); if(!d.del.length) return;

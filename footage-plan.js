@@ -60,7 +60,6 @@
     history.replaceState(null, "", location.pathname);
     try{
       var rec = await MWVoice.get(+voiceQ) || await MWVoice.pull(+voiceQ);
-      document.querySelector('nav button[data-p="plan"]').click();
       mode = "fast"; showMode(); if(rec.text) $("plText").value = rec.text;
       voiceSel = String(rec.id); await refreshVoices(); voiceSel = String(rec.id); showVoice(); render();
     }catch(err){ say("เปิดเสียงที่เลือกไม่ได้: " + err.message, "err"); }

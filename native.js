@@ -40,5 +40,21 @@
     if(navigator.share){ await navigator.share({ files:[new File([blob], name, { type:blob.type })], title:title || name }); return; }
     throw new Error("เครื่องนี้แชร์ไฟล์ไม่ได้ ใช้ปุ่มบันทึกแทน");
   }
+  /* ปุ่มย้อนของมือถือ (ปลั๊กอิน @capacitor/app): หน้าที่ลงทะเบียน window.MWBackHook ปิดชั้นของตัวเองก่อน (คืน true) · ไม่มีอะไรให้ปิด: หน้าย่อย → ย้อนไปหน้าก่อนหน้า · หน้าแรก → ถามก่อนออกแอพ
+     (ไม่มีปลั๊กอิน = ใช้พฤติกรรมเดิมของ Android ย้อนแล้วออกเลย · ต้องติดตั้ง APK ที่มีปลั๊กอินนี้) */
+  (function(){
+    var App = plug("App"); if(!App || !App.addListener) return;
+    var busy = false;
+    App.addListener("backButton", async function(){
+      if(busy) return; busy = true;
+      try{
+        if(window.MWBackHook && await window.MWBackHook()) return;
+        var path = location.pathname.replace(/\/+$/, "");
+        if(path !== "" && !/\/index\.html$/.test(path)){ if(history.length > 1) history.back(); else location.href = "/"; return; }
+        var ok = window.MWDialog ? await MWDialog.confirm("ออกจากแอพไหม?", { ok:"ออก", cancel:"อยู่ต่อ" }) : true;
+        if(ok) App.exitApp();
+      } finally { busy = false; }
+    });
+  })();
   window.MWNative = { isNative:isNative, save:save, share:share, canShare:canShare };
 })();

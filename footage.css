@@ -230,3 +230,5 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 .alselbar[hidden]{display:none}.alsp{flex:1}
 .alt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
 .alhead small{font-size:13px}
+.mode-plan .tabs{display:none}
+#alMain[hidden],#results[hidden]{display:none}

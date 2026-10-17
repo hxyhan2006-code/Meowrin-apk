@@ -167,6 +167,9 @@
   function onStrip(items){ return function(e){ var b = e.target.closest("[data-act]"); if(!b) return; if(b.dataset.act === "stop") U.stopQueue(); else runFor(items()); }; }
   $("alAi").addEventListener("click", onStrip(allItems));
   $("alvAi").addEventListener("click", onStrip(function(){ return curAlbum ? curAlbum.items : []; }));
+  document.addEventListener("ft:search", function(e){ /* พิมพ์ค้น/เลือกชิป = โชว์ผลค้นหา · ว่าง = กลับตารางอัลบั้ม */
+    var on = !!(e.detail && e.detail.active); $("alMain").hidden = on; $("results").hidden = !on; $("findInfo").hidden = !on && !$("findInfo").textContent;
+  });
   var wasRunning = false;
   document.addEventListener("ft:queue", function(){ /* คิวเดินอยู่: อัปเดตแค่แถบ · จบรอบค่อยวาดตารางใหม่ (ไม่ให้กะพริบทุกวินาที) */
     var r = U.queueInfo().running; build(); if(curAlbum) curAlbum = albums.find(function(a){ return a.name === curAlbum.name; }) || null; strips();
@@ -227,10 +230,18 @@
     catch(err){ $("alMsg").textContent = "สแกนไม่ได้: " + (err && (err.message || err.errorMessage) || err) + " · ถ้าเคยกดไม่อนุญาต ให้เปิดสิทธิ์ดูรูป/วิดีโอที่ตั้งค่าของมือถือ"; b.disabled = false; return; }
     b.disabled = false; renderHome();
   });
+  window.MWBackHook = async function(){ /* native.js เรียกเมื่อกดปุ่มย้อนของมือถือ */
+    var sh = document.querySelector(".asheet:not([hidden])"); if(sh){ sh.click(); return true; } /* ชีตเลือก/แก้ไข: แตะพื้นหลัง = ปิด */
+    if(!$("big").hidden){ $("bigX").click(); return true; }
+    if(view !== "home"){ history.back(); return true; } /* ตัวเล่น/อัลบั้ม: popstate ปิดทีละชั้น */
+    if($("q").value.trim()){ $("q").value = ""; $("q").dispatchEvent(new Event("input")); return true; } /* กำลังค้นหา: ล้างคำค้นก่อน */
+    return false;
+  };
   function refresh(){ if(view === "home") renderHome(); }
   document.addEventListener("ft:files", refresh); /* สแกนเสร็จ */
   document.addEventListener("ft:scan", refresh); /* เริ่ม/จบการสแกน (ข้อความกำลังสแกน) */
   document.addEventListener("ft:lib", refresh); /* ดัชนีโหลด/เปลี่ยน */
   document.querySelector(".tabs").addEventListener("click", function(e){ var b = e.target.closest('button[data-p="album"]'); if(b) refresh(); });
+  U.search && U.search(); /* ตั้งสถานะแถบค้นหา/ตารางอัลบั้มตั้งแต่เปิดหน้า */
   refresh();
 })();
