@@ -368,6 +368,20 @@ try {
   check('เก็บคลิปไว้ในแอพ: ข้ามคลิปที่มีสำเนาแล้ว (old) · ถามก่อนพร้อมบอกว่าต้นฉบับไม่ถูกแตะ · ก๊อป 2 คลิปไปชื่อ .part แล้วเปลี่ยนชื่อ · สแกนใหม่แล้วเล่นจากสำเนา · ไม่ลบต้นฉบับ',
     l0.todo.join() === 'new1.mp4,new2.mp4' && l0.info.includes('1/3') === false && lDlg && l1.ops.length === 4 && l1.ops[0] === 'file:///storage/Pictures/Gallery/owner/luffy/new1.mp4>Meowrin/library/luffy/new1.mp4.part' && l1.ops[1] === 'Meowrin/library/luffy/new1.mp4.part>Meowrin/library/luffy/new1.mp4' && l1.todo === 0 && /ก๊อปครบแล้ว 3 คลิป/.test(l1.info) && /docs\/Meowrin\/library\/luffy\/new1\.mp4$/.test(l1.url || '') && l1.n === 3 && !l1.over && !lbE.length, JSON.stringify([l0, l1]) + lbE.join());
   await lb.close();
+  // เสียงพากย์: สร้างแล้วเก็บเป็นไฟล์ใน Documents/Meowrin/voice ด้วย (mp3+json) · IndexedDB ว่าง + มีไฟล์ = ดึงกลับให้เอง
+  const vcx = await browser.newContext({ viewport: { width: 380, height: 820 } }); const vp = await vcx.newPage();
+  await vp.addInitScript(() => { window.__w = []; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { Filesystem: { writeFile: async (o) => { window.__w.push([o.path, o.directory, o.data.length]); }, deleteFile: async (o) => { window.__w.push(['del', o.path]); } } } }; });
+  await vp.goto(base + '/index.html'); await vp.waitForFunction(() => window.MWVoice, null, { timeout: 20000 });
+  const vw = await vp.evaluate(async () => { await MWVoice.put({ id: 1700000000123, text: 'บท', name: 'a.mp3', blob: new Blob(['abc'], { type: 'audio/mpeg' }), align: null }); await new Promise((r) => setTimeout(r, 300)); await MWVoice.del(1700000000123); await new Promise((r) => setTimeout(r, 100)); return window.__w; });
+  check('เสียงพากย์: เก็บไฟล์ mp3+json ลง Documents/Meowrin/voice แล้วลบไฟล์ตอนลบเทค', vw.length === 4 && vw[0][0] === 'Meowrin/voice/1700000000123.mp3' && vw[0][1] === 'DOCUMENTS' && vw[1][0] === 'Meowrin/voice/1700000000123.json' && vw.slice(2).every((x) => x[0] === 'del'), JSON.stringify(vw));
+  await vcx.close();
+  const vcy = await browser.newContext({ viewport: { width: 380, height: 820 } }); const vq = await vcy.newPage();
+  await vq.addInitScript(() => { const mp3 = btoa('ID3data'), js = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify({ text: 'บทเดิม', name: 'v.mp3', align: null }))));
+    window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { Filesystem: { writeFile: async () => {}, deleteFile: async () => {}, readdir: async () => ({ files: [{ name: '1700000000999.mp3' }, { name: '1700000000999.json' }] }), readFile: async (o) => ({ data: /mp3$/.test(o.path) ? mp3 : js }) } } }; });
+  await vq.goto(base + '/index.html'); await vq.waitForFunction(() => window.MWVoice, null, { timeout: 20000 }); await vq.waitForFunction(async () => (await MWVoice.list()).length > 0, null, { timeout: 8000 }).catch(() => {});
+  const vr = await vq.evaluate(async () => { const l = await MWVoice.list(); return l.map((r) => [r.id, r.text, r.name, r.blob.size]); });
+  check('เสียงพากย์: IndexedDB ว่างแต่มีไฟล์ในโฟลเดอร์ → ดึงเทคกลับมาให้เอง (บท/ชื่อ/ไฟล์เสียงครบ)', vr.length === 1 && vr[0][0] === 1700000000999 && vr[0][1] === 'บทเดิม' && vr[0][2] === 'v.mp3' && vr[0][3] === 7, JSON.stringify(vr));
+  await vcy.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
   await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });
