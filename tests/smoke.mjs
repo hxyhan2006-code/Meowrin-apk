@@ -403,7 +403,8 @@ try {
     document.getElementById('orgBtn').hidden = false;
   });
   await og.click('#orgBtn'); await og.waitForFunction(() => document.querySelector('#orgBox #orgTrial'), null, { timeout: 8000 });
-  const og1 = await og.evaluate(() => ({ t: document.getElementById('orgBox').textContent, ala: FT.organize.nameOfArc('Alabasta') }));
+  const og1 = await og.evaluate(() => ({ t: document.getElementById('orgBox').textContent, ala: FT.organize.nameOfArc('Alabasta'), disp: getComputedStyle(document.getElementById('orgBox')).display, w: Math.round(document.getElementById('orgTrial').getBoundingClientRect().width), bw: Math.round(document.getElementById('orgBox').getBoundingClientRect().width), ov: document.documentElement.scrollWidth > innerWidth + 1 }));
+  check('จัดอัลบั้มใหม่: แผงเรียงเป็นบล็อกแนวตั้ง (ไม่ใช่แถบแนวนอน) · ปุ่มกว้างพอ · หน้าไม่ล้นจอ', og1.disp === 'block' && og1.w > 100 && og1.bw > 250 && !og1.ov, JSON.stringify([og1.disp, og1.w, og1.bw, og1.ov]));
   await og.click('#orgIdx'); await og.click('#orgArc');
   check('จัดอัลบั้มใหม่: คลิปที่ยังไม่ทำดัชนีมีปุ่ม ให้ AI ทำดัชนีที่เหลือ (ส่งไฟล์ e.mp4 เท่านั้น) · มีปุ่ม ให้ AI ดูภาค ในแผงเดียวกัน', /ยังไม่ได้ทำดัชนี 1 คลิป/.test(og1.t) && (await og.evaluate(() => window.__idxCalls.join())) === '1:e.mp4' && (await og.evaluate(() => window.__arcRun)) === 1);
   check('จัดอัลบั้มใหม่: แผนย้าย 2 คลิป (a กับ b) · ข้ามคลิปที่ไม่แน่ใจภาค/ที่อยู่ถูกแล้ว/สำเนาในแอพ/ชื่อซ้ำ 1 · มีชื่อโฟลเดอร์เลขลำดับ', /จะย้าย 2 คลิป/.test(og1.t) && /ไม่แตะ 1 คลิปที่ยังไม่แน่ใจ/.test(og1.t) && /ข้าม 1 ไฟล์ชื่อซ้ำ/.test(og1.t) && /^\d\d Alabasta/.test(og1.ala), JSON.stringify(og1).slice(0, 300));
