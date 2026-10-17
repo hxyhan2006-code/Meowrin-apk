@@ -34,6 +34,7 @@
   }
 
   /* ---------- แท็บ ---------- */
+  var tabQ = new URLSearchParams(location.search).get("tab"); /* footage.html?tab=plan เปิดตรงแท็บนั้น (กล่อง ตัดต่ออัตโนมัติ ในหน้าตั้งค่า) */
   document.querySelector(".tabs").addEventListener("click", function(e){
     var b = e.target.closest("button[data-p]"); if(!b) return;
     document.querySelectorAll(".tabs button").forEach(function(x){ x.classList.toggle("on", x === b); });
@@ -41,6 +42,7 @@
     if(b.dataset.p === "find" && FT.ui.search) FT.ui.search(); /* footage-find.js */
     window.scrollTo(0, 0);
   });
+  if(tabQ){ var tb = document.querySelector('.tabs button[data-p="' + tabQ + '"]'); if(tb) tb.click(); }
 
   /* ---------- เลือกไฟล์ → คิว ---------- */
   var VIDEO = /\.(mp4|m4v|mov|webm|mkv|3gp)$/i;

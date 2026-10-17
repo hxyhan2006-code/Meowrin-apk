@@ -4,19 +4,19 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
-<link rel="manifest" href="manifest.json?v=7.5">
+<link rel="manifest" href="manifest.json?v=7.6">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Meowrin">
-<link rel="icon" type="image/png" href="icon-192.png?v=7.5">
-<link rel="apple-touch-icon" href="icon-192.png?v=7.5">
+<link rel="icon" type="image/png" href="icon-192.png?v=7.6">
+<link rel="apple-touch-icon" href="icon-192.png?v=7.6">
 <title>Meowrin factory</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Mitr:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=7.5">
-<link rel="stylesheet" href="sheet.css?v=7.5">
+<link rel="stylesheet" href="style.css?v=7.6">
+<link rel="stylesheet" href="sheet.css?v=7.6">
 </head>
 <body>
 <div class="wrap">
@@ -181,11 +181,9 @@
   <section id="tab-settings">
     <div class="sech first">เครื่องมือ</div>
     <div class="tools">
-      <a class="tool" href="footage.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>ดัชนีฟุตเทจ</b><small>คลังฟุตเทจ + ผู้กำกับ AI</small></a>
+      <a class="tool" href="footage.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.6"/><path d="m21 15-5-5L5 21"/></svg><b>อัลบั้ม</b><small>คลังวิดีโอ + AI จัดการให้</small></a>
+      <a class="tool" href="footage.html?tab=plan"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg><b>ตัดต่ออัตโนมัติ</b><small>AI ตัดภาพตามบทและเสียง</small></a>
       <a class="tool" href="sub/"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 14h6M7 10h10"/></svg><b>ซับจอเขียว</b><small>ทำซับจากเสียงพากย์</small></a>
-    </div>
-    <div class="tools" style="margin-top:8px">
-      <a class="tool" href="check.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b>ตรวจระบบแอพ</b><small>ทดสอบว่าอะไรใช้ได้บนเครื่องนี้</small></a>
     </div>
     <div class="qbk">
       <div><b>สำรองขึ้น Google Drive</b><small id="gdQuickInfo">ตรวจสอบ...</small></div>
@@ -324,7 +322,7 @@
       <div id="setMsg"></div>
     </div></details>
 
-    <div class="row" id="otaRow" hidden><button class="btn ghost" id="otaBtn" type="button">ตรวจอัปเดตแอพ</button></div>
+    <div class="row"><button class="btn ghost small" id="otaBtn" type="button" hidden>ตรวจอัปเดตแอพ</button><a class="btn ghost small" href="check.html">ตรวจระบบแอพ</a></div>
     <p class="hint" id="otaInfo"></p>
     <p class="ver" id="appVersion"></p>
   </section>
@@ -407,6 +405,6 @@
   </div>
 </div>
 
-<script src="store.js?v=7.5" data-boot="version.js?v=7.5 icons.js?v=7.5 dialog.js?v=7.5 native.js?v=7.5 budget.js?v=7.5 sync.js?v=7.5 app.js?v=7.5 llm.js?v=7.5 ai.js?v=7.5 r2.js?v=7.5 voicestore.js?v=7.5 tts.js?v=7.5 gdrive.js?v=7.5 ota.js?v=7.5"></script>
+<script src="store.js?v=7.6" data-boot="version.js?v=7.6 icons.js?v=7.6 dialog.js?v=7.6 native.js?v=7.6 budget.js?v=7.6 sync.js?v=7.6 app.js?v=7.6 llm.js?v=7.6 ai.js?v=7.6 r2.js?v=7.6 voicestore.js?v=7.6 tts.js?v=7.6 gdrive.js?v=7.6 ota.js?v=7.6"></script>
 </body>
 </html>
