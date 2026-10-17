@@ -4,6 +4,20 @@
    ครั้งแรก: คัดลอกทุก key mw_* จาก localStorage เข้ามา (ไม่ลบของเดิม) · ขอ storage.persist() กันเบราว์เซอร์ลบเองตอนเครื่องเต็ม
    หลายแท็บ (แอพหลัก + หน้าฟุตเทจ) อัปเดตกันผ่าน BroadcastChannel
    โหลดเสร็จค่อยโหลดสคริปต์ที่เหลือตามลำดับใน data-boot (สคริปต์อื่นเลยใช้ MWStore.get ได้ทันทีตอนเริ่ม) */
+/* ตัวเฝ้าหน้าค้าง (v8.16): หน้าหลัก/หน้าฟุตเทจเปิดแล้ว 7 วิ แอพ (MW/FT) ยังไม่ขึ้น → โชว์กล่องบอกว่าพังตรงไหน (ไฟล์ไหนโหลดไม่ได้/error อะไร) ให้ถ่ายรูปส่งมา · ไม่แตะอะไรถ้าแอพขึ้นปกติ */
+(function(){ try{
+  var errs = [], need = /footage\.html$/.test(location.pathname) ? "FT" : /(^|\/)(index\.html)?$/.test(location.pathname) ? "MW" : "";
+  if(!need) return;
+  window.addEventListener("error", function(e){ var t = e.target; errs.push(t && (t.src || t.href) ? "โหลดไม่ได้: " + String(t.src || t.href).split("/").slice(-2).join("/") : (e.message || "error") + " @" + String(e.filename || "").split("/").pop() + ":" + e.lineno); }, true);
+  window.addEventListener("unhandledrejection", function(e){ errs.push("promise: " + (e.reason && (e.reason.message || e.reason))); });
+  setTimeout(function(){
+    if(window[need]) return;
+    var d = document.createElement("pre"); d.id = "mwWatch"; d.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;margin:0;padding:12px;background:#300;color:#fff;font:12px/1.4 monospace;white-space:pre-wrap;max-height:60vh;overflow:auto";
+    d.textContent = "แอพยังไม่ขึ้น (" + need + ") · ถ่ายรูปกล่องนี้ส่งให้ผู้ช่วย\nMWStore: " + (window.MWStore ? "มี" : "ไม่มี") + " · online: " + navigator.onLine + " · path: " + location.pathname + "\nsheets: " + document.styleSheets.length + " · สคริปต์ในหน้า: " + document.scripts.length + " (ปกติ ~25 ถ้า 1 = ฐานข้อมูลยังไม่เปิด)" + " · ข้อผิดพลาด " + errs.length + ":\n" + errs.slice(0, 12).join("\n");
+    document.body.appendChild(d);
+  }, window.__MW_WATCH_MS || 7000);
+}catch(e){} })();
+
 /* กันหน้าไม่มีสไตล์ (เจอบนมือถือหลังอัปเดตแอพ · สาเหตุจริงยังไม่รู้): โหลดเสร็จแล้วไฟล์ css ของเราเองโหลดไม่ติด → โหลดหน้าซ้ำ 1 รอบ แล้วจดลง log ของ OTA (ตั้งค่า > สถานะชุดไฟล์) · ซ้ำอีก = ขึ้นปุ่มให้แตะโหลดใหม่ */
 window.addEventListener("load", function(){ try{
   var bad = [].filter.call(document.querySelectorAll('link[rel="stylesheet"]'), function(l){ if(l.href.indexOf(location.origin) !== 0) return false; try{ return !l.sheet || l.sheet.cssRules.length === 0; }catch(e){ return true; } /* โหลดพังก็ยังมี sheet แต่ว่าง/อ่านกฎไม่ได้ */ }).map(function(l){ return l.getAttribute("href").split("?")[0]; });

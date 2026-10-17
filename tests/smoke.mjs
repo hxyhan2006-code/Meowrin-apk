@@ -406,6 +406,14 @@ try {
   const fl = await fp.evaluate(() => [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replace(/['"]/g, '')));
   check('ฟอนต์: ไม่มีหน้าไหนอ้าง Google Fonts · เก็บไว้ในแอพและโหลดใช้ได้แม้ต่อ Google ไม่ได้', !extFont.length && fl.some((n) => /IBM Plex Sans Thai/.test(n)), JSON.stringify([extFont, fl]));
   await fp.close();
+  // ตัวเฝ้าหน้าค้าง: ถ้า app.js โหลดไม่ได้ → กล่องแดงบอกไฟล์ที่พัง · ปกติไม่โผล่
+  const wd = await context.newPage(); await wd.addInitScript(() => { window.__MW_WATCH_MS = 1200; }); await wd.route(/\/app\.js/, (r) => r.abort());
+  await wd.goto(base + '/index.html'); await wd.waitForTimeout(2500);
+  const wdt = await wd.evaluate(() => (document.getElementById('mwWatch') || {}).textContent || '');
+  const wk = await context.newPage(); await wk.addInitScript(() => { window.__MW_WATCH_MS = 1200; }); await wk.goto(base + '/index.html'); await wk.waitForTimeout(2500);
+  const wkt = await wk.evaluate(() => document.querySelectorAll('#mwWatch').length);
+  check('ตัวเฝ้าหน้าค้าง: app.js โหลดไม่ได้ → ขึ้นกล่องบอก "โหลดไม่ได้: app.js" · แอพปกติไม่ขึ้นกล่อง', /แอพยังไม่ขึ้น \(MW\)/.test(wdt) && /โหลดไม่ได้: .*app\.js/.test(wdt) && wkt === 0, JSON.stringify([wdt, wkt]));
+  await wd.close(); await wk.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
   await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });
