@@ -6,7 +6,7 @@
    โหลดเสร็จค่อยโหลดสคริปต์ที่เหลือตามลำดับใน data-boot (สคริปต์อื่นเลยใช้ MWStore.get ได้ทันทีตอนเริ่ม) */
 /* ตัวเฝ้าหน้าค้าง (v8.16): หน้าหลัก/หน้าฟุตเทจเปิดแล้ว 7 วิ แอพ (MW/FT) ยังไม่ขึ้น → โชว์กล่องบอกว่าพังตรงไหน (ไฟล์ไหนโหลดไม่ได้/error อะไร) ให้ถ่ายรูปส่งมา · ไม่แตะอะไรถ้าแอพขึ้นปกติ */
 (function(){ try{
-  var errs = [], need = /footage\.html$/.test(location.pathname) ? "FT" : /(^|\/)(index\.html)?$/.test(location.pathname) ? "MW" : "";
+  var errs = [], need = location.pathname === "/footage.html" ? "FT" : (location.pathname === "/" || location.pathname === "/index.html") ? "MW" : ""; /* เฉพาะหน้าแรก/ฟุตเทจที่ราก · sub/index.html ไม่ใช่หน้าแรก (v8.18 เตือนผิด) */
   if(!need) return;
   window.addEventListener("error", function(e){ var t = e.target; errs.push(t && (t.src || t.href) ? "โหลดไม่ได้: " + String(t.src || t.href).split("/").slice(-2).join("/") : (e.message || "error") + " @" + String(e.filename || "").split("/").pop() + ":" + e.lineno); }, true);
   window.addEventListener("unhandledrejection", function(e){ errs.push("promise: " + (e.reason && (e.reason.message || e.reason))); });

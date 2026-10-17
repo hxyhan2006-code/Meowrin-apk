@@ -413,6 +413,9 @@ try {
   const wk = await context.newPage(); await wk.addInitScript(() => { window.__MW_WATCH_MS = 1200; }); await wk.goto(base + '/index.html'); await wk.waitForTimeout(2500);
   const wkt = await wk.evaluate(() => document.querySelectorAll('#mwWatch').length);
   check('ตัวเฝ้าหน้าค้าง: app.js โหลดไม่ได้ → ขึ้นกล่องบอก "โหลดไม่ได้: app.js" · แอพปกติไม่ขึ้นกล่อง', /แอพยังไม่ขึ้น \(MW\)/.test(wdt) && /โหลดไม่ได้: .*app\.js/.test(wdt) && wkt === 0, JSON.stringify([wdt, wkt]));
+  const ws = await context.newPage(); await ws.addInitScript(() => { window.__MW_WATCH_MS = 800; }); await ws.goto(base + '/sub/index.html'); await ws.waitForTimeout(2000);
+  check('ตัวเฝ้าหน้าค้าง: หน้าซับ (sub/index.html) ไม่ขึ้นกล่องเตือนผิดๆ', (await ws.evaluate(() => document.querySelectorAll('#mwWatch').length)) === 0);
+  await ws.close();
   await wd.close(); await wk.close();
   // ป้ายหัวข้อ สำรองข้อมูล (ในแอพ): เตือนเรื่องสำรองอย่างเดียว → บอกสาเหตุ "ยังไม่เคยสำรอง" / "สำรองนานแล้ว" ไม่ใช้คำกว้างๆ · สำรองสดๆ = ปกติ
   async function stTagFor(last) {
