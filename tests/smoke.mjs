@@ -169,6 +169,16 @@ try {
   const big = nres.w.filter((x) => x[1] === 'Meowrin/big.mp4');
   check('บันทึกไฟล์ (ในแอพ): เขียน 13 MB เป็น 3 ก้อน ลง Documents/Meowrin ต่อกันได้', big.length === 3 && big[0][0] === 'w' && big[1][0] === 'a' && big[2][0] === 'a' && big[0][3] === 8388608 && big[0][2] === 'DOCUMENTS' && nres.r1.path === 'Documents/Meowrin/big.mp4', JSON.stringify(nres.r1) + JSON.stringify(big));
   check('บันทึกวิดีโอ (ในแอพ): ก๊อปเข้าแกลเลอรี อัลบั้ม Meowrin ให้ CapCut เห็น · ไฟล์ที่ไม่ใช่วิดีโอไม่เข้า', nres.r1.gallery === true && nres.w.some((x) => x[0] === 'gal' && x[1] === 'file:///x/Meowrin/big.mp4' && x[2] === '/s/Meowrin' && x[3] === 'big') && nres.w.some((x) => x[0] === 'album') && !nres.w.some((x) => x[0] === 'gal' && /blocked/.test(x[1])), JSON.stringify(nres.w.filter((x) => /^(gal|album)$/.test(x[0]))));
+  /* APK ใหม่ที่มีปลั๊กอิน MediaScan: สั่งสแกนไฟล์ใน Documents ตรงๆ (ไม่ก๊อปซ้ำเข้าแกลเลอรี) · ไม่มี stat = ไม่อ้างว่าตรวจขนาดแล้ว */
+  const ms = await context.newPage();
+  await ms.addInitScript(() => { window.__w = []; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true,
+    Plugins: { Filesystem: { writeFile: async () => {}, appendFile: async () => {}, getUri: async (o) => ({ uri: 'file:///x/' + o.path }) },
+      MediaScan: { scan: async (o) => { window.__w.push(['scan', o.path, o.mime]); return { indexed: true }; } },
+      Media: { getAlbums: async () => ({ albums: [] }), createAlbum: async () => {}, saveVideo: async () => { window.__w.push(['gal']); } } } }; });
+  await ms.goto(base + '/footage.html'); await ms.waitForTimeout(1000);
+  const msr = await ms.evaluate(async () => { const r = await MWNative.save(new Blob(['abc']), 'v.mp4'); return { r, w: window.__w }; });
+  check('บันทึกวิดีโอ (ในแอพ, APK ใหม่): สแกนไฟล์ใน Documents ให้แกลเลอรีเห็น ไม่ก๊อปซ้ำ · ไม่มี stat = ไม่อ้างว่าตรวจขนาดแล้ว', msr.r.scanned === true && msr.r.verified === false && msr.r.gallery === false && msr.w.some((x) => x[0] === 'scan' && x[1] === 'file:///x/Meowrin/v.mp4' && x[2] === 'video/mp4') && !msr.w.some((x) => x[0] === 'gal'), JSON.stringify(msr));
+  await ms.close();
   check('บันทึกไฟล์ (ในแอพ): ชื่อเดิมเขียนไม่ได้ → ใช้ชื่อใหม่', /^Documents\/Meowrin\/blocked-\d+\.txt$/.test(nres.r2.path) && nres.w.some((x) => /^Meowrin\/blocked-\d+\.txt$/.test(x[1])), JSON.stringify(nres.r2));
   check('แชร์ไฟล์ (ในแอพ): เขียนลงแคชแล้วเปิดหน้าต่างแชร์', nres.can === true && nres.w.some((x) => x[0] === 'w' && x[2] === 'CACHE') && nres.w.some((x) => x[0] === 'share' && /^file:\/\/\/x\/share\//.test(x[1])) && !nvErr.length, JSON.stringify(nres.w.slice(-3)) + nvErr.join(';'));
   await nv.close();

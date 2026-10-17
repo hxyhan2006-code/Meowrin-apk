@@ -157,7 +157,10 @@
   }
   function save(file, say){ /* บันทึกลงโฟลเดอร์ Download แล้วเปิดจากแกลเลอรีใน CapCut · ในแอพ APK เซฟลง Documents/Meowrin ด้วยปลั๊กอิน */
     if(window.MWNative && MWNative.isNative()){
-      MWNative.save(file, file.name).then(function(r){ say(r.gallery ? "บันทึกแล้ว " + (r.size / 1048576).toFixed(1) + " MB (ตรวจขนาดแล้ว): อยู่ในแกลเลอรี อัลบั้ม Meowrin (" + r.name + ") เปิด CapCut → โปรเจกต์ใหม่ → เลือกจากแกลเลอรีได้เลย (สำเนาอยู่ที่ " + r.path + " ด้วย)" : "บันทึกแล้ว " + (r.size / 1048576).toFixed(1) + " MB ที่ " + r.path + " (" + r.name + ") · ถ้าไม่เห็นในแกลเลอรี/CapCut ให้กดปุ่ม แชร์ไฟล์ แล้วเลือก CapCut หรือ ไฟล์", "ok"); },
+      MWNative.save(file, file.name).then(function(r){ var mb = (r.size / 1048576).toFixed(1) + " MB" + (r.verified ? " (ตรวจขนาดตรงแล้ว)" : "");
+        say(r.scanned ? "บันทึกแล้ว " + mb + " ที่ " + r.path + " และแจ้งแกลเลอรีแล้ว · เปิด CapCut → โปรเจกต์ใหม่ → เลือกจากแกลเลอรี (ถ้ายังไม่เห็น รอสักครู่หรือกดแชร์ไฟล์)"
+          : r.gallery ? "บันทึกแล้ว " + mb + " ที่ " + r.path + " และก๊อปไว้ที่ Pictures/Meowrin แต่แกลเลอรีกับ CapCut อาจยังไม่เห็นจนกว่าจะรีสตาร์ทเครื่อง (Android รุ่นใหม่ไม่สแกนให้) · ใช้ปุ่ม แชร์ไฟล์ ส่งเข้า CapCut ได้ทันที หรือเปิดแอพ ไฟล์ ไปที่ Documents/Meowrin"
+          : "บันทึกแล้ว " + mb + " ที่ " + r.path + " (" + r.name + ") · แกลเลอรี/CapCut จะยังไม่เห็นไฟล์นี้ ใช้ปุ่ม แชร์ไฟล์ แล้วเลือก CapCut หรือเปิดแอพ ไฟล์ ไปที่ Documents/Meowrin", r.scanned || r.gallery ? "ok" : ""); },
                                           function(e){ say("บันทึกไม่ได้: " + e.message); });
       return;
     }

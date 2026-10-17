@@ -33,16 +33,24 @@
       return true;
     }catch(e){ return false; }
   }
+  async function scanMedia(uri, name){ /* ปลั๊กอินสแกนสื่อของแอพเอง (APK ที่สร้างหลัง v8.41): สั่ง MediaScannerConnection สแกนไฟล์ใน Documents ให้แกลเลอรี/CapCut เห็นทันที · true = สแกนแล้ว */
+    var m = plug("MediaScan"); if(!m || !m.scan) return false;
+    try{ var r = await m.scan({ path:uri, mime:/\.webm$/i.test(name) ? "video/webm" : "video/mp4" }); return !!(r && r.indexed); }catch(e){ return false; }
+  }
   async function save(blob, name){
     var fs = plug("Filesystem");
     if(!fs){ var u = URL.createObjectURL(blob), a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); return { web:true, name:name }; }
     var path = DIR + "/" + name, uri;
     try{ uri = await writeChunked(fs, path, "DOCUMENTS", blob); }
     catch(e){ path = DIR + "/" + altName(name); uri = await writeChunked(fs, path, "DOCUMENTS", blob); } /* ชื่อเดิมเขียนทับไม่ได้ (ไฟล์ค้างจากการติดตั้งรอบก่อน) → ใช้ชื่อใหม่ */
-    try{ var stt = await fs.stat({ path:path, directory:"DOCUMENTS" }); if(stt && stt.size != null && stt.size !== blob.size) throw new Error("ไฟล์ที่เซฟได้ไม่ครบ (" + stt.size + " จาก " + blob.size + " ไบต์) ลองบันทึกใหม่"); }
-    catch(e){ if(/ไม่ครบ/.test(e.message)) throw e; } /* stat ไม่ได้ = ข้ามการตรวจ ไม่ล้มการบันทึก */
-    var out = { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1), gallery:false, size:blob.size };
-    if(/\.(mp4|mov|webm)$/i.test(name)) out.gallery = await toGallery(uri, out.name);
+    var verified = false;
+    try{ var stt = await fs.stat({ path:path, directory:"DOCUMENTS" }); if(stt && stt.size != null){ if(stt.size !== blob.size) throw new Error("ไฟล์ที่เซฟได้ไม่ครบ (" + stt.size + " จาก " + blob.size + " ไบต์) ลองบันทึกใหม่"); verified = true; } }
+    catch(e){ if(/ไม่ครบ/.test(e.message)) throw e; } /* stat ไม่ได้ = ข้ามการตรวจ ไม่ล้มการบันทึก (และไม่อ้างว่าตรวจแล้ว) */
+    var out = { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1), gallery:false, scanned:false, verified:verified, size:blob.size };
+    if(/\.(mp4|mov|webm)$/i.test(name)){
+      out.scanned = await scanMedia(uri, name); /* มีปลั๊กอินสแกน = สแกนไฟล์ใน Documents ตรงๆ ไม่ต้องก๊อปซ้ำเข้าแกลเลอรี */
+      if(!out.scanned) out.gallery = await toGallery(uri, out.name); /* APK เก่า: ก๊อปเข้า Pictures/Meowrin (สแกนแบบเก่า Android 10+ อาจไม่ติด) */
+    }
     if(window.MWHist) try{ MWHist.addFile({ name:out.name, uri:uri, rel:path, size:blob.size }); }catch(e){} /* ประวัติงาน: จดไฟล์วิดีโอ/srt ที่เซฟ */
     return out;
   }
