@@ -201,7 +201,7 @@
     " \"action\":\"short English\",\"emotion\":\"short English (the main character's)\",\"location\":\"short English\",",
     " \"shot\":\"close|medium|wide (framing of the main subject)\",\"intensity\":<1 calm .. 5 explosive action>,\"motion\":\"still|slow|fast\",\"mood\":\"one English word e.g. funny, tense, sad, heroic, scary, warm\",",
     " \"arc\":\"One Piece arc name if you recognize it, else empty\",\"event\":\"short English name of the canon moment if you recognize it (e.g. Luffy punches Arlong), else empty\",",
-    " \"issues\":[\"only those present: watermark, subtitles, blurry, text, black\"],",
+    " \"issues\":[\"only those present: watermark, subtitles, blurry, text, black, screen (screen-recording artifacts: video-player play button/progress bar/timestamp, browser or phone UI, app borders, phone status bar)\"],",
     " \"tags_en\":[\"3-8 lowercase tags\"],\"tags_th\":[\"3-8 Thai tags e.g. ตกใจ, หัวเราะ, ต่อสู้, ร้องไห้, กิน\"],\"summary_th\":\"one short Thai sentence saying WHO does or feels WHAT (and how it changes from start to end if it does), starting with that character's Thai name, e.g. ลูฟี่ตกใจแล้วหัวเราะ (do not bury the subject: if a marine is shocked by Luffy, say ทหารเรือตกใจ, not ลูฟี่ตกใจ)\"}]}",
     "Rules: name a character only when reasonably sure, otherwise describe them in tags (e.g. marine soldier). Never guess arc/event: leave empty if unsure.",
     "List every notable visible character. One entry per scene number."
@@ -220,7 +220,7 @@
       " \"shot\":\"close|medium|wide\",\"intensity\":<1 calm..5 explosive>,\"motion\":\"still|slow|fast\",\"mood\":\"one English word\",",
       " \"arc\":\"arc name if sure else empty\",\"event\":\"canon moment if sure else empty\",",
       " \"usable\":<1 unusable..5 perfect for editing: sharp, clean, well framed>,\"multi\":<true if frames show clearly different shots/cuts inside this scene>,",
-      " \"issues\":[\"watermark|subtitles|blurry|text|black\"],\"objects\":[\"key props/vehicles: sword, ship, hat...\"],\"text\":\"readable on-screen text or empty\",",
+      " \"issues\":[\"watermark|subtitles|blurry|text|black|screen (video-player UI / screen-recording artifacts: play button, progress bar, phone or browser UI)\"],\"objects\":[\"key props/vehicles: sword, ship, hat...\"],\"text\":\"readable on-screen text or empty\",",
       " \"tags_en\":[\"3-8 lowercase tags\"],\"tags_th\":[\"3-8 Thai tags\"],\"summary_th\":\"one short Thai sentence: WHO does or feels WHAT, and how it changes from start to end; start with the character's Thai name\"}]}",
       "Never guess arc/event: leave empty if unsure. One entry per scene number."
     ].join("\n");
@@ -302,7 +302,7 @@
     "You are a strict film editor picking anime footage for a Thai One Piece YouTube Short (fast, pleasant cuts; the picture must match what the narration says at that moment).",
     "Full narration for context: \"{script}\"",
     "For each shot below you get its narration, the wanted footage, and lettered candidate frames from the editor's own library (each with an automatic description that can be imperfect; trust the image).",
-    "Choose the best candidate per shot: 1) the right character(s) clearly on screen, 2) matching emotion/action, 3) a clear, striking frame. Do not pick the same frame as the previous shot; vary close-ups and wide shots across the sequence. NEVER pick empty scenery, objects, backs of heads, or frames where the required character is cut off or tiny. If NO candidate truly shows what the shot needs, set best to \"none\" (do not force a bad match).",
+    "Choose the best candidate per shot: 1) the right character(s) clearly on screen, 2) matching emotion/action, 3) a clear, striking frame. Do not pick the same frame as the previous shot; vary close-ups and wide shots across the sequence. NEVER pick empty scenery, objects, backs of heads, or frames where the required character is cut off or tiny. NEVER pick a frame that shows video-player or screen-recording UI (play button, red/white progress bar, timestamps, phone/browser bars, app borders) even if the content fits. If NO candidate truly shows what the shot needs, set best to \"none\" (do not force a bad match).",
     "Also give fx = horizontal position of the main subject (face/body) inside the chosen frame, 0 = left edge, 0.5 = center, 1 = right edge (it is used to crop to a square).",
     "Return ONLY JSON: {\"picks\":[{\"s\":<shot number>,\"best\":\"<candidate id e.g. 3b or none>\",\"fx\":0.5,\"alts\":[\"<id>\",\"<id>\"],\"why\":\"short Thai reason\"}]}"
   ].join("\n");

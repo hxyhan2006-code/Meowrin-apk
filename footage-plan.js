@@ -138,7 +138,7 @@
       if(!cs.length) score -= want.length ? 0 : 3; /* ฉากไม่มีตัวละครเลย (วิว/ของ) หักคะแนน ยกเว้นบทพูดถึงสิ่งนั้นเอง (โดน -6 อยู่แล้วถ้ามีตัวละครที่ต้องมี) */
       var a = sc.ai || {}; if(a.shot && a.shot === shot.shot) score += 1.5; /* ดัชนีรุ่นละเอียด: ระยะภาพตรงที่ผู้กำกับอยากได้ */
       if(a.usable && a.usable <= 2) score -= 2; if(a.multi) score -= 1; /* ขั้นเทพ: ใช้ยาก / มีหลายช็อตปน */
-      (a.issues || []).forEach(function(x){ if(/watermark|subtitle|blurry|black/.test(x)) score -= 2; }); /* ภาพมีลายน้ำ/ซับ/เบลอ = ใช้ยาก */
+      (a.issues || []).forEach(function(x){ if(/watermark|subtitle|blurry|black/.test(x)) score -= 2; else if(/screen/.test(x)) score -= 8; }); /* อัดจากหน้าจอ (ปุ่มเล่น/แถบตัวเล่นติดมา) = แทบไม่เลือก */ /* ภาพมีลายน้ำ/ซับ/เบลอ = ใช้ยาก */
       if(used[c.id + "#" + si]) score -= 5; /* ใช้ไปแล้วในบทนี้ */
       if(score > 0) out.push({ c:c, sc:sc, si:si, score:score });
     }); });
@@ -155,7 +155,7 @@
     U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return; c.scenes.forEach(function(sc, si){
       var cs = U.chars(sc), hit = want.filter(function(k){ return cs.indexOf(k) >= 0; }).length; if(!hit) return;
       var a = sc.ai || {}, score = hit * 10 + (a.shot === "close" ? 2 : a.shot === "medium" ? 1 : 0) + (a.usable || 3) + Math.min(1.5, (sc.e - sc.s) / (shot.dur || 2)) - (a.multi ? 1 : 0) - (used[c.id + "#" + si] ? 5 : 0);
-      (a.issues || []).forEach(function(x){ if(/watermark|subtitle|blurry|black/.test(x)) score -= 2; });
+      (a.issues || []).forEach(function(x){ if(/watermark|subtitle|blurry|black/.test(x)) score -= 2; else if(/screen/.test(x)) score -= 8; }); /* อัดจากหน้าจอ (ปุ่มเล่น/แถบตัวเล่นติดมา) = แทบไม่เลือก */
       out.push({ c:c, sc:sc, si:si, score:score }); }); });
     out.sort(function(a, b){ return b.score - a.score; });
     var per = {}, top = [];
