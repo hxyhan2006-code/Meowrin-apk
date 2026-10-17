@@ -369,6 +369,8 @@ try {
   check('เก็บคลิปไว้ในแอพ: ข้ามคลิปที่มีสำเนาแล้ว (old) · ถามก่อนพร้อมบอกว่าต้นฉบับไม่ถูกแตะ · ก๊อป 2 คลิปไปชื่อ .part แล้วเปลี่ยนชื่อ · สแกนใหม่แล้วเล่นจากสำเนา · ไม่ลบต้นฉบับ',
     l0.todo.join() === 'new1.mp4,new2.mp4' && l0.info.includes('1/3') === false && lDlg && l1.ops.length === 4 && l1.ops[0] === 'file:///storage/Pictures/Gallery/owner/luffy/new1.mp4>Meowrin/library/luffy/new1.mp4.part' && l1.ops[1] === 'Meowrin/library/luffy/new1.mp4.part>Meowrin/library/luffy/new1.mp4' && l1.todo === 0 && /ก๊อปครบแล้ว 3 คลิป/.test(l1.info) && /docs\/Meowrin\/library\/luffy\/new1\.mp4$/.test(l1.url || '') && l1.n === 3 && !l1.over && !lbE.length, JSON.stringify([l0, l1]) + lbE.join());
   const nm = await lb.evaluate(() => window.__fs.ops.filter((o) => o[0] === 'write').map((o) => o.join('|')));
+  const nmInfo = await lb.evaluate(() => document.getElementById('libInfo').textContent);
+  check('เก็บคลิปไว้ในแอพ: แผงบอกผลการซ่อนจากแกลเลอรี (ให้ Han เห็นเองไม่ต้องเปิดดูไฟล์)', /สร้างไฟล์ \.nomedia แล้ว|ซ่อนจากแกลเลอรีแล้ว/.test(nmInfo), nmInfo);
   check('เก็บคลิปไว้ในแอพ: สร้าง .nomedia ในโฟลเดอร์สำเนา (ซ่อนจากแกลเลอรี) ครั้งเดียว ไม่เขียนซ้ำ', nm.length === 1 && nm[0] === 'write|Meowrin/library/.nomedia|DOCUMENTS', JSON.stringify(nm));
   await lb.close();
   // เสียงพากย์: สร้างแล้วเก็บเป็นไฟล์ใน Documents/Meowrin/voice ด้วย (mp3+json) · IndexedDB ว่าง + มีไฟล์ = ดึงกลับให้เอง
