@@ -458,7 +458,7 @@ try {
   const { createHash } = await import('node:crypto'); const sha = (b) => createHash('sha1').update(b).digest('hex');
   const REM = 'https://hxyhan2006-code.github.io/Meowrin-apk/', NEWID = 'newid1234567890abcdef';
   const subset = ['version.js', 'icons.js', 'index.html', 'sub/vendor/mediabunny.LICENSE'].map((p) => { const b = readFileSync(join(ROOT, p)); return { p, h: sha(b), s: b.length }; });
-  const otaCtx = await browser.newContext({ viewport: { width: 380, height: 820 }, serviceWorkers: 'block' }); // sw.js จะดึงคำขอข้ามโดเมนไปเอง ทำให้ page.route ดักไม่ได้
+  const otaCtx = await browser.newContext({ viewport: { width: 380, height: 820 }, serviceWorkers: 'block' });
   async function otaPage(tamper, opt = {}) {
     const pg = await otaCtx.newPage();
     await pg.route(new RegExp('^' + REM.replace(/[.\/]/g, '\\$&')), (route) => {

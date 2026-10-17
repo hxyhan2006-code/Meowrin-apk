@@ -1,5 +1,5 @@
 /* footage-audit.js — "ตรวจความแม่นของ AI" ในแท็บคลัง: สุ่มฉากจากดัชนีจริง โชว์รูป+ป้ายที่ AI ติดไว้ Han แตะเฉพาะข้อที่ผิด → สรุป % ถูกต่อหมวด
-   ไม่เรียก AI ไม่เสียเงิน · ผลเก็บใน MWStore key mw_footage_audit_v1 (ขึ้น Drive รวมกับ mw_* อื่น) · โหลดหลัง footage-find.js (ใช้ FT.ui.show) */
+   ไม่เรียก AI ไม่เสียเงิน · ผลเก็บใน MWStore key mw_footage_audit_v1 (อยู่ในไฟล์สำรองรวมกับ mw_* อื่น) · โหลดหลัง footage-find.js (ใช้ FT.ui.show) */
 (function(){
   "use strict";
   var FT = window.FT, U = FT && FT.ui; if(!U || !U.show) return;

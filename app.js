@@ -470,10 +470,3 @@
   /* มือถือพักแท็บเบื้องหลังแล้วการดึงค้าง → กลับมาเปิดแอพแล้วดึงต่อให้ (ข้ามคลิปที่มีแล้ว) */
   document.addEventListener("visibilitychange", function(){ if(!document.hidden && !syncing && needSync()) syncAll(true); });
 })();
-
-/* ---------- PWA: service worker ---------- */
-if ("serviceWorker" in navigator) {
-  /* app.js ถูกโหลดโดย store.js หลังข้อมูลพร้อม อาจหลัง window load ไปแล้ว */
-  var regSw = function(){ navigator.serviceWorker.register("sw.js").catch(function(){ /* ไม่ลงทะเบียนก็ยังใช้แอพได้ */ }); };
-  if(document.readyState === "complete") regSw(); else window.addEventListener("load", regSw);
-}

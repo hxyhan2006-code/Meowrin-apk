@@ -1,6 +1,6 @@
 /* voicestore.js (window.MWVoice) — เก็บเทคเสียงพากย์ล่าสุดไว้ใน IndexedDB `mw_voice_v1` store `takes` ให้หน้าฟุตเทจ (แท็บผู้กำกับ) ใช้ต่อ
    + สำเนาเป็นไฟล์ Documents/Meowrin/voice/<id>.mp3+.json (เฉพาะในแอพ · ดึงกลับถ้าฐานข้อมูลว่าง) · v8.19: เลิกสำรองขึ้น R2 แล้ว
-   แยกจาก MWStore เพราะเป็นไฟล์เสียง (Blob) ไม่ควรเข้าไฟล์สำรอง Drive · tts.js เขียนหลังสร้างเสียงทุกเทค · เก็บแค่ KEEP เทคล่าสุด
+   แยกจาก MWStore เพราะเป็นไฟล์เสียง (Blob) ไม่ควรเข้าไฟล์สำรอง · tts.js เขียนหลังสร้างเสียงทุกเทค · เก็บแค่ KEEP เทคล่าสุด
    record = { id, at, text, name, blob (mp3), align?:{ chars, st[], en[] } } · align = เวลาเริ่ม/จบของทุกตัวอักษร (ไม่รวมช่องว่าง) ของ "บท" เทียบกับต้นไฟล์ blob */
 (function(){
   "use strict";
