@@ -279,6 +279,7 @@
     if(!ok){ $("plBatches").innerHTML = ""; return; }
     $("plBatches").innerHTML = '<video class="plvid" src="' + cuts.url + '" controls playsinline></video>'
       + '<button class="btn" id="plSave" style="width:100%;margin-top:10px">' + MWIcon("save") + 'บันทึกไฟล์ลงเครื่อง (' + (cuts.file.size / 1048576).toFixed(1) + " MB)</button>"
+      + (FT.stitch.canShare() ? '<button class="btn ghost" id="plShareFile" style="width:100%;margin-top:8px">' + MWIcon("fwd") + "แชร์ไฟล์ (เปิดใน CapCut / ไฟล์ / แกลเลอรี)</button>" : "")
       + '<p class="hint">จากนั้นเปิด CapCut → โปรเจกต์ใหม่ → เลือกวิดีโอจากแกลเลอรี (อัลบั้ม Download หรือ ล่าสุด) · ' + (isLong() ? "จอเขียว + เสียงตื๊ด = จุดเปลี่ยนช็อต เลือกช่วงที่ชอบแล้วตัดจอเขียวทิ้ง" : "ภาพ 1:1 เลื่อนซ้าย/ขวาให้แล้ว · " + (plan.voice ? "ในไฟล์มีเสียงพากย์แล้ว ภาพตัดตามคำพูด ใส่ซับ/เอฟเฟกต์ต่อได้เลย" : "ปิดเสียงฉากแล้ววางเสียงพากย์ทับ ปรับจังหวะให้ตรงคำ")) + "</p>"
       + '<p class="hint">เวลาเริ่มของแต่ละช็อตในไฟล์:</p><ol class="marks">'
       + cuts.marks.map(function(m){ return "<li><b>" + m.at.toFixed(1) + " วิ</b> · ช็อต " + (m.x.k + 1) + (m.x.j ? " ภาพ " + (m.x.j + 1) : "") + (m.x.c ? "" : " (ค้างภาพก่อนหน้า)") + (m.x.j ? "" : " · " + U.esc(m.x.t)) + " (" + m.len.toFixed(1) + " วิ)</li>"; }).join("") + "</ol>";
@@ -321,7 +322,10 @@
     }catch(err){ cutting = false; renderShare(); say("อัดไม่ได้: " + err.message + (document.hidden ? " (สลับแอพระหว่างอัด?)" : ""), "err"); }
     $("plProg").hidden = true;
   });
-  $("plBatches").addEventListener("click", function(e){ if(cuts && e.target.closest("#plSave")) FT.stitch.save(cuts.file, say); });
+  $("plBatches").addEventListener("click", function(e){
+    if(cuts && e.target.closest("#plSave")) FT.stitch.save(cuts.file, say);
+    if(cuts && e.target.closest("#plShareFile")) MWNative.share(cuts.file, cuts.file.name, "ตัดต่อ Meowrin").catch(function(err){ if(err && err.name !== "AbortError") say("แชร์ไม่ได้: " + err.message, "err"); });
+  });
   async function sendToStudio(){ /* ส่งตารางช็อตไปแก้ต่อในสตูดิโอ (studio.html) · ภาพตามคลิปที่เลือก เสียงพากย์ (แบบ 2) ข้อความของช็อต · โปรเจกต์เดิมที่ค้างอยู่ไม่หาย (อยู่ในประวัติ) */
     var list = picked(); if(!list.length) return;
     var name = String(plan.script || "").replace(/\s+/g, " ").trim().slice(0, 40) || "โปรเจกต์ใหม่";

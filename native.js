@@ -22,13 +22,25 @@
     return (await fs.getUri({ path:path, directory:directory })).uri;
   }
   function altName(name){ var d = name.lastIndexOf("."); return (d > 0 ? name.slice(0, d) : name) + "-" + Date.now() + (d > 0 ? name.slice(d) : ""); }
+  async function toGallery(uri, name){ /* วิดีโอ: ก๊อปเข้าแกลเลอรีของมือถือ (อัลบั้ม Meowrin) ให้ CapCut/แกลเลอรีเห็น · ไฟล์ใน Documents ไม่โผล่ในแกลเลอรีเพราะไม่มีการสแกนสื่อ · พลาด = false ไม่ล้มการบันทึก */
+    var m = plug("Media"); if(!m || !m.saveVideo) return false;
+    try{
+      var find = async function(){ return ((await m.getAlbums()).albums || []).find(function(a){ return a.name === "Meowrin"; }); };
+      var al = await find(); if(!al){ await m.createAlbum({ name:"Meowrin" }); al = await find(); }
+      if(!al) return false;
+      var o = { albumIdentifier:al.identifier, fileName:name.replace(/\.[^.]+$/, "") };
+      try{ await m.saveVideo(Object.assign({ path:uri }, o)); }catch(e){ await m.saveVideo(Object.assign({ path:uri.replace(/^file:\/\//, "") }, o)); }
+      return true;
+    }catch(e){ return false; }
+  }
   async function save(blob, name){
     var fs = plug("Filesystem");
     if(!fs){ var u = URL.createObjectURL(blob), a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); return { web:true, name:name }; }
     var path = DIR + "/" + name, uri;
     try{ uri = await writeChunked(fs, path, "DOCUMENTS", blob); }
     catch(e){ path = DIR + "/" + altName(name); uri = await writeChunked(fs, path, "DOCUMENTS", blob); } /* ชื่อเดิมเขียนทับไม่ได้ (ไฟล์ค้างจากการติดตั้งรอบก่อน) → ใช้ชื่อใหม่ */
-    var out = { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1) };
+    var out = { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1), gallery:false };
+    if(/\.(mp4|mov|webm)$/i.test(name)) out.gallery = await toGallery(uri, out.name);
     if(window.MWHist) try{ MWHist.addFile({ name:out.name, uri:uri, rel:path, size:blob.size }); }catch(e){} /* ประวัติงาน: จดไฟล์วิดีโอ/srt ที่เซฟ */
     return out;
   }
