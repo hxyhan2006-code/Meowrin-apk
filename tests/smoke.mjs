@@ -399,6 +399,13 @@ try {
   const cs2 = await csq.evaluate(() => ({ btn: [...document.querySelectorAll('button')].some((b) => /โหลดไม่ครบ/.test(b.textContent)), log: JSON.parse(localStorage.getItem('ota_state_v1') || '{}').css || '' }));
   check('css โหลดไม่ติดซ้ำสองรอบ → ขึ้นปุ่ม "แตะเพื่อโหลดใหม่" ไม่วนลูปโหลดหน้า', cs2.btn && /ซ้ำ/.test(cs2.log), JSON.stringify(cs2));
   await csq.close(); await csx.close();
+  // ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google ตอนเปิด: เน็ตช้า/ออฟไลน์ = สคริปต์รอสไตล์ภายนอกจนหน้าค้างเปล่า) · ทุกหน้าไม่อ้างโดเมนฟอนต์ของ Google · ฟอนต์โหลดได้จริงจากไฟล์ในแอพ
+  const extFont = ['index.html', 'footage.html', 'check.html', 'sub/index.html'].filter((f) => /fonts\.(googleapis|gstatic)\.com/.test(text(f)));
+  const fp = await context.newPage(); await fp.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
+  await fp.goto(base + '/index.html'); await fp.waitForFunction(() => window.MW, null, { timeout: 20000 }); await fp.evaluate(() => document.fonts.load('500 16px "IBM Plex Sans Thai"', 'ก')); await fp.waitForTimeout(300);
+  const fl = await fp.evaluate(() => [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replace(/['"]/g, '')));
+  check('ฟอนต์: ไม่มีหน้าไหนอ้าง Google Fonts · เก็บไว้ในแอพและโหลดใช้ได้แม้ต่อ Google ไม่ได้', !extFont.length && fl.some((n) => /IBM Plex Sans Thai/.test(n)), JSON.stringify([extFont, fl]));
+  await fp.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
   await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });
