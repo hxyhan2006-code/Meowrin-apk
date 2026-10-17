@@ -7,7 +7,7 @@
    · ติดตั้ง APK ตัวใหม่ (versionCode เปลี่ยน) = Capacitor ทิ้งชุดที่จำไว้ กลับไปใช้ไฟล์ที่ห่อมากับ APK · ไม่ได้อยู่ในแอพ = ไม่ทำอะไร */
 (function(){
   "use strict";
-  var REMOTE = "https://hxyhan2006-code.github.io/Meowrin-apk/", DIR = "ota", KEY = "ota_state_v1", LOCAL = null, st = { remote:null, ready:null }, PATH = "";
+  var REMOTE = "https://hxyhan2006-code.github.io/Meowrin-apk/", DIR = "ota", KEY = "ota_state_v1", LOCAL = null, st = { remote:null, ready:null }, PATH = "", dlP = null; /* dlP = ดาวน์โหลดที่กำลังทำอยู่ (ทำทีละงาน · cleanOld ห้ามแตะระหว่างนี้) */
   function meta(){ try{ return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(e){ return {}; } }
   function saveMeta(m){ try{ localStorage.setItem(KEY, JSON.stringify(m)); }catch(e){} }
   function note(m, text){ m.log = text; saveMeta(m); }
@@ -29,13 +29,20 @@
   }
   async function cleanOld(keep){ /* ลบโฟลเดอร์ชุดไฟล์ใต้ ota/ ยกเว้นชุดที่กำลังใช้ (keep = ชื่อโฟลเดอร์) และชุดที่ต้องใช้ครั้งต่อไป (wanted) · ไม่รู้ว่าตอนนี้ใช้ชุดไหนอยู่ = ไม่ลบอะไรเลย */
     var fs = plug("Filesystem"), w = meta().wanted, keepW = w && w.dir ? String(w.dir).split("/").pop() : "", rd = meta().ready, keepR = rd && rd.dir ? String(rd.dir).split("/").pop() : ""; /* ชุดที่ดาวน์โหลดรอสลับ (ready) ต้องไม่ถูกลบ ไม่งั้นสลับแล้วหน้าพัง */
+    if(dlP) return; /* กำลังดาวน์โหลดชุดใหม่อยู่ ห้ามลบอะไร (เคยลบชุดที่กำลังเขียนกลางทาง → ไฟล์ต้นๆ หาย หน้าเปล่า) */
     if(PATH && PATH.indexOf("/" + DIR + "/") >= 0 && !keep) return; /* กำลังรันจากชุดดาวน์โหลดแต่ไม่รู้ชื่อโฟลเดอร์ = อย่าเสี่ยงลบชุดที่ใช้อยู่ */
     try{ var list = (await fs.readdir({ path:DIR, directory:"DATA" })).files || [];
       for(var i = 0; i < list.length; i++){ var n = typeof list[i] === "string" ? list[i] : list[i].name; if(n && n !== keep && n !== keepW && n !== keepR) await fs.rmdir({ path:DIR + "/" + n, directory:"DATA", recursive:true }).catch(function(){}); } }catch(e){}
   }
-  async function download(onProgress){ /* ดาวน์โหลดชุดไฟล์ใหม่ลงโฟลเดอร์ (ยังไม่สลับ) · ตรวจ sha1 ทุกไฟล์ ผิดแม้ไฟล์เดียว = ยกเลิกทั้งชุด */
+  async function intact(dir, files){ /* ไฟล์ทุกไฟล์ในรายการอยู่ครบในโฟลเดอร์ไหม (กันชุดที่ถูกลบกลางทาง/เขียนไม่ครบ) */
+    var fs = plug("Filesystem"), q = files.slice(), bad = 0;
+    async function w(){ while(q.length && !bad){ var f = q.shift(); try{ await fs.stat({ path:dir + "/" + f.p, directory:"DATA" }); }catch(e){ bad++; } } }
+    await Promise.all([w(), w(), w(), w()]); return !bad;
+  }
+  function download(onProgress){ if(!dlP){ dlP = doDownload(onProgress).then(function(v){ dlP = null; return v; }, function(e){ dlP = null; throw e; }); } return dlP; } /* เรียกซ้ำระหว่างโหลด = ใช้งานเดียวกัน (ไม่เริ่มโหลดซ้อน) */
+  async function doDownload(onProgress){ /* ดาวน์โหลดชุดไฟล์ใหม่ลงโฟลเดอร์ (ยังไม่สลับ) · ตรวจ sha1 ทุกไฟล์ ผิดแม้ไฟล์เดียว = ยกเลิกทั้งชุด */
     var fs = plug("Filesystem"), r = st.remote || (await check()).remote, m = meta();
-    if(m.ready && m.ready.id === r.id){ try{ await fs.stat({ path:m.ready.dir + "/files.json", directory:"DATA" }); await fs.stat({ path:m.ready.dir + "/index.html", directory:"DATA" }); st.ready = m.ready; return st.ready; }catch(e){} } /* โหลดครบไว้แล้ว (files.json เขียนเป็นไฟล์สุดท้าย) */
+    if(m.ready && m.ready.id === r.id){ try{ await fs.stat({ path:m.ready.dir + "/files.json", directory:"DATA" }); if(await intact(m.ready.dir, r.files)){ st.ready = m.ready; return st.ready; } }catch(e){} } /* โหลดครบไว้แล้ว (files.json เขียนเป็นไฟล์สุดท้าย) */
     var cur = (PATH || (await curPath())).split("/").pop(); await cleanOld(PATH.indexOf("/" + DIR + "/") >= 0 ? cur : "");
     var dir = DIR + "/" + r.id.slice(0, 12) + "-" + Date.now().toString(36); /* ชื่อไม่ซ้ำทุกรอบ ไม่ชนของค้าง */
     var q = r.files.slice(), done = 0, fail = null, chain = Promise.resolve();
@@ -54,12 +61,15 @@
     }
     await Promise.all([worker(), worker(), worker(), worker()]);
     if(fail){ try{ await fs.rmdir({ path:dir, directory:"DATA", recursive:true }); }catch(e){} throw fail; }
+    if(!(await intact(dir, r.files))){ try{ await fs.rmdir({ path:dir, directory:"DATA", recursive:true }); }catch(e){} throw new Error("ไฟล์ในชุดที่ดาวน์โหลดหายไปไม่ครบ ลองกดตรวจอัปเดตอีกครั้ง"); }
     await fs.writeFile({ path:dir + "/files.json", data:await b64(new Blob([JSON.stringify(r) + "\n"])), directory:"DATA", recursive:true });
     st.ready = { id:r.id, dir:dir, version:r.version }; m = meta(); m.ready = st.ready; saveMeta(m); return st.ready;
   }
   async function apply(){ /* สลับไปใช้ชุดไฟล์ที่ดาวน์โหลดไว้ · หน้าโหลดใหม่ทันที */
     if(!st.ready) throw new Error("ยังไม่ได้ดาวน์โหลดชุดไฟล์ใหม่");
-    try{ await plug("Filesystem").stat({ path:st.ready.dir + "/index.html", directory:"DATA" }); }catch(e){ var mm = meta(); mm.ready = null; saveMeta(mm); st.ready = null; throw new Error("ชุดไฟล์ที่ดาวน์โหลดไว้หาย ลองกดตรวจอัปเดตอีกครั้ง"); } /* ไม่สลับไปโฟลเดอร์ที่ไม่มี index.html (จะเป็นหน้า ERR_CONNECTION_REFUSED) */
+    var rr = st.remote && st.remote.id === st.ready.id ? st.remote : null; /* ไม่มีรายการไฟล์ในหน่วยความจำ (เช่นเปิดหน้าใหม่) → ตรวจจาก files.json ในโฟลเดอร์ */
+    if(!rr){ try{ var fj = await plug("Filesystem").readFile({ path:st.ready.dir + "/files.json", directory:"DATA" }); rr = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(fj.data), function(ch){ return ch.charCodeAt(0); }))); }catch(e){} }
+    if(!rr || !(await intact(st.ready.dir, rr.files))){ var mm = meta(); mm.ready = null; saveMeta(mm); st.ready = null; throw new Error("ชุดไฟล์ที่ดาวน์โหลดไว้ไม่ครบ ลองกดตรวจอัปเดตอีกครั้ง"); } /* ไม่สลับไปชุดที่ไฟล์หาย (จะเป็นหน้าเปล่า/ERR_CONNECTION_REFUSED) */
     var u = (await plug("Filesystem").getUri({ path:st.ready.dir, directory:"DATA" })).uri.replace(/^file:\/\//, ""), m = meta();
     m.wanted = { id:st.ready.id, dir:st.ready.dir, version:st.ready.version }; m.tries = 0; note(m, "สลับไปชุด " + st.ready.id.slice(0, 8));
     await plug("WebView").setServerBasePath({ path:u });

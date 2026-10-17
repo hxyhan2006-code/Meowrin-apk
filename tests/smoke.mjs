@@ -503,8 +503,18 @@ try {
   await o6p.close();
   const o7p = await otaPage(false);
   const o7 = await o7p.evaluate(async () => { await MWOta.check(); await MWOta.download(); window.__o.w.length = 0; /* โฟลเดอร์ที่โหลดไว้หายไป (ไม่เจอ index.html) */ try { await MWOta.apply(); return { err: null, sb: window.__o.sb.length }; } catch (e) { return { err: e.message, sb: window.__o.sb.length }; } });
-  check('อัปเดตแอพ (ota.js): ชุดที่ดาวน์โหลดไว้ไม่มี index.html → ไม่สลับ (ไม่ทำให้หน้าพัง)', /หาย/.test(o7.err || '') && o7.sb === 0, JSON.stringify(o7));
+  check('อัปเดตแอพ (ota.js): ชุดที่ดาวน์โหลดไว้ไม่มีไฟล์ → ไม่สลับ (ไม่ทำให้หน้าพัง)', /ไม่ครบ/.test(o7.err || '') && o7.sb === 0, JSON.stringify(o7));
   await o7p.close();
+  // ไฟล์ต้นๆ ของชุดที่โหลดหายไปแค่ไฟล์เดียว (เคยเกิดจริง: ลบกลางทาง → หน้าเปล่า) → ไม่สลับ
+  const o8p = await otaPage(false);
+  const o8 = await o8p.evaluate(async () => { await MWOta.check(); await MWOta.download(); const i = window.__o.w.findIndex(([p]) => /icons\.js$/.test(p)); window.__o.w.splice(i, 1); try { await MWOta.apply(); return { err: null, sb: window.__o.sb.length }; } catch (e) { return { err: e.message, sb: window.__o.sb.length }; } });
+  check('อัปเดตแอพ (ota.js): ไฟล์ในชุดที่โหลดหายไปแค่ 1 ไฟล์ก็ไม่สลับ', /ไม่ครบ/.test(o8.err || '') && o8.sb === 0, JSON.stringify(o8));
+  await o8p.close();
+  // ดาวน์โหลดซ้อน/ลบชุดเก่าระหว่างโหลด: เรียก download 2 ครั้งพร้อมกันเขียนไฟล์ชุดเดียว · bootOk ระหว่างโหลดห้ามลบโฟลเดอร์ใดๆ
+  const o9p = await otaPage(false);
+  const o9 = await o9p.evaluate(async () => { await MWOta.check(); const a = MWOta.download(), b = MWOta.download(); await MWOta.bootOk(); const ra = await a, rb = await b; return { same: ra.dir === rb.dir, writes: window.__o.w.length, rmDuring: window.__o.rm.slice() }; });
+  check('อัปเดตแอพ (ota.js): โหลดซ้อนใช้งานเดียวกัน (เขียนไฟล์ชุดเดียว) · bootOk ระหว่างโหลดไม่ลบชุดที่กำลังเขียน', o9.same && o9.writes === 5 && !o9.rmDuring.some((x) => /newid/.test(x)), JSON.stringify(o9));
+  await o9p.close();
   await otaCtx.close();
   // ไปหน้าเครื่องมือจากแท็บตั้งค่า แล้วกดย้อน → ต้องกลับมาแท็บตั้งค่า (ไม่ใช่แท็บคลิป)
   const hb = await browser.newPage({ viewport: { width: 380, height: 820 } });
