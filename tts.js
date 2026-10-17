@@ -221,7 +221,7 @@
     }catch(err){ note(err.message, true); }
     busy = false; sync();
   }
-  /* ---------- เสียงที่เก็บไว้ (MWVoice: 50 เทคล่าสุดในเครื่อง + สำรองบนคลัง R2 ถ้าตั้งค่าไว้ · หน้าฟุตเทจใช้ต่อได้) ---------- */
+  /* ---------- เสียงที่เก็บไว้ (MWVoice: 50 เทคล่าสุดในเครื่องไว้ · หน้าฟุตเทจใช้ต่อได้) ---------- */
   function setSavedN(n){ $("vSavedN").textContent = n; $("vSavedN").hidden = !n; } /* เลขบนปุ่มสามขีด */
   function countSaved(){ if(window.MWVoice) MWVoice.list().then(function(l){ setSavedN(l.length); }).catch(function(){}); }
   var savedUrls = {}, rsTok = 0, dateOf = function(id){ return new Date(id).toLocaleString("th-TH", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }); };

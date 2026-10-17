@@ -220,7 +220,7 @@
     var v = $("alVid"); $("alpT").textContent = e.name; $("alpS").textContent = (curAlbum ? curAlbum.name + " · " : "") + dur(e, null); $("alpMsg").textContent = "";
     $("alPlay").hidden = false; history.pushState({ al:2 }, ""); view = "player";
     var url = fileUrl(e);
-    if(!url && e.c){ try{ var s = await U.srcUrl(e.c); if(s){ url = s.url; playDone = s.done; $("alpMsg").textContent = s.cloud ? "เล่นจากคลัง" : ""; } }catch(err){} }
+    if(!url && e.c){ try{ var s = await U.srcUrl(e.c); if(s){ url = s.url; playDone = s.done; } }catch(err){} }
     if(!url){ $("alpMsg").textContent = "ไม่เจอไฟล์ของคลิปนี้ในมือถือ (ลองสแกนใหม่)"; return; }
     v.onerror = function(){ $("alpMsg").textContent = "เล่นไฟล์นี้ไม่ได้"; };
     v.src = url; v.play().catch(function(){});

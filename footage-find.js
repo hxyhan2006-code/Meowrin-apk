@@ -1,5 +1,5 @@
 /* footage-find.js — แท็บ "คลัง" ของหน้าฟุตเทจ: ค้นในเครื่อง (ชื่อตัวละคร/คำเหมือน/ตัดคำ) · ชิปตัวละคร/จำนวนคน · การ์ดฉาก · รูปใหญ่ + เล่นฉาก (ไฟล์ในเครื่อง/คลัง)
-   โหลดหลัง footage.js (ใช้ FT.ui) ก่อน footage-cloud.js/footage-plan.js · เพิ่ม terms/hay/card/chars/charKey/hasSrc/srcUrl/openFiles/search เข้า FT.ui */
+   โหลดหลัง footage.js (ใช้ FT.ui) ก่อน footage-plan.js · เพิ่ม terms/hay/card/chars/charKey/hasSrc/srcUrl/openFiles/search เข้า FT.ui */
 (function(){
   "use strict";
   var FT = window.FT, U = FT && FT.ui; if(!U) return;
@@ -276,11 +276,10 @@
   function pfKey(name, size){ return name + "|" + size; }
   function fileOf(c){ return c && (pf[pfKey(c.name, c.size)] || bySize[c.size]) || null; }
   function localOf(c){ return window.MWLocal ? MWLocal.urlOf(c) : null; } /* ไฟล์ในมือถือที่ MWLocal สแกนเจอ (เฉพาะในแอพ APK) */
-  function hasSrc(c){ return !!fileOf(c) || !!localOf(c) || !!(c && c.r2 && FT.cloud && FT.cloud.ready()); } /* ไฟล์ที่เปิดไว้ในรอบนี้ / ไฟล์ในมือถือ / อยู่ในคลัง */
+  function hasSrc(c){ return !!fileOf(c) || !!localOf(c); } /* ไฟล์ที่เปิดไว้ในรอบนี้ / ไฟล์ในมือถือ / อยู่ในคลัง */
   async function srcUrl(c){ /* { url, done() } · ในเครื่องก่อน (เร็ว ไม่เปลืองเน็ต) ไม่มีค่อยสตรีมจากคลัง */
-    var f = fileOf(c); if(f){ var u = URL.createObjectURL(f); return { url:u, cloud:false, done:function(){ URL.revokeObjectURL(u); } }; }
-    var l = localOf(c); if(l) return { url:l, cloud:false, done:function(){} };
-    if(c && c.r2 && FT.cloud && FT.cloud.ready()) return { url:await R2.url(c.r2), cloud:true, done:function(){} };
+    var f = fileOf(c); if(f){ var u = URL.createObjectURL(f); return { url:u, done:function(){ URL.revokeObjectURL(u); } }; }
+    var l = localOf(c); if(l) return { url:l, done:function(){} };
     return null;
   }
   /* ---------- แก้ตัวละครของฉากเอง (AI ติดป้ายพลาด/ขาด) · แตะชิป = เพิ่ม/เอาออก · เก็บ ai.fixed ไว้ ไม่ให้การอัปเกรดดัชนีทับ ---------- */
@@ -312,7 +311,7 @@
     stopPlay(); $("playMsg").textContent = "กำลังเปิด...";
     var src; try{ src = await srcUrl(cur.c); }catch(err){ $("playMsg").textContent = err.message; return; }
     if(bigCur !== cur){ src.done(); return; } /* ปิด/เปลี่ยนฉากไประหว่างรอ */
-    playDone = src.done; v.src = src.url; v.hidden = false; $("bigImg").hidden = true; $("playMsg").textContent = src.cloud ? "เล่นจากคลัง" : "";
+    playDone = src.done; v.src = src.url; v.hidden = false; $("bigImg").hidden = true; $("playMsg").textContent = "";
     v.onloadedmetadata = function(){ v.currentTime = Math.min(s, Math.max(0, v.duration - 0.1)); v.play().catch(function(){ $("playMsg").textContent = "กดปุ่มเล่นที่ตัวเล่นเพื่อเริ่ม"; }); };
     v.ontimeupdate = function(){ if(v.currentTime >= e - 0.05){ if($("loopSc").checked && bigCur.sc) v.currentTime = s; else v.pause(); } }; /* ฉากนี้เท่านั้น ไม่เล่นเลยไปฉากอื่น */
     v.onerror = function(){ $("playMsg").textContent = "เบราว์เซอร์เล่นไฟล์นี้ไม่ได้ (รูปแบบไฟล์ไม่รองรับ?)"; };

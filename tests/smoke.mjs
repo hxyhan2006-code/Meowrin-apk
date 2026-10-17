@@ -82,7 +82,7 @@ try {
   // เสียงที่เก็บไว้: ไม่มีของคลัง R2 เหลือ (ไม่มีส่วน "อยู่ในคลัง" / ปุ่มอัปขึ้นคลัง / ดึงมาเครื่องนี้) · ปุ่มดาวน์โหลดในแอพบันทึกผ่าน MWNative (ไม่ใช้ <a download> ที่ในแอพไม่เซฟ)
   await main.page.click('#vSavedBtn'); await main.page.waitForTimeout(800);
   const svr = await main.page.evaluate(() => ({ cloudLeft: !!document.querySelector('#vSavedCloud, [data-vup], [data-vpull], [data-vdelc]'), hasDl: !!document.querySelector('#vSavedList a[data-vdl]'), api: ['cloudOn', 'cloudList', 'cloudPut', 'cloudDel', 'pull'].filter((k) => k in MWVoice) }));
-  check('เสียงที่เก็บไว้: ไม่เหลือส่วนของคลัง R2 · มีปุ่มดาวน์โหลด (data-vdl)', !svr.cloudLeft && svr.hasDl && !svr.api.length, JSON.stringify(svr));
+  check('เสียงที่เก็บไว้: ไม่เหลือส่วนของคลังออนไลน์ · มีปุ่มดาวน์โหลด (data-vdl)', !svr.cloudLeft && svr.hasDl && !svr.api.length, JSON.stringify(svr));
   await main.page.click('#vSavedClose'); await main.page.waitForTimeout(300);
   // แถวปุ่มใต้เสียงที่เจนแล้ว ต้องไม่ล้นจอ (ล้น = มือถือซูมออกทั้งหน้า) แม้ปุ่มโชว์ครบทั้ง 5
   await main.page.evaluate(() => { document.querySelector('#vBody').hidden = false; document.querySelector('#vNo').hidden = true; document.querySelector('#ttsOut').hidden = false; ['ttsSub', 'ttsDirect', 'ttsRaw', 'ttsShare'].forEach((i) => { document.getElementById(i).hidden = false; }); });
@@ -382,10 +382,12 @@ try {
   const vr = await vq.evaluate(async () => { const l = await MWVoice.list(); return l.map((r) => [r.id, r.text, r.name, r.blob.size]); });
   check('เสียงพากย์: IndexedDB ว่างแต่มีไฟล์ในโฟลเดอร์ → ดึงเทคกลับมาให้เอง (บท/ชื่อ/ไฟล์เสียงครบ)', vr.length === 1 && vr[0][0] === 1700000000999 && vr[0][1] === 'บทเดิม' && vr[0][2] === 'v.mp3' && vr[0][3] === 7, JSON.stringify(vr));
   await vcy.close();
-  // R2 ปิดใช้ทั้งระบบ (v8.13): ตั้งค่าครบก็ไม่ทำงาน · ต้องมี on:true ถึงเปิด · แผง R2 ซ่อนอยู่
-  const r2p = await context.newPage(); await r2p.goto(base + '/footage.html'); await r2p.waitForFunction(() => window.R2 && window.FT && FT.ui, null, { timeout: 20000 });
-  const r2r = await r2p.evaluate(() => { const full = { account: 'a', bucket: 'b', keyId: 'k', secret: 's' }; const old = R2.cfg(); R2.setCfg({ ...full }); const off = R2.ready(); R2.setCfg({ ...full, on: true }); const on = R2.ready(); R2.setCfg(old); const f = [...document.querySelectorAll('details.fold')].find((d) => /Cloudflare R2/.test(d.textContent)); return { off, on, panelHidden: !!f && getComputedStyle(f).display === 'none', bg: getComputedStyle(document.getElementById('bgR2')).display }; });
-  check('R2: ตั้งค่าครบแต่ไม่มี on → ไม่ทำงาน (ready=false) · on:true ถึงเปิดได้ · แผงตั้งค่า R2 และช่องเพดาน R2 ซ่อนอยู่', r2r.off === false && r2r.on === true && r2r.panelHidden && r2r.bg === 'none', JSON.stringify(r2r));
+  // R2 ถูกเอาออกทั้งระบบ (v8.21): ไม่มีไฟล์/ตัวแปร/แผง R2 เหลือ และหน้าฟุตเทจเปิดได้ปกติ
+  const r2p = await context.newPage(); const r2e = []; r2p.on('pageerror', (e) => r2e.push(e.message));
+  await r2p.goto(base + '/footage.html'); await r2p.waitForFunction(() => window.FT && FT.ui, null, { timeout: 20000 }); await r2p.waitForTimeout(500);
+  const r2r = await r2p.evaluate(() => ({ g: ['R2'].filter((k) => k in window), cloud: !!FT.cloud, ids: ['r2Save', 'r2Account', 'cloudBox', 'cloudList', 'bgR2', 'tagR2'].filter((i) => document.getElementById(i)), budget: Object.keys(MWBudget).filter((k) => /r2/i.test(k)) }));
+  const r2files = ['r2.js', 'footage-cloud.js'].filter((f) => existsSync(join(ROOT, f)));
+  check('R2: ไม่มีไฟล์ r2.js/footage-cloud.js · ไม่มี window.R2/FT.cloud · ไม่มีแผง/ช่อง R2 ในหน้า · หน้าฟุตเทจไม่มี error', !r2files.length && !r2r.g.length && !r2r.cloud && !r2r.ids.length && !r2r.budget.length && !r2e.length, JSON.stringify([r2files, r2r, r2e]));
   await r2p.close();
   // หน้าไม่มีสไตล์ (css โหลดไม่ติดครั้งแรก) → โหลดซ้ำ 1 รอบเอง + จดลง log · ติดทุกครั้ง = ขึ้นปุ่มโหลดใหม่ ไม่วนลูป
   const csx = await browser.newContext({ viewport: { width: 380, height: 820 }, serviceWorkers: 'block' }); const csp = await csx.newPage(); let cssHits = 0;

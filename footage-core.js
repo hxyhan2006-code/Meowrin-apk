@@ -57,7 +57,7 @@
   async function openVideo(v, file){ /* file = File ในเครื่อง หรือ string = ลิงก์สตรีมจากคลัง (อ่านเฉพาะช่วงที่ seek ไม่โหลดทั้งไฟล์) */
     if(v.src && v.src.indexOf("blob:") === 0) URL.revokeObjectURL(v.src);
     var p = once(v, "loadeddata", 30000, "เปิดวิดีโอ");
-    v.crossOrigin = "anonymous"; /* ลิงก์คลัง: ให้วาดลง canvas ได้ (R2 ตั้ง CORS แล้ว) */
+    v.crossOrigin = "anonymous"; /* ลิงก์ไฟล์ในแอพ (https://localhost/_capacitor_file_/...) : ให้วาดลง canvas ได้ */
     v.src = typeof file === "string" ? file : URL.createObjectURL(file); v.load(); await p;
     if(!isFinite(v.duration)){ await seek(v, 1e7); await seek(v, 0.05); } /* บางไฟล์ไม่บอกความยาว ต้องเลื่อนไปท้ายก่อน */
     if(!(v.duration > 0) || !v.videoWidth) throw new Error("อ่านความยาว/ขนาดวิดีโอไม่ได้");

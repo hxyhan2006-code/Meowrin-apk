@@ -1,14 +1,13 @@
 /* budget.js — เพดานค่าใช้จ่ายของทั้งสองหน้า (แอพหลัก + ฟุตเทจ) · โหลดหลัง store.js ก่อนสคริปต์อื่น
    - เพดาน AI ต่อวัน/ต่อเดือน (USD) ถึงแล้วหยุดเรียก OpenRouter ทุกฟีเจอร์ (ทำบท/วางแผน/ค้นหา/ทำดัชนี)
-   - เพดานขนาดคลัง R2 (GB) ถึงแล้วไม่อัปเพิ่ม (กันบั๊กอัปวน)
    ยอดที่ใช้ = ค่าที่มากกว่าระหว่าง (ยอดที่แอพนับเองจากทั้งสองหน้า) กับ (ยอดจริงจาก OpenRouter GET /api/v1/key ซึ่งรวมทุกการใช้ key)
    ⚠ เป็นลิมิตในแอพเท่านั้น กันบั๊ก/ใช้เพลินได้ แต่ไม่กันคีย์หลุด → ลิมิตแข็งจริงคือเครดิตเติมล่วงหน้าของ OpenRouter และ Budget Alert ของ Cloudflare
-   ตั้งค่า mw_budget_v1 { aiDay, aiMonth, r2GB } (0 = ไม่จำกัด) · บัญชี mw_spend_v1 { day, d, month, m, real:{d,w,m,at}, r2:{bytes,at} } */
+   ตั้งค่า mw_budget_v1 { aiDay, aiMonth } (0 = ไม่จำกัด · ค่า r2GB เก่าที่ค้างอยู่ไม่ใช้แล้ว) · บัญชี mw_spend_v1 { day, d, month, m, real:{d,w,m,at} } */
 (function(){
   "use strict";
-  var CFG = "mw_budget_v1", LEDGER = "mw_spend_v1", THB = 35, R2_FREE_GB = 10, R2_USD_GB = 0.015;
+  var CFG = "mw_budget_v1", LEDGER = "mw_spend_v1", THB = 35;
   var $ = function(id){ return document.getElementById(id); };
-  function cfg(){ var c = MWStore.get(CFG, null) || {}; return { aiDay:num(c.aiDay, 5), aiMonth:num(c.aiMonth, 15), r2GB:num(c.r2GB, 150) }; }
+  function cfg(){ var c = MWStore.get(CFG, null) || {}; return { aiDay:num(c.aiDay, 5), aiMonth:num(c.aiMonth, 15) }; }
   function num(x, d){ return typeof x === "number" && x >= 0 ? x : d; }
   function dayKey(){ var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   function pad(n){ return String(n).padStart(2, "0"); }
@@ -48,33 +47,22 @@
   }
   function soon(){ clearTimeout(t); t = setTimeout(refresh, 2500); } /* รอให้ OpenRouter อัปเดตยอดสักครู่ */
 
-  /* คลัง R2 */
-  function r2Stat(bytes){ var l = ledger(); l.r2 = { bytes:bytes, at:Date.now() }; MWStore.set(LEDGER, l); }
-  function r2Check(totalBytes, addBytes){
-    var c = cfg(); if(!c.r2GB) return;
-    var after = (totalBytes + addBytes) / 1073741824;
-    if(after > c.r2GB) throw Object.assign(new Error("คลังจะเกินเพดาน " + c.r2GB + " GB (ตอนนี้ " + (totalBytes / 1073741824).toFixed(1) + " GB) ไม่อัปไฟล์นี้ · ปรับเพดานได้ที่ ตั้งค่า → งบและค่าใช้จ่าย ในแอพหลัก"), { budget:true });
-  }
-  function r2Cost(gb){ return Math.max(0, gb - R2_FREE_GB) * R2_USD_GB; }
-
-  /* ---------- แผงตั้งค่า (มีในหน้าไหนก็ผูกให้: #bgDay #bgMonth #bgR2 #bgInfo #bgTag) ---------- */
+  /* ---------- แผงตั้งค่า (มีในหน้าไหนก็ผูกให้: #bgDay #bgMonth #bgInfo #bgTag) ---------- */
   function pct(a, b){ return b ? a / b : 0; }
   function kind(p){ return p >= 0.9 ? "err" : p >= 0.5 ? "warn" : "ok"; }
   function pill(k, text){ return '<span class="pill ' + k + '">' + text + "</span>"; }
   function row(label, k, text, extra){ return '<div class="strow"><span>' + label + "</span>" + pill(k, text) + (extra ? "<small>" + extra + "</small>" : "") + "</div>"; }
   function render(){
     var info = $("bgInfo"); if(!info) return;
-    var c = cfg(), s = spent(), r2 = ledger().r2, gb = r2 ? r2.bytes / 1073741824 : null;
-    var pd = pct(s.d, c.aiDay), pm = pct(s.m, c.aiMonth), pr = gb === null ? 0 : pct(gb, c.r2GB);
+    var c = cfg(), s = spent();
+    var pd = pct(s.d, c.aiDay), pm = pct(s.m, c.aiMonth);
     info.innerHTML = row("ค่า AI วันนี้", c.aiDay ? kind(pd) : "idle", money(s.d) + (c.aiDay ? " / " + money(c.aiDay) : " · ไม่จำกัด"))
-      + row("ค่า AI เดือนนี้", c.aiMonth ? kind(pm) : "idle", money(s.m) + (c.aiMonth ? " / " + money(c.aiMonth) : " · ไม่จำกัด"), "≈ " + Math.round(s.m * THB) + " บาท" + (s.real ? " · ยอดจริงจาก OpenRouter (รวมทุกการใช้ key)" : " · ยอดที่แอพนับเอง"))
-      + row("คลัง R2", gb === null ? "idle" : c.r2GB ? kind(pr) : "idle", gb === null ? "ยังไม่ได้เช็ก" : gb.toFixed(1) + " GB" + (c.r2GB ? " / " + c.r2GB + " GB" : ""),
-            gb === null ? "เปิดหน้าฟุตเทจ แล้วแอพจะเช็กให้" : "ค่าเก็บ ≈ " + money(r2Cost(gb)) + "/เดือน (≈ " + Math.round(r2Cost(gb) * THB) + " บาท) · 10 GB แรกฟรี · เช็กล่าสุด " + new Date(r2.at).toLocaleString("th-TH"));
-    var worst = [c.aiDay ? kind(pd) : "ok", c.aiMonth ? kind(pm) : "ok", gb !== null && c.r2GB ? kind(pr) : "ok"].reduce(function(a, b){ var o = { ok:0, warn:1, err:2 }; return o[b] > o[a] ? b : a; }, "ok");
+      + row("ค่า AI เดือนนี้", c.aiMonth ? kind(pm) : "idle", money(s.m) + (c.aiMonth ? " / " + money(c.aiMonth) : " · ไม่จำกัด"), "≈ " + Math.round(s.m * THB) + " บาท" + (s.real ? " · ยอดจริงจาก OpenRouter (รวมทุกการใช้ key)" : " · ยอดที่แอพนับเอง"));
+    var worst = [c.aiDay ? kind(pd) : "ok", c.aiMonth ? kind(pm) : "ok"].reduce(function(a, b){ var o = { ok:0, warn:1, err:2 }; return o[b] > o[a] ? b : a; }, "ok");
     var tag = $("bgTag"); if(tag){ tag.className = "state " + worst; tag.textContent = worst === "ok" ? "อยู่ในงบ" : worst === "warn" ? "ใช้ไปเกินครึ่ง" : "ใกล้/ถึงเพดาน"; }
   }
   function bind(){
-    var c = cfg(), ids = { bgDay:"aiDay", bgMonth:"aiMonth", bgR2:"r2GB" };
+    var c = cfg(), ids = { bgDay:"aiDay", bgMonth:"aiMonth" };
     Object.keys(ids).forEach(function(id){
       var el = $(id); if(!el) return; el.value = c[ids[id]];
       el.addEventListener("change", function(){
@@ -86,5 +74,5 @@
   MWStore.on(function(k){ if(k === CFG || k === LEDGER) render(); });
   bind(); render(); refresh();
 
-  window.MWBudget = { cfg:cfg, check:check, add:add, spent:spent, refresh:refresh, real:real, r2Stat:r2Stat, r2Check:r2Check, money:money };
+  window.MWBudget = { cfg:cfg, check:check, add:add, spent:spent, refresh:refresh, real:real, money:money };
 })();

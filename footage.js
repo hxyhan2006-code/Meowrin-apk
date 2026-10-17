@@ -48,23 +48,22 @@
   /* ---------- เลือกไฟล์ → คิว ---------- */
   var VIDEO = /\.(mp4|m4v|mov|webm|mkv|3gp)$/i;
   function addFiles(list){
-    var album = $("albumName").value.trim() || "ไม่ระบุ", picked = Date.now(), up = FT.cloud && FT.cloud.ready(); /* ตั้งค่าคลังไว้ = อัปขึ้นคลังอัตโนมัติ */
+    var album = $("albumName").value.trim() || "ไม่ระบุ", picked = Date.now(); 
     var files = Array.prototype.filter.call(list, function(f){ return /^video\//.test(f.type) || VIDEO.test(f.name); }), other = list.length - files.length; /* แอพไฟล์เลือกทั้งโฟลเดอร์ได้ → ตัดรูป/ไฟล์อื่นทิ้ง */
     var moved = 0;
     var add = files.map(function(f){
       var done = findClip(f), id = done ? done.id : FT.clipId(f), fin = done && done.status === "done";
       if(fin && album !== "ไม่ระบุ" && done.album !== album){ done.album = album; FT.store.put(done); moved++; } /* พิมพ์อัลบั้มแล้วเลือกคลิปที่ทำไว้ = ย้ายเข้าอัลบั้มนั้น (ไม่เรียก AI) */
       var old = fin && (done.imgV || 1) < FT.IMG_V; /* รูปรุ่นเก่า (เล็ก/เบลอ) → วาดใหม่ฟรี */
-      var cloud = up && fin && !done.r2; /* ทำดัชนีแล้วแต่ยังไม่อยู่ในคลัง → อัปอย่างเดียว */
-      var mode = old ? "up" : cloud ? "cloud" : "";
-      return { file:f, id:id, album:album, mode:mode, toCloud:up, status: fin && !mode ? "skip" : "wait", err:"", p:0,
+      var mode = old ? "up" : "";
+      return { file:f, id:id, album:album, mode:mode, status: fin && !mode ? "skip" : "wait", err:"", p:0,
                info:{ name:f.name, type:f.type, size:f.size, lastModified:f.lastModified, picked:picked } };
     });
     queue = queue.filter(function(q){ return q.status === "run"; }).concat(add.filter(function(a){ return !queue.some(function(q){ return q.id === a.id && q.status === "run"; }); }));
     /* สรุปให้รู้ก่อนกดเริ่ม: อะไรเสียค่า AI อะไรอัปอย่างเดียว อะไรข้าม (เลือกทั้งอัลบั้มซ้ำได้ ไม่ทำซ้ำ) */
     var n = function(fn){ return add.filter(fn).length; };
-    var nNew = n(function(q){ return q.status === "wait" && !q.mode; }), nUp = n(function(q){ return q.mode === "cloud"; }), nFix = n(function(q){ return q.mode === "up"; }), nSkip = n(function(q){ return q.status === "skip"; });
-    msg("runMsg", "เลือกมา " + add.length + " คลิป" + (other ? " (ตัดไฟล์ที่ไม่ใช่วิดีโอ " + other + ")" : "") + " · ใหม่ทำดัชนี " + nNew + (nNew ? " (เสียค่า AI ≈ " + money(nNew * avgCost()) + ")" : "") + " · อัปขึ้นคลังอย่างเดียว " + nUp + " · วาดรูปใหม่ " + nFix + " · มีครบแล้ว ข้าม " + nSkip + (moved ? " · ย้ายเข้าอัลบั้ม “" + album + "” " + moved : ""), nNew ? "" : "ok");
+    var nNew = n(function(q){ return q.status === "wait" && !q.mode; }), nFix = n(function(q){ return q.mode === "up"; }), nSkip = n(function(q){ return q.status === "skip"; });
+    msg("runMsg", "เลือกมา " + add.length + " คลิป" + (other ? " (ตัดไฟล์ที่ไม่ใช่วิดีโอ " + other + ")" : "") + " · ใหม่ทำดัชนี " + nNew + (nNew ? " (เสียค่า AI ≈ " + money(nNew * avgCost()) + ")" : "") + " · วาดรูปใหม่ " + nFix + " · มีครบแล้ว ข้าม " + nSkip + (moved ? " · ย้ายเข้าอัลบั้ม “" + album + "” " + moved : ""), nNew ? "" : "ok");
     renderQueue();
   }
   function avgCost(){ var d = lib.filter(function(c){ return c.status === "done" && c.cost; }); return d.length ? d.reduce(function(t, c){ return t + c.cost; }, 0) / d.length : 0.014; }
@@ -74,8 +73,8 @@
   function renderQueue(){
     if(!queue.length){ $("queue").innerHTML = '<li class="empty">ยังไม่ได้เลือกไฟล์</li>'; }
     else $("queue").innerHTML = queue.map(function(q){
-      var c = byId(q.id), tag = { wait:[q.mode === "up" ? "รออัปเกรดรูป" : q.mode === "deep" ? (q.god ? "รอตรวจขั้นเทพ" : "รอทำละเอียด") : q.mode === "cloud" ? "รออัปขึ้นคลัง" : q.key ? "รอ (จากคลัง)" : "รอ",""], run:["กำลังทำ " + Math.round(q.p * 100) + "%","run"], done:["เสร็จ","ok"], error:["error","err"], skip:["ทำแล้ว (ข้าม)","ok"] }[q.status];
-      var sub = q.status === "run" ? esc((q.stage || "เริ่ม...") + " · " + mmss(Date.now() - q.t0)) : q.mode === "cloud" && q.status === "wait" ? "ทำดัชนีแล้ว · จะอัปไฟล์ขึ้นคลัง (ไม่เรียก AI)" : q.mode === "up" && q.status === "wait" ? "รูปรุ่นเก่า (เบลอ) · จะวาดรูปใหม่ ไม่เรียก AI" : q.mode === "deep" && q.status === "wait" ? (q.god ? "ตรวจขั้นเทพ · AI ดู 2-5 เฟรมต่อฉาก ทีละเฟรม (ค่า AI สูงสุด)" : "อัปเกรดเป็นดัชนีละเอียด · AI ดูเฟรมต้น/กลาง/ท้ายของทุกฉาก (เสียค่า AI)") : c && c.status === "done" ? c.scenes.length + " ฉาก · " + money(c.cost || 0) + " · " + ((c.ms || 0) / 1000).toFixed(0) + " วิ · " + capDur(c.duration) : esc(q.album || "ไม่ระบุอัลบั้ม");
+      var c = byId(q.id), tag = { wait:[q.mode === "up" ? "รออัปเกรดรูป" : q.mode === "deep" ? (q.god ? "รอตรวจขั้นเทพ" : "รอทำละเอียด") : "รอ",""], run:["กำลังทำ " + Math.round(q.p * 100) + "%","run"], done:["เสร็จ","ok"], error:["error","err"], skip:["ทำแล้ว (ข้าม)","ok"] }[q.status];
+      var sub = q.status === "run" ? esc((q.stage || "เริ่ม...") + " · " + mmss(Date.now() - q.t0)) : q.mode === "up" && q.status === "wait" ? "รูปรุ่นเก่า (เบลอ) · จะวาดรูปใหม่ ไม่เรียก AI" : q.mode === "deep" && q.status === "wait" ? (q.god ? "ตรวจขั้นเทพ · AI ดู 2-5 เฟรมต่อฉาก ทีละเฟรม (ค่า AI สูงสุด)" : "อัปเกรดเป็นดัชนีละเอียด · AI ดูเฟรมต้น/กลาง/ท้ายของทุกฉาก (เสียค่า AI)") : c && c.status === "done" ? c.scenes.length + " ฉาก · " + money(c.cost || 0) + " · " + ((c.ms || 0) / 1000).toFixed(0) + " วิ · " + capDur(c.duration) : esc(q.album || "ไม่ระบุอัลบั้ม");
       return '<li><img ' + (c && c.cover ? 'src="' + c.cover + '" ' : "") + 'alt=""><div class="t"><b>' + esc(q.info.name) + "</b><span>" + sub + "</span>"
         + (q.err ? '<br><span style="color:var(--err)">' + esc(q.err) + "</span>" : "") + '</div><span class="tag ' + tag[1] + '">' + tag[0] + "</span></li>";
     }).join("");
@@ -162,19 +161,6 @@
     }catch(err){ if(document.hidden){ q.status = "wait"; q.p = 0; } else { q.status = "error"; q.err = err.message || String(err); } }
     renderAll();
   }
-  async function cloudClip(q){
-    var c = byId(q.id); q.status = "run"; q.p = 0; q.err = ""; q.t0 = Date.now(); q.stage = "อัปขึ้นคลัง..."; renderQueue();
-    try{ await FT.cloud.upload(c, q.file, function(p){ q.p = p; q.stage = "อัปขึ้นคลัง " + Math.round(p * 100) + "%"; renderQueue(); }); q.status = "done"; q.p = 1; q.mode = ""; }
-    catch(err){ if(document.hidden || err.budget){ q.status = "wait"; q.p = 0; if(err.budget){ paused = true; capMsg = err.message; } } else { q.status = "error"; q.err = err.message || String(err); } }
-    renderAll();
-  }
-  async function alsoUpload(q){ /* แก้อัลบั้ม/อัปเกรดรูปเสร็จแล้ว ถ้าติ๊กอัปขึ้นคลังไว้และยังไม่อยู่ในคลัง → อัปต่อในรอบเดียวกัน */
-    var c = byId(q.id); if(q.status !== "done" || !q.toCloud || !q.file || !c || c.r2) return;
-    q.status = "run"; q.stage = "อัปขึ้นคลัง..."; renderQueue();
-    try{ await FT.cloud.upload(c, q.file, function(p){ q.stage = "อัปขึ้นคลัง " + Math.round(p * 100) + "%"; renderQueue(); }); }
-    catch(err){ q.err = "อัปขึ้นคลังไม่ได้: " + (err.message || err); }
-    q.status = "done"; renderAll();
-  }
   /* ส่งฉากให้ AI ดูทีละ CHUNK ฉาก พร้อมกัน cfg.par คำขอ → ใส่ sc.ai · ใช้ทั้งทำดัชนีใหม่และอัปเกรดเป็นรุ่นละเอียด · base = ความคืบหน้าก่อนเริ่มส่วน AI */
   async function describeAll(scenes, album, dur, q, base){
     var chunks = [], out = { cost:0, tin:0, tout:0, raw:[], sums:"" }, sums = [], done = 0;
@@ -205,8 +191,8 @@
   async function deepClip(q){
     var c = byId(q.id), t0 = Date.now(); q.status = "run"; q.p = 0; q.err = ""; q.t0 = t0; q.stage = "เปิดวิดีโอ..."; renderQueue();
     try{
-      var src = q.file || (FT.ui.fileFor && FT.ui.fileFor(c)) || (c.r2 && FT.cloud && FT.cloud.ready() ? await R2.url(c.r2) : null);
-      if(!src) throw new Error("ไม่มีไฟล์ (ไม่อยู่ในคลัง และยังไม่ได้เปิดไฟล์ในเครื่อง)");
+      var src = q.file || (FT.ui.fileFor && FT.ui.fileFor(c));
+      if(!src) throw new Error("ไม่มีไฟล์ (ไม่เจอในมือถือ และยังไม่ได้เปิดไฟล์)");
       var god = !!q.god;
       var fr = await FT.deepFrames($("vid"), src, c, function(p){ q.p = p * 0.4; q.stage = (god ? "จับเฟรมรอบฉาก " : "จับเฟรมต้น/กลาง/ท้าย ") + Math.round(p * 100) + "%"; renderQueue(); }, god);
       var scenes = c.scenes.map(function(sc, i){ return god ? { n:i + 1, s:sc.s, e:sc.e, aiFrames:fr[i].frames, nf:fr[i].n } : { n:i + 1, s:sc.s, e:sc.e, aiImg:fr[i].img, nf:fr[i].n }; });
@@ -222,16 +208,11 @@
     renderAll();
   }
   async function processClip(q){
-    if(q.mode === "up") return upgradeClip(q).then(function(){ return alsoUpload(q); });
-    if(q.mode === "cloud") return cloudClip(q);
+    if(q.mode === "up") return upgradeClip(q);
     if(q.mode === "deep") return deepClip(q);
     var t0 = Date.now();
     q.status = "run"; q.p = 0; q.err = ""; q.t0 = t0; renderQueue();
     try{
-      if(!q.file && q.key){ /* คลิปจากคลัง → โหลดทั้งไฟล์มาก่อน (อ่านเฟรมจากในเครื่องเร็วกว่ากรอผ่านเน็ตมาก) */
-        q.stage = "โหลดจากคลัง...";
-        q.file = await FT.cloud.fetch(q, function(p){ q.stage = "โหลดจากคลัง " + Math.round(p * 100) + "%"; renderQueue(); });
-      }
       q.stage = "กำลังเปิดวิดีโอ...";
       var m = await FT.scan($("vid"), q.file, function(p){ q.p = p * 0.5; q.stage = p < 0.7 ? "อ่านเฟรมหาจุดตัดฉาก..." : "จับภาพตัวแทนแต่ละฉาก..."; renderQueue(); });
       var msScan = Date.now() - t0; /* เวลาอ่านเฟรม+ตัดฉาก (ยังไม่นับ AI) */
@@ -243,14 +224,8 @@
         duration:m.duration, w:m.w, h:m.h, cover:m.cover, summary_th:r.sums,
         scenes: m.scenes.map(function(sc){ return { s:sc.s, e:sc.e, thumb:sc.thumb, img:sc.img, ai:sc.ai || null }; }),
         raw:r.raw, cost:r.cost, tokens:{ in:r.tin, out:r.tout }, ms:Date.now() - t0, imgV:FT.IMG_V, aiV:cfg.godNew ? FT.AI_GOD : FT.AI_V, msScan:msScan, msAI:Date.now() - t0 - msScan, model:cfg.model, at:Date.now(), status:"done" };
-      if(q.key) rec.r2 = q.key;
       await FT.store.put(rec);
       lib = lib.filter(function(c){ return c.id !== rec.id; }).concat([rec]);
-      if(q.toCloud && !rec.r2){ /* ติ๊กอัปขึ้นคลัง: อัปต่อเลย (อัปไม่ผ่านไม่ถือว่าดัชนีพัง) */
-        try{ q.stage = "อัปขึ้นคลัง..."; renderQueue(); await FT.cloud.upload(rec, q.file, function(p){ q.stage = "อัปขึ้นคลัง " + Math.round(p * 100) + "%"; renderQueue(); }); }
-        catch(err){ q.err = "ทำดัชนีเสร็จ แต่อัปขึ้นคลังไม่ได้: " + (err.message || err); if(err.budget){ paused = true; capMsg = err.message; } } /* ชนเพดานคลัง → พักคิว ไม่ทำดัชนีต่อทั้งที่อัปไม่ได้ */
-      }
-      if(q.key) q.file = null; /* ไฟล์ที่โหลดจากคลังกินแรม ปล่อยทิ้ง */
       q.status = "done"; q.p = 1;
     }catch(err){
       if(err.budget || document.hidden){ q.status = "wait"; q.p = 0; if(err.budget){ paused = true; capMsg = err.message === "ถึงเพดานงบ" ? "" : err.message; } } /* ยังไม่ใช่ error จริง ทำใหม่ได้ · capMsg = ชนเพดานรวมใน budget.js */
@@ -310,11 +285,11 @@
   function deepState(){
     var done = lib.filter(function(c){ return c.status === "done"; }), v2 = done.filter(function(c){ return (c.aiV || 1) >= FT.AI_V; });
     var need = done.filter(function(c){ return (c.aiV || 1) < FT.AI_V && !queue.some(function(q){ return q.id === c.id && q.status !== "done"; }); });
-    var ok = need.filter(function(c){ return (FT.ui.fileFor && FT.ui.fileFor(c)) || (c.r2 && FT.cloud && FT.cloud.ready()); });
+    var ok = need.filter(function(c){ return (FT.ui.fileFor && FT.ui.fileFor(c)); });
     var per = avgCost() * 1.6; /* ยังไม่มีตัวอย่างรุ่นละเอียด = ประมาณ 1.6 เท่าของรุ่นเดิม (รูปใหญ่ขึ้น + ป้ายมากขึ้น) */
     var g3 = done.filter(function(c){ return (c.aiV || 1) >= FT.AI_GOD; }).length;
     var gneed = done.filter(function(c){ return (c.aiV || 1) < FT.AI_GOD && !queue.some(function(q){ return q.id === c.id && q.status !== "done"; }); });
-    var gok = gneed.filter(function(c){ return (FT.ui.fileFor && FT.ui.fileFor(c)) || (c.r2 && FT.cloud && FT.cloud.ready()); });
+    var gok = gneed.filter(function(c){ return (FT.ui.fileFor && FT.ui.fileFor(c)); });
     return { done:done.length, v2:v2.length, need:need.length, ok:ok, cost:per * ok.length, g3:g3, gok:gok, gcost:avgCost() * 4 * gok.length * (cfg.godModel ? 2 : 1) };
   }
   function renderDeep(){
@@ -331,14 +306,14 @@
     var d = deepState(); if(!d.gok.length) return;
     if(!await MWDialog.confirm("ตรวจขั้นเทพ " + d.gok.length + " คลิป (AI ดูทีละเฟรม 2-5 เฟรมต่อฉาก) ค่า AI ประมาณ " + money(d.gcost) + "\nงบต่อรอบตั้งไว้ " + money(cfg.budget) + " ถึงแล้วจะพักเอง กด ทำต่อ ได้\nเปิดหน้านี้ค้างไว้ระหว่างทำ")) return;
     queue = queue.filter(function(q){ return q.status === "wait" || q.status === "run"; }).concat(d.gok.map(function(c){
-      return { id:c.id, mode:"deep", god:true, album:c.album, status:"wait", err:"", p:0, file:null, toCloud:false, info:{ name:c.name, type:c.type, size:c.size, lastModified:c.lastModified, picked:Date.now() } }; }));
+      return { id:c.id, mode:"deep", god:true, album:c.album, status:"wait", err:"", p:0, file:null, info:{ name:c.name, type:c.type, size:c.size, lastModified:c.lastModified, picked:Date.now() } }; }));
     renderQueue(); run();
   });
   $("deepBtn").addEventListener("click", async function(){
     var d = deepState(); if(!d.ok.length) return;
     if(!await MWDialog.confirm("อัปเกรด " + d.ok.length + " คลิปเป็นดัชนีละเอียด ค่า AI ประมาณ " + money(d.cost) + "\nงบต่อรอบตั้งไว้ " + money(cfg.budget) + " ถึงแล้วจะพักเอง กด ทำต่อ ได้ (ปรับงบได้ที่ ตั้งค่า)\nเปิดหน้านี้ค้างไว้ระหว่างทำ")) return;
     queue = queue.filter(function(q){ return q.status === "wait" || q.status === "run"; }).concat(d.ok.map(function(c){
-      return { id:c.id, mode:"deep", album:c.album, status:"wait", err:"", p:0, file:null, toCloud:false, info:{ name:c.name, type:c.type, size:c.size, lastModified:c.lastModified, picked:Date.now() } }; }));
+      return { id:c.id, mode:"deep", album:c.album, status:"wait", err:"", p:0, file:null, info:{ name:c.name, type:c.type, size:c.size, lastModified:c.lastModified, picked:Date.now() } }; }));
     renderQueue(); run();
   });
 
@@ -397,7 +372,7 @@
     lib.forEach(function(c){ var k = c.size + "|" + Math.round((c.duration || 0) * 10); (g[k] = g[k] || []).push(c); });
     Object.keys(g).forEach(function(k){
       var a = g[k]; if(a.length < 2) return;
-      a.sort(function(x, y){ return (y.r2 ? 1 : 0) - (x.r2 ? 1 : 0) || (y.at || 0) - (x.at || 0); }); /* ตัวแรก = อยู่ในคลังแล้ว (เล่นได้) ถ้าเท่ากันเอาที่ทำล่าสุด → เก็บไว้ */
+      a.sort(function(x, y){ return (y.at || 0) - (x.at || 0); }); /* เอาที่ทำล่าสุด → เก็บไว้ */
       var real = a.find(function(c){ return c.album && c.album !== "ไม่ระบุ"; }); /* อัลบั้มจริงของตัวไหนก็ได้ ดีกว่า "ไม่ระบุ" */
       if(real && a[0].album !== real.album){ a[0].album = real.album; fix.push(a[0]); }
       a.slice(1).forEach(function(c){ del.push(c.id); });
@@ -440,7 +415,7 @@
               list.forEach(function(f){
                 var done = lib.find(function(c){ return c.name === f.name && c.size === f.size; }); if(done && done.status === "done") return; /* ชื่อ+ขนาดตรงเป๊ะเท่านั้น (ไม่ใช้ขนาดอย่างเดียว: คลิปคนละไฟล์ขนาดเท่ากันจะถูกข้ามผิด) */
                 var lm = f.mtime || 0, id = FT.clipId({ name:f.name, size:f.size, lastModified:lm });
-                items.push({ file:MWLocal.fileUrl(f.uri), id:id, album:f.album || "ไม่ระบุ", mode:"", toCloud:false, status:"wait", err:"", p:0, info:{ name:f.name, type:"video/mp4", size:f.size, lastModified:lm, picked:picked } });
+                items.push({ file:MWLocal.fileUrl(f.uri), id:id, album:f.album || "ไม่ระบุ", mode:"", status:"wait", err:"", p:0, info:{ name:f.name, type:"video/mp4", size:f.size, lastModified:lm, picked:picked } });
               });
               var before = queue.length; FT.ui.addQueue(items); return queue.length - before;
             },
