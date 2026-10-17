@@ -24,7 +24,7 @@
     var k = await hmac("AWS4" + o.secret, ds); k = await hmac(k, o.region); k = await hmac(k, "s3"); k = await hmac(k, "aws4_request");
     return (o.scheme || "https") + "://" + o.host + cp + "?" + cq + "&X-Amz-Signature=" + hex(await hmac(k, sts));
   }
-  function ready(){ return !!((cfg.account || cfg.endpoint) && cfg.bucket && cfg.keyId && cfg.secret); }
+  function ready(){ return cfg.on === true && !!((cfg.account || cfg.endpoint) && cfg.bucket && cfg.keyId && cfg.secret); } /* v8.13: ปิดใช้ R2 ทั้งระบบ (คลิป/เสียงเก็บในแอพแล้ว) · ค่าที่ตั้งไว้ยังอยู่ ถ้าจะเปิดกลับต้องมี cfg.on === true */
   function sign(method, key, query, expires){
     if(!ready()) return Promise.reject(new Error("ยังไม่ได้ตั้งค่าคลัง R2 (แท็บตั้งค่า)"));
     /* endpoint/region ไม่บังคับ: ว่าง = Cloudflare R2 · ใส่เองได้สำหรับที่เก็บแบบ S3 อื่น (เช่น Backblaze B2) */

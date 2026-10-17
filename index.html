@@ -4,19 +4,19 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
-<link rel="manifest" href="manifest.json?v=8.12">
+<link rel="manifest" href="manifest.json?v=8.13">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Meowrin">
-<link rel="icon" type="image/png" href="icon-192.png?v=8.12">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.12">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.13">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.13">
 <title>Meowrin factory</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Mitr:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=8.12">
-<link rel="stylesheet" href="sheet.css?v=8.12">
+<link rel="stylesheet" href="style.css?v=8.13">
+<link rel="stylesheet" href="sheet.css?v=8.13">
 </head>
 <body>
 <div class="wrap">
@@ -293,9 +293,9 @@
       <input id="bgDay" type="number" min="0" step="0.5" inputmode="decimal">
       <label for="bgMonth">เพดานค่า AI ต่อเดือน (USD)</label>
       <input id="bgMonth" type="number" min="0" step="1" inputmode="decimal">
-      <label for="bgR2">เพดานขนาดคลัง R2 (GB)</label>
-      <input id="bgR2" type="number" min="0" step="10" inputmode="numeric">
-      <p class="hint">ค่าเงินบาทคิดที่ ~35 บาท/ดอลลาร์ (ประมาณ) · R2 10 GB แรกฟรี เกินนั้น $0.015/GB/เดือน</p>
+      <label for="bgR2" hidden>เพดานขนาดคลัง R2 (GB)</label>
+      <input id="bgR2" hidden type="number" min="0" step="10" inputmode="numeric">
+      <p class="hint">ค่าเงินบาทคิดที่ ~35 บาท/ดอลลาร์ (ประมาณ)</p>
     </div></details>
     <details class="fold top"><summary><span>สำรองข้อมูล</span><em class="state ok" id="stTag">ตรวจสอบ...</em></summary><div class="fbody">
       <div id="stInfo"></div>
@@ -405,6 +405,6 @@
   </div>
 </div>
 
-<script src="store.js?v=8.12" data-boot="version.js?v=8.12 icons.js?v=8.12 dialog.js?v=8.12 native.js?v=8.12 budget.js?v=8.12 sync.js?v=8.12 app.js?v=8.12 llm.js?v=8.12 ai.js?v=8.12 r2.js?v=8.12 voicestore.js?v=8.12 tts.js?v=8.12 gdrive.js?v=8.12 ota.js?v=8.12"></script>
+<script src="store.js?v=8.13" data-boot="version.js?v=8.13 icons.js?v=8.13 dialog.js?v=8.13 native.js?v=8.13 budget.js?v=8.13 sync.js?v=8.13 app.js?v=8.13 llm.js?v=8.13 ai.js?v=8.13 r2.js?v=8.13 voicestore.js?v=8.13 tts.js?v=8.13 gdrive.js?v=8.13 ota.js?v=8.13"></script>
 </body>
 </html>

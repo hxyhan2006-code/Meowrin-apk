@@ -382,6 +382,11 @@ try {
   const vr = await vq.evaluate(async () => { const l = await MWVoice.list(); return l.map((r) => [r.id, r.text, r.name, r.blob.size]); });
   check('เสียงพากย์: IndexedDB ว่างแต่มีไฟล์ในโฟลเดอร์ → ดึงเทคกลับมาให้เอง (บท/ชื่อ/ไฟล์เสียงครบ)', vr.length === 1 && vr[0][0] === 1700000000999 && vr[0][1] === 'บทเดิม' && vr[0][2] === 'v.mp3' && vr[0][3] === 7, JSON.stringify(vr));
   await vcy.close();
+  // R2 ปิดใช้ทั้งระบบ (v8.13): ตั้งค่าครบก็ไม่ทำงาน · ต้องมี on:true ถึงเปิด · แผง R2 ซ่อนอยู่
+  const r2p = await context.newPage(); await r2p.goto(base + '/footage.html'); await r2p.waitForFunction(() => window.R2 && window.FT && FT.ui, null, { timeout: 20000 });
+  const r2r = await r2p.evaluate(() => { const full = { account: 'a', bucket: 'b', keyId: 'k', secret: 's' }; const old = R2.cfg(); R2.setCfg({ ...full }); const off = R2.ready(); R2.setCfg({ ...full, on: true }); const on = R2.ready(); R2.setCfg(old); const f = [...document.querySelectorAll('details.fold')].find((d) => /Cloudflare R2/.test(d.textContent)); return { off, on, panelHidden: !!f && getComputedStyle(f).display === 'none', bg: getComputedStyle(document.getElementById('bgR2')).display }; });
+  check('R2: ตั้งค่าครบแต่ไม่มี on → ไม่ทำงาน (ready=false) · on:true ถึงเปิดได้ · แผงตั้งค่า R2 และช่องเพดาน R2 ซ่อนอยู่', r2r.off === false && r2r.on === true && r2r.panelHidden && r2r.bg === 'none', JSON.stringify(r2r));
+  await r2p.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
   await bk.addInitScript(() => { window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, Plugins: { App: { addListener: (n, f) => { window.__bb = f; return Promise.resolve({ remove() {} }); }, exitApp: () => { window.__exit = (window.__exit || 0) + 1; } } } }; });
