@@ -79,6 +79,11 @@ try {
   await main.page.click('#vSavedList .vplay'); await main.page.waitForTimeout(600);
   const playing = await main.page.evaluate(() => window.__auds.some((a) => !a.paused));
   await main.page.click('#vSavedClose'); await main.page.waitForTimeout(300);
+  // เสียงที่อยู่แค่ในคลัง: ปุ่ม "ดึงมาเครื่องนี้" ต้องเห็นและกดได้ทันที (เดิมซ่อนอยู่ตามกฎการ์ดที่ยังไม่กาง แตะไม่ได้เลย)
+  await main.page.evaluate(() => { MWVoice.cloudOn = () => true; MWVoice.cloudList = async () => [{ id: 1699999999999, size: 400000 }]; });
+  await main.page.click('#vSavedBtn'); await main.page.waitForTimeout(1200);
+  check('เสียงที่เก็บไว้: เสียงที่อยู่แค่ในคลังมีปุ่ม "ดึงมาเครื่องนี้" ที่มองเห็น', await main.page.isVisible('#vSavedCloud [data-vpull]'));
+  await main.page.click('#vSavedClose'); await main.page.waitForTimeout(300);
   // แถวปุ่มใต้เสียงที่เจนแล้ว ต้องไม่ล้นจอ (ล้น = มือถือซูมออกทั้งหน้า) แม้ปุ่มโชว์ครบทั้ง 5
   await main.page.evaluate(() => { document.querySelector('#vBody').hidden = false; document.querySelector('#vNo').hidden = true; document.querySelector('#ttsOut').hidden = false; ['ttsSub', 'ttsDirect', 'ttsRaw', 'ttsShare'].forEach((i) => { document.getElementById(i).hidden = false; }); });
   check('แท็บเสียง: แถวปุ่มใต้เสียงที่เจนแล้วไม่ล้นจอ', await main.page.evaluate(() => { const bs = [...document.querySelectorAll('#ttsOut .row .btn')]; return bs.length === 5 && bs.every((b) => b.getBoundingClientRect().width > 0 && b.getBoundingClientRect().right <= innerWidth + 1); }));

@@ -289,7 +289,7 @@
       + '<button class="btn ghost small" data-vdel="' + r.id + '">ลบ</button></div></div>';
   }
   function cloudCard(c){
-    return '<div class="vcard"><div class="vtop"><div class="vmeta"><b>' + MW.esc(dateOf(c.id)) + '</b><small>' + (c.size / 1048576).toFixed(1) + ' MB · ' + MWIcon("cloud") + 'อยู่ในคลัง</small></div></div>'
+    return '<div class="vcard open"><div class="vtop"><div class="vmeta"><b>' + MW.esc(dateOf(c.id)) + '</b><small>' + (c.size / 1048576).toFixed(1) + ' MB · ' + MWIcon("cloud") + 'อยู่ในคลัง</small></div></div>'
       + '<div class="vact"><button class="btn small" data-vpull="' + c.id + '">' + MWIcon("down") + 'ดึงมาเครื่องนี้</button><button class="btn ghost small" data-vdelc="' + c.id + '">ลบจากคลัง</button></div></div>';
   }
   async function renderSaved(){ /* วาดเสียงในเครื่องก่อน (resolve เมื่อเสร็จ) · เสียงที่อยู่แค่ในคลังเติมทีหลังเฉพาะส่วนของมัน ไม่วาดการ์ดในเครื่องซ้ำ (กันกะพริบ/เสียงสะดุด) */
