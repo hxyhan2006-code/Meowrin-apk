@@ -7,7 +7,7 @@
   "use strict";
   var FT = window.FT, U = FT && FT.ui; if(!U || !FT.stitch) return;
   var $ = function(id){ return document.getElementById(id); };
-  var KEY = "mw_footage_direct_v1", CAND = 6, PER_CLIP = 2, CHUNK = 6, RATE = 13, MIN_DUR = 1, MAX_DUR = 10, LONG = 10, LEAD = 1, SEP = 2, MAX_CHARS = 3000, SPLIT = 3, PART = 2;
+  var KEY = "mw_footage_direct_v1", CAND = 10, PER_CLIP = 2, CHUNK = 4, RATE = 13, MIN_DUR = 1, MAX_DUR = 10, LONG = 10, LEAD = 1, SEP = 2, MAX_CHARS = 3000, SPLIT = 3, PART = 2;
   function load(k, d){ return MWStore.get(k, d); } /* store.js: IndexedDB + แคช */
   function save(k, v){ return MWStore.set(k, v); }
   function savePlan(){ save(KEY, plan); if(window.MWHist) MWHist.add("plan", { key:plan.at, title:String(plan.script || "").replace(/\s+/g, " ").trim().slice(0, 40) || "ตารางช็อต", data:plan }); } /* ประวัติงาน: เก็บตารางช็อตแต่ละรอบ */
@@ -135,6 +135,7 @@
       ts.forEach(function(v){ var k = U.matchIdx(v, h); if(k >= 0) score += [3, 2, 1][k]; });
       if(want.length){ score += hitC * 8; if(!hitC) score -= 6; } /* สไตล์ช่อง: เอ่ยชื่อใคร ต้องเห็นคนนั้น */
       var len = sc.e - sc.s; score += len >= shot.dur ? 1.5 : len / shot.dur * 1.5; /* ฉากยาวพอกับประโยค */
+      if(!cs.length) score -= want.length ? 0 : 3; /* ฉากไม่มีตัวละครเลย (วิว/ของ) หักคะแนน ยกเว้นบทพูดถึงสิ่งนั้นเอง (โดน -6 อยู่แล้วถ้ามีตัวละครที่ต้องมี) */
       var a = sc.ai || {}; if(a.shot && a.shot === shot.shot) score += 1.5; /* ดัชนีรุ่นละเอียด: ระยะภาพตรงที่ผู้กำกับอยากได้ */
       if(a.usable && a.usable <= 2) score -= 2; if(a.multi) score -= 1; /* ขั้นเทพ: ใช้ยาก / มีหลายช็อตปน */
       (a.issues || []).forEach(function(x){ if(/watermark|subtitle|blurry|black/.test(x)) score -= 2; }); /* ภาพมีลายน้ำ/ซับ/เบลอ = ใช้ยาก */
@@ -146,6 +147,22 @@
     for(var i = 0; i < out.length && top.length < CAND; i++){ var id = out[i].c.id; if((per[id] = (per[id] || 0) + 1) <= PER_CLIP) top.push(out[i]); } /* คลิปเดียวกันไม่เกิน 2 ตัว ให้ AI มีตัวเลือกหลากหลาย */
     return top;
   }
+
+  function charOnly(shot, used){ /* ถอยหลัง: AI บอกว่าไม่มีภาพไหนตรง → หาฉากที่มีตัวละครที่บทพูดถึงจริงๆ (ไม่ดูคำค้น) เน้นหน้าชัด/ใช้ง่าย */
+    var want = []; shot.chars.forEach(function(n){ var k = U.charKey(n); if(want.indexOf(k) < 0) want.push(k); });
+    if(!want.length) return [];
+    var out = [];
+    U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return; c.scenes.forEach(function(sc, si){
+      var cs = U.chars(sc), hit = want.filter(function(k){ return cs.indexOf(k) >= 0; }).length; if(!hit) return;
+      var a = sc.ai || {}, score = hit * 10 + (a.shot === "close" ? 2 : a.shot === "medium" ? 1 : 0) + (a.usable || 3) + Math.min(1.5, (sc.e - sc.s) / (shot.dur || 2)) - (a.multi ? 1 : 0) - (used[c.id + "#" + si] ? 5 : 0);
+      (a.issues || []).forEach(function(x){ if(/watermark|subtitle|blurry|black/.test(x)) score -= 2; });
+      out.push({ c:c, sc:sc, si:si, score:score }); }); });
+    out.sort(function(a, b){ return b.score - a.score; });
+    var per = {}, top = [];
+    for(var i = 0; i < out.length && top.length < 4; i++){ var id = out[i].c.id; if((per[id] = (per[id] || 0) + 1) <= 1) top.push(out[i]); }
+    return top;
+  }
+  function hasWanted(x, p){ var cs = U.chars(p.sc); return x.chars.some(function(n){ return cs.indexOf(U.charKey(n)) >= 0; }); }
 
   /* ---------- กำกับ ---------- */
   var busy = false;
@@ -179,6 +196,7 @@
           var r = await FT.direct(script, items, prev ? (prev.sc.ai && prev.sc.ai.summary_th || "") : ""); cost += r.cost;
           r.picks.forEach(function(p){
             var x = shots[p.s - 1]; if(!x || !x.pool.length) return;
+            x.none = /none/i.test(p.best); x.fx = p.fx;
             var idx = function(id){ var m = /^(\d+)([a-h])$/.exec(String(id).trim()); return m && +m[1] === p.s ? "abcdefgh".indexOf(m[2]) : -1; };
             var order = [idx(p.best)].concat(p.alts.map(idx)).filter(function(j, k, a){ return j >= 0 && j < x.pool.length && a.indexOf(j) === k; });
             x.pool.forEach(function(_, j){ if(order.indexOf(j) < 0) order.push(j); });
@@ -186,12 +204,16 @@
           });
         }catch(err){ if(err.budget) throw err; errs++; } /* ชุดนี้พลาด = ใช้ลำดับจากการค้นในเครื่องไปก่อน */
       }
+      var fb = 0; /* ต้องมีตัวละคร แต่ AI บอกไม่ตรง หรือตัวเลือกแรกไม่มีตัวละครนั้น → ถอยไปฉากที่มีตัวละครนั้นจริง */
+      shots.forEach(function(x){ if(!x.chars.length) return; if(!x.none && x.pool[0] && hasWanted(x, x.pool[0])) return;
+        var co = charOnly(x, used); if(!co.length) return;
+        x.pool = co.concat(x.pool.filter(function(p){ return !co.some(function(q){ return q.c.id === p.c.id && q.si === p.si; }); })); x.fx = null; x.why = "ถอยไปใช้ฉากที่มีตัวละครนี้"; fb++; });
       shots.forEach(function(x, k){ /* ไม่ใช้ฉากเดียวกันติดกันสองช็อต */
         var p = k && shots[k - 1].pool[0], a = x.pool[0];
         if(p && a && p.c.id === a.c.id && p.si === a.si && x.pool.length > 1) x.pool.push(x.pool.shift());
       });
       plan = { mode:mode, voice:voice ? { id:voice.id, name:voice.name || "", dur:vdur } : null, at:Date.now(), cost:cost, ms:Date.now() - t0, script:script, shots:shots.map(function(x){
-        return { t:x.t, want:x.want, chars:x.chars, keys:x.keys, shot:x.shot, dur:x.dur, at:x.at, why:x.why, use:true, cands:x.pool.map(function(p){ return { id:p.c.id, si:p.si }; }) }; }) };
+        return { t:x.t, want:x.want, chars:x.chars, keys:x.keys, shot:x.shot, dur:x.dur, at:x.at, why:x.why, fx:x.fx == null ? null : x.fx, use:true, cands:x.pool.map(function(p){ return { id:p.c.id, si:p.si }; }) }; }) };
       savePlan();
       U.msg("plMsg", errs ? "เสร็จ แต่มี " + errs + " ชุดที่ AI เลือกไม่ได้ ใช้ผลค้นในเครื่องแทน (กดใหม่ได้)" : "", errs ? "err" : "");
       render();
@@ -234,7 +256,7 @@
   $("plRows").addEventListener("click", function(e){
     var b = e.target.closest("[data-alt]"); if(!b) return;
     var p = b.dataset.alt.split("|"), x = plan.shots[+p[0]], j = +p[1]; if(!j) return;
-    x.cands.unshift(x.cands.splice(j, 1)[0]); x.why = "เลือกเอง"; savePlan(); render(); /* ตัวที่แตะขึ้นเป็นตัวแรก (ตัวที่ใช้) */
+    x.cands.unshift(x.cands.splice(j, 1)[0]); x.why = "เลือกเอง"; x.fx = null; /* ตำแหน่งตัวละคร fx เป็นของภาพเดิม */ savePlan(); render(); /* ตัวที่แตะขึ้นเป็นตัวแรก (ตัวที่ใช้) */
   });
   $("plRows").addEventListener("change", function(e){
     var c = e.target.closest("[data-use]"); if(!c) return;
@@ -247,7 +269,7 @@
     plan.shots.forEach(function(x, k){ var ch = x.use && chosen(x);
       if(!ch){ if(v) out.push({ c:null, from:0, to:0, at:x.at, k:k, t:x.t }); return; }
       var ps = parts(x), len = x.dur / ps.length; /* แบบ 2: ช็อตยาวแตกเป็นหลายภาพ เวลาเริ่มต่อกันในช่วงเดิม */
-      ps.forEach(function(p, j){ var r = cut(len, p); out.push({ c:p.c, sc:p.sc, si:p.si, from:r.from, to:r.to, at:x.at != null ? x.at + j * len : x.at, k:k, j:j, t:j ? "" : x.t }); }); });
+      ps.forEach(function(p, j){ var r = cut(len, p); out.push({ c:p.c, sc:p.sc, si:p.si, from:r.from, to:r.to, at:x.at != null ? x.at + j * len : x.at, k:k, j:j, fx:j ? null : x.fx, t:j ? "" : x.t }); }); });
     return out;
   }
   function sig(list){ return (plan.voice ? "v" + plan.voice.id + ":" : "") + list.map(function(x){ return (x.c ? x.c.id + "#" + x.si : "hold") + "@" + x.from.toFixed(2) + "-" + x.to.toFixed(2); }).join(","); }

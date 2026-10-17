@@ -10,11 +10,14 @@
   /* เล่นทีละช็อต (เฉพาะช่วง) วาดลง canvas + เสียงผ่าน WebAudio แล้วอัดต่อกันด้วย MediaRecorder ตัวเดียว (pause ระหว่างเปิดไฟล์ถัดไป)
      อัดเวลาจริง ต้องเปิดหน้าค้างไว้ · ไฟล์ไม่ต้องแชร์แล้ว จึงไม่บีบให้เล็ก */
   var RATE = 6e6, BEEP_HZ = 1000, GREEN = "#00ff00", SQ = 1080, PAN = 0.28, ZOOM = 0.06;
-  function pan(g, W, H, img, iw, ih, p, i){ /* วาดแบบสไตล์ช่อง: ครอปเต็มกรอบ แล้วเลื่อนในส่วนที่เหลือ ≤ PAN ของความกว้าง (ภาพคู่ไปขวา ภาพคี่ไปซ้าย, ค่อยๆ เร่ง-ชะลอ) · ภาพที่ไม่มีส่วนเหลือ (ภาพจัตุรัส/แนวตั้ง) = ซูมเบาๆ แทน */
+  function pan(g, W, H, img, iw, ih, p, i, fx){ /* วาดแบบสไตล์ช่อง: ครอปเต็มกรอบ แล้วเลื่อนในส่วนที่เหลือ ≤ PAN ของความกว้าง (ภาพคู่ไปขวา ภาพคี่ไปซ้าย, ค่อยๆ เร่ง-ชะลอ) · ภาพที่ไม่มีส่วนเหลือ (ภาพจัตุรัส/แนวตั้ง) = ซูมเบาๆ แทน */
     if(!iw || !ih) return;
     p = Math.max(0, Math.min(1, p || 0)); p = 0.5 - 0.5 * Math.cos(Math.PI * p);
     var s = Math.max(W / iw, H / ih), w = iw * s, h = ih * s, dir = i % 2 ? -1 : 1, ex = w - W, ey = h - H, x, y;
-    if(ex > W * 0.06){ x = (W - w) / 2 + dir * Math.min(ex, W * PAN) * (p - 0.5); y = (H - h) / 2; } /* เลื่อนไม่เกินครึ่งของส่วนเกินแต่ละข้าง = ไม่มีขอบดำโผล่ */
+    if(ex > W * 0.06){ /* เลื่อนในหน่วยสัดส่วนความกว้างภาพ: c = จุดกึ่งกลางหน้าต่างที่เห็น · fx = ตำแหน่งตัวละคร (0-1) ถ้ามี หน้าต่างจะเกาะตัวละครไว้ ไม่ตัดหลุดเฟรม */
+      var vf = W / w, R = Math.min(ex, W * PAN) / w, f = fx == null || !isFinite(fx) ? 0.5 : Math.max(0, Math.min(1, fx)), c = f - dir * R * (p - 0.5);
+      if(fx != null && isFinite(fx)){ c = Math.max(c, f - vf * 0.32); c = Math.min(c, f + vf * 0.32); } /* ตัวละครอยู่ในช่วงกลาง ~64% ของหน้าต่างเสมอ */
+      c = Math.max(vf / 2, Math.min(1 - vf / 2, c)); x = -(c - vf / 2) * w; y = (H - h) / 2; }
     else if(ey > H * 0.06){ x = (W - w) / 2; y = (H - h) / 2 + dir * Math.min(ey, H * PAN) * (p - 0.5); }
     else { var z = 1 + ZOOM * (dir > 0 ? p : 1 - p); w *= z; h *= z; x = (W - w) / 2; y = (H - h) / 2; }
     g.fillStyle = "#000"; g.fillRect(0, 0, W, H); g.drawImage(img, x, y, w, h);
@@ -55,7 +58,7 @@
           var s = x.from != null ? x.from : x.sc.s, e = Math.min(x.to != null ? x.to : x.sc.e, v.duration);
           v.currentTime = s; await once(v, "seeked");
           try{ src = ac.createMediaElementSource(v); src.connect(dest); }catch(err){ v.muted = true; } /* เสียงไปเข้าไฟล์อย่างเดียว ไม่ออกลำโพง */
-          var draw = function(){ if(sq) pan(g, W, H, v, v.videoWidth, v.videoHeight, (v.currentTime - s) / Math.max(0.1, e - s), i); else fit(g, W, H, v); };
+          var draw = function(){ if(sq) pan(g, W, H, v, v.videoWidth, v.videoHeight, (v.currentTime - s) / Math.max(0.1, e - s), i, x.fx); else fit(g, W, H, v); };
           draw();
           onStep(i, x);
           if(i && sep) await separator(); /* คั่นก่อนช็อตที่ 2 เป็นต้นไป (ไฟล์ถัดไปเปิดรอไว้แล้ว) */
@@ -89,7 +92,7 @@
     function prep(i){ if(i >= list.length || prepared[i] || !list[i].c) return;
       prepared[i] = (async function(){ var v = await openVid(list[i].c); v.muted = true; v.currentTime = list[i].from; await once(v, "seeked"); return v; })();
       prepared[i].catch(function(){}); }
-    function draw(v, p, i){ if(sq) pan(g, W, H, v, v.videoWidth, v.videoHeight, p, i); else fit(g, W, H, v); }
+    function draw(v, p, i){ if(sq) pan(g, W, H, v, v.videoWidth, v.videoHeight, p, i, list[i].fx); else fit(g, W, H, v); }
     for(var k = 0; k <= LOOK; k++) prep(k);
     var firstIdx = list.indexOf(f0); if(prepared[firstIdx]) await prepared[firstIdx].catch(function(){});
     var src = ac.createBufferSource(); src.buffer = buf; src.connect(dest);
@@ -128,7 +131,7 @@
         if(x.c){ var s = await U.srcUrl(x.c); if(!s) throw new Error("ไม่มีไฟล์ " + x.c.name); sh.url = s.url; if(s.done) dones.push(s.done); }
         shots.push(sh);
       }
-      var r = await mod.exportShots({ shots:shots, voice:voice, width:sq ? SQ : 1080, height:sq ? SQ : 1920, fps:30, draw:sq ? function(g, W, H, img, p, i){ pan(g, W, H, img, img.width, img.height, p, i); } : null, onLog:function(t){ if(onMsg) onMsg(t); }, onShot:function(i){ onStep(i, list[i]); } });
+      var r = await mod.exportShots({ shots:shots, voice:voice, width:sq ? SQ : 1080, height:sq ? SQ : 1920, fps:30, draw:sq ? function(g, W, H, img, p, i){ pan(g, W, H, img, img.width, img.height, p, i, list[i].fx); } : null, onLog:function(t){ if(onMsg) onMsg(t); }, onShot:function(i){ onStep(i, list[i]); } });
       var marks = list.map(function(x, i){ return { i:i, at:x.at, len:r.durs[i], x:x }; });
       return { blob:r.blob, marks:marks, rate:0, ms:r.ms, codec:r.codec + "/" + r.audio };
     }finally{ dones.forEach(function(d){ try{ d(); }catch(e){} }); }

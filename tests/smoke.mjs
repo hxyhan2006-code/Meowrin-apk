@@ -201,6 +201,15 @@ try {
       const rb = URL.createObjectURL(new Blob([o.target.buffer], { type: 'video/mp4' }));
       const re = await exportShots({ shots: [{ url: rb, start: 0.5, end: 1, dur: 1 }, { url: blue, start: 0, dur: 0.3 }], width: 270, height: 480, fps: 30, codec: 'vp9' });
       v.src = URL.createObjectURL(re.blob); await new Promise((ok) => { v.onloadedmetadata = ok; }); out.endClamp = (await at(0.3)) + (await at(0.9)) + (await at(1.15)); }
+    /* ตรวจจุดตัดฉาก: คลิปขาว 0-1 วิ ต่อด้วยดำ · ช็อต A เริ่ม 0.6 ยาว 1 วิ → ต้องค้างขาวไม่ไหลเข้าดำ · ช็อต B เริ่ม 0.9 (หัวติดฉากเดิม ตัดที่ 1.0) → ต้องเริ่มที่ดำเลย */
+    { const c = document.createElement('canvas'); c.width = 320; c.height = 180; const x = c.getContext('2d'); const o = new mb.Output({ format: new mb.Mp4OutputFormat(), target: new mb.BufferTarget() }); const vs = new mb.CanvasSource(c, { codec: 'vp9', quality: mb.QUALITY_HIGH }); o.addVideoTrack(vs); await o.start(); for (let i = 0; i < 90; i++){ x.fillStyle = i < 30 ? '#fff' : '#000'; x.fillRect(0, 0, 320, 180); await vs.add(i / 30, 1 / 30); } await o.finalize();
+      const wb = URL.createObjectURL(new Blob([o.target.buffer], { type: 'video/mp4' })), lum = async (t) => { v.currentTime = t; await new Promise((ok) => v.onseeked = ok); cx.drawImage(v, 0, 0, 27, 48); return cx.getImageData(1, 1, 1, 1).data[0] > 128 ? 'W' : 'K'; };
+      const ra = await exportShots({ shots: [{ url: wb, start: 0.6, dur: 1 }], width: 270, height: 480, fps: 30, codec: 'vp9' });
+      v.src = URL.createObjectURL(ra.blob); await new Promise((ok) => { v.onloadedmetadata = ok; }); out.cutHold = (await lum(0.1)) + (await lum(0.5)) + (await lum(0.9));
+      const rb2 = await exportShots({ shots: [{ url: wb, start: 0.9, dur: 0.6 }], width: 270, height: 480, fps: 30, codec: 'vp9' });
+      v.src = URL.createObjectURL(rb2.blob); await new Promise((ok) => { v.onloadedmetadata = ok; }); out.cutLead = (await lum(0.05)) + (await lum(0.4));
+      const rc = await exportShots({ shots: [{ url: wb, start: 0.6, dur: 1, cuts: false }], width: 270, height: 480, fps: 30, codec: 'vp9' });
+      v.src = URL.createObjectURL(rc.blob); await new Promise((ok) => { v.onloadedmetadata = ok; }); out.cutOff = (await lum(0.1)) + (await lum(0.9)); }
     /* ใส่เสียงพากย์: เสียงสังเคราะห์ 2 วิ (WAV) → ช็อตกำหนดด้วย at · ช็อตที่ 2 ไม่มี url = ค้างภาพแดง · ไฟล์ต้องยาว 2 วิ มีแทร็กเสียง */
     const sr = 22050, n = sr * 2, wav = new DataView(new ArrayBuffer(44 + n * 2)); const W = (o, t) => { for (let i = 0; i < t.length; i++) wav.setUint8(o + i, t.charCodeAt(i)); };
     W(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); W(8, 'WAVEfmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true); wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true); W(36, 'data'); wav.setUint32(40, n * 2, true);
@@ -212,6 +221,9 @@ try {
   });
   check('ส่งออกวิดีโอเร็ว (exporter.js): ใส่เสียงพากย์ 2 วิ ช็อตตามเวลา at + ค้างภาพ ได้ไฟล์มีทั้งภาพและเสียงยาว 2 วิ', exr.v2.frames === 60 && exr.v2.audio && Math.abs(exr.v2.ad - 2) < 0.15 && Math.abs(exr.v2.vd - 2) < 0.1, JSON.stringify(exr.v2));
   check('ส่งออกวิดีโอเร็ว (exporter.js): ช็อตยาวกว่าฉาก (end) ค้างเฟรมท้ายฉาก ไม่ไหลไปฉากถัดไปในไฟล์', exr.endClamp === 'RRB', String(exr.endClamp));
+  check('ส่งออกวิดีโอเร็ว: ตรวจจุดตัดฉาก — ช็อตที่จะไหลเข้าฉากอื่น ค้างเฟรมสุดท้ายแทน', exr.cutHold === 'WWW', String(exr.cutHold));
+  check('ส่งออกวิดีโอเร็ว: หัวช็อตติดฉากก่อนหน้า (ตัดที่ 0.1 วิ) ขยับเริ่มหลังจุดตัด', exr.cutLead === 'KK', String(exr.cutLead));
+  check('ส่งออกวิดีโอเร็ว: cuts:false (สตูดิโอ) ไม่ตรวจ ไหลตามช่วงที่เลือก', exr.cutOff === 'WK', String(exr.cutOff));
   check('ส่งออกวิดีโอเร็ว (exporter.js): ต่อ 3 ช็อต ยาว 1.5 วิ ขนาด 270x480 ลำดับสีถูก', exr.frames === 45 && Math.abs(exr.dur - 1.5) < 0.1 && exr.w === 270 && exr.h === 480 && exr.order === 'RBR' && exr.size > 500 && !exErr.length, JSON.stringify(exr) + exErr.join(';'));
   await ex.close();
   // ตัวต่อวิดีโอในแท็บผู้กำกับ (FT.stitch.make โหมดมีเสียงพากย์) → ใช้ทางเร็ว (exporter) ได้ไฟล์ mp4 ถูกต้อง · ไฟล์ต้นทางหายก็ต้องถอยแบบเดิมแล้วบอกในข้อความ ไม่เงียบ
@@ -237,6 +249,7 @@ try {
     { const im = document.createElement('canvas'); im.width = 320; im.height = 180; const ix = im.getContext('2d'); ix.fillStyle = '#c00'; ix.fillRect(0, 0, 160, 180); ix.fillStyle = '#00c'; ix.fillRect(160, 0, 160, 180);
       const cv = document.createElement('canvas'); cv.width = 100; cv.height = 100; const g = cv.getContext('2d');
       const px = (p, i, x) => { FT.stitch.pan(g, 100, 100, im, 320, 180, p, i); const d = g.getImageData(x, 50, 1, 1).data; return d[0] > 100 ? 'R' : d[2] > 100 ? 'B' : 'K'; };
+      out.panFx = [px(0, 0, 5), px(1, 0, 5), px(0, 1, 5), px(1, 1, 5)].join('') + '|' + [(FT.stitch.pan(g, 100, 100, im, 320, 180, 0.5, 0, 0.9), g.getImageData(95, 50, 1, 1).data[2] > 100 ? 'B' : 'K'), (FT.stitch.pan(g, 100, 100, im, 320, 180, 0.5, 0, 0.1), g.getImageData(5, 50, 1, 1).data[0] > 100 ? 'R' : 'K')].join('');
       out.pan = px(0, 0, 50) + px(1, 0, 50) + px(0, 1, 50) + px(1, 1, 50) + px(0, 0, 0) + px(1, 0, 99); }
     FT.ui.srcUrl = async () => ({ url: '/ไม่มีไฟล์นี้.mp4' });
     try { const r2 = await FT.stitch.make(list, () => {}, (m) => msgs.push(m), { voice }); out.fb = { fast: !!r2.fast, msgs }; } catch (e) { out.fb = { err: e.message, msgs }; }
@@ -244,6 +257,7 @@ try {
   });
   check('ตัดต่อในแท็บผู้กำกับ (มีเสียงพากย์): ใช้ทางเร็ว ได้ mp4 ยาว 2 วิ มีเสียง ลำดับช็อตถูก', sfr.fast === true && /\.mp4$/.test(sfr.name) && sfr.steps.join() === '0,1' && Math.abs(sfr.ad - 2) < 0.15 && Math.abs(sfr.vd - 2) < 0.1 && sfr.marks.length === 2 && sfr.marks[0][1] === 1, JSON.stringify(sfr).slice(0, 400));
   check('ตัดต่อแบบ 2 สไตล์ช่อง (square): ไฟล์ 1:1 ขนาด 1080x1080 ทางเร็ว', !!sfr.sq && sfr.sq.fast === true && sfr.sq.w === 1080 && sfr.sq.h === 1080, JSON.stringify(sfr.sq));
+  check('ตัดต่อแบบ 2: ตัวละครอยู่ขอบขวา/ซ้าย (fx) หน้าต่างครอปเกาะตัวละคร ไม่ตัดหลุด', /\|BR$/.test(sfr.panFx || ''), String(sfr.panFx));
   check('ตัดต่อแบบ 2: ภาพเลื่อนซ้าย/ขวา (pan) สลับทิศทุกภาพ ไม่มีขอบดำ', sfr.pan === 'BRRBRB', String(sfr.pan));
   check('ตัดต่อในแท็บผู้กำกับ: ไฟล์ต้นทางเปิดไม่ได้ → บอกข้อความว่าตัดแบบเร็วไม่ได้ แล้วถอยไปแบบเดิม (ไม่เงียบ)', !!sfr.fb && sfr.fb.msgs.some((m) => /ตัดแบบเร็วไม่ได้/.test(m)) && sfr.fb.fast !== true, JSON.stringify(sfr.fb).slice(0, 300));
   await sf.close();

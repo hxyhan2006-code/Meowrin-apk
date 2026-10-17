@@ -114,7 +114,7 @@
     try{
       if(proj.voice && window.MWVoice){ var r = await MWVoice.get(proj.voice.id); voice = r && r.blob || null; }
       var mod = await import("./exporter.js?v=" + (window.MW_VERSION || "0"));
-      var shots = proj.clips.map(function(c, i){ return { url:urlOf(c), start:c.from, dur:c.len, at:voice ? st[i] : undefined }; });
+      var shots = proj.clips.map(function(c, i){ return { url:urlOf(c), start:c.from, dur:c.len, cuts:false, at:voice ? st[i] : undefined }; });
       var res = await mod.exportShots({ shots:shots, voice:voice, width:size[0], height:size[1], fps:30,
         draw:function(ctx, W, H, img){ MWStudioPlayer.draw(ctx, W, H, img, img.width, img.height, proj.bg); },
         onProgress:function(p){ say("กำลังส่งออก " + Math.round(p * 100) + "% (เปิดหน้าจอไว้)"); } });

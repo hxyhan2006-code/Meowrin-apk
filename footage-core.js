@@ -284,8 +284,8 @@
   };
   var BEATS_RULES = [
     "Rules: keep the original words in the original order; every word goes into exactly one shot (no rewriting, no skipping, no adding).",
-    "For each shot describe the ideal anime footage for that exact moment (who is on screen, doing what, with what emotion). Prefer recognizable canon One Piece moments. Never output episode numbers.",
-    "Return ONLY JSON: {\"shots\":[{\"t\":\"exact Thai text of this shot\",\"want\":\"Thai: who + action + emotion (+ place)\",\"chars\":[\"English names that must be on screen\"],\"keys\":[\"2-5 short Thai keywords: emotion, action, place\"],\"shot\":\"close|medium|wide|any\"}]}",
+    "For each shot describe the ideal anime footage for that exact moment (who is on screen, doing what, with what emotion). Prefer recognizable canon One Piece moments. Never output episode numbers. The footage is always a PERSON/CHARACTER moment unless the narration is explicitly about a place or object.",
+    "Return ONLY JSON: {\"shots\":[{\"t\":\"exact Thai text of this shot\",\"want\":\"Thai: who + action + emotion (+ place)\",\"chars\":[\"English names that must be on screen\"],\"keys\":[\"4-8 short Thai keywords incl. synonyms: emotion, action, place, who\"],\"shot\":\"close|medium|wide|any\"}]}",
     "Narration:"
   ].join("\n");
   async function beats(script, mode){ /* mode: long = ช็อตละประโยค (แบบตัดเอง) · fast = สับไว 1-3 วิ (แบบ AI ตัดให้) */
@@ -302,8 +302,9 @@
     "You are a strict film editor picking anime footage for a Thai One Piece YouTube Short (fast, pleasant cuts; the picture must match what the narration says at that moment).",
     "Full narration for context: \"{script}\"",
     "For each shot below you get its narration, the wanted footage, and lettered candidate frames from the editor's own library (each with an automatic description that can be imperfect; trust the image).",
-    "Choose the best candidate per shot: 1) the right character(s) clearly on screen, 2) matching emotion/action, 3) a clear, striking frame. Do not pick the same frame as the previous shot; vary close-ups and wide shots across the sequence. If nothing fits well, pick the closest anyway.",
-    "Return ONLY JSON: {\"picks\":[{\"s\":<shot number>,\"best\":\"<candidate id e.g. 3b>\",\"alts\":[\"<id>\",\"<id>\"],\"why\":\"short Thai reason\"}]}"
+    "Choose the best candidate per shot: 1) the right character(s) clearly on screen, 2) matching emotion/action, 3) a clear, striking frame. Do not pick the same frame as the previous shot; vary close-ups and wide shots across the sequence. NEVER pick empty scenery, objects, backs of heads, or frames where the required character is cut off or tiny. If NO candidate truly shows what the shot needs, set best to \"none\" (do not force a bad match).",
+    "Also give fx = horizontal position of the main subject (face/body) inside the chosen frame, 0 = left edge, 0.5 = center, 1 = right edge (it is used to crop to a square).",
+    "Return ONLY JSON: {\"picks\":[{\"s\":<shot number>,\"best\":\"<candidate id e.g. 3b or none>\",\"fx\":0.5,\"alts\":[\"<id>\",\"<id>\"],\"why\":\"short Thai reason\"}]}"
   ].join("\n");
   /* items:[{ n, t, want, chars, cands:[{ id, who, sum, img }] }] → picks:[{ s, best, alts, why }] */
   async function direct(script, items, prev){
@@ -319,7 +320,7 @@
     if(/^google\//.test(cfg.model)) body.reasoning = { effort:"low" };
     var r = await post(body), j;
     try{ j = parseJSON(r.text); }catch(err){ err.cost = r.cost; throw err; }
-    r.picks = (Array.isArray(j.picks) ? j.picks : []).map(function(p){ return { s:Number(p.s), best:String(p.best || ""), alts:Array.isArray(p.alts) ? p.alts.map(String) : [], why:String(p.why || "") }; });
+    r.picks = (Array.isArray(j.picks) ? j.picks : []).map(function(p){ return { s:Number(p.s), fx:isFinite(parseFloat(p.fx)) ? Math.max(0, Math.min(1, parseFloat(p.fx))) : null, best:String(p.best || ""), alts:Array.isArray(p.alts) ? p.alts.map(String) : [], why:String(p.why || "") }; });
     return r;
   }
 
