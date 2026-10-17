@@ -39,6 +39,7 @@
     var b = e.target.closest("button[data-p]"); if(!b) return;
     document.querySelectorAll(".tabs button").forEach(function(x){ x.classList.toggle("on", x === b); });
     document.querySelectorAll(".page").forEach(function(p){ p.classList.toggle("on", p.id === "p-" + b.dataset.p); });
+    if(b.dataset.t) $("pgTitle").textContent = b.dataset.t; /* ชื่อหัวหน้าตามแท็บ */
     if(b.dataset.p === "find" && FT.ui.search) FT.ui.search(); /* footage-find.js */
     window.scrollTo(0, 0);
   });

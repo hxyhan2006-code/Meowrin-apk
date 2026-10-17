@@ -101,9 +101,20 @@
     list.forEach(function(x){ if(!x.isIntersecting) return; io.unobserve(x.target); fill(x.target); });
   }, { rootMargin:"300px" }) : null;
   function fill(el){
+    if(el._cands){ pickCover(el); return; }
     var e = el._e; if(!e) return;
     if(!e.uri && e.c && e.c.cover){ el.querySelector("img").src = e.c.cover; return; } /* ไม่มีไฟล์ในมือถือ = ใช้ปกจากดัชนี (240px ค่อนข้างเบลอ) */
     thumbOf(e).then(function(t){ if(!t || !el.isConnected) return; el.querySelector("img").src = t.url; var b = el.querySelector(".dur"); if(b && !b.textContent) b.textContent = dur(e, t); });
+  }
+  function imgFor(e){ return !e.uri && e.c && e.c.cover ? Promise.resolve(e.c.cover) : thumbOf(e).then(function(t){ return t ? t.url : null; }); }
+  function score(url){ /* ภาพที่ไม่ขาว/ดำล้วน และมีรายละเอียด (ส่วนเบี่ยงเบนของความสว่างสูง) ได้คะแนนสูง */
+    return new Promise(function(ok){ var im = new Image(); im.onload = function(){ try{ var c = document.createElement("canvas"); c.width = c.height = 16; var x = c.getContext("2d"); x.drawImage(im, 0, 0, 16, 16); var d = x.getImageData(0, 0, 16, 16).data, m = 0, v = 0, L = [], i;
+        for(i = 0; i < d.length; i += 4){ var l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; L.push(l); m += l; } m /= L.length; L.forEach(function(l){ v += (l - m) * (l - m); }); var sd = Math.sqrt(v / L.length); ok(m > 25 && m < 225 ? sd : sd / 4); }catch(e){ ok(0); } }; im.onerror = function(){ ok(-1); }; im.src = url; });
+  }
+  async function pickCover(el){ /* ปกอัลบั้ม = ภาพที่ดีที่สุดจาก 3 คลิปแรก (ภาพย่อแคชไว้ ไม่เสียเวลาซ้ำ) */
+    var urls = await Promise.all(el._cands.map(imgFor)), best = null, bs = -2;
+    for(var i = 0; i < urls.length; i++){ if(!urls[i]) continue; var s = await score(urls[i]); if(s > bs){ bs = s; best = urls[i]; } }
+    if(best && el.isConnected) el.querySelector("img").src = best;
   }
   function watch(root, entryOf){
     root.querySelectorAll("[data-i]").forEach(function(el){ el._e = entryOf(+el.dataset.i); if(io) io.observe(el); else fill(el); });
@@ -120,10 +131,10 @@
     $("alScan").hidden = !native;
     $("alMsg").textContent = albums.length ? "" : mode !== "phone" ? "ยังไม่มีคลิปที่ AI ดูแล้ว · กด ให้ AI ทำที่เหลือ ด้านบน" : native ? "ยังไม่เจอคลิป · กด สแกนใหม่ (ครั้งแรกจะมีหน้าต่างขออนุญาตดูรูปและวิดีโอ ให้กดอนุญาต)" : "ใช้ปุ่มเลือกไฟล์ในแท็บ อัปโหลด เพื่อทำดัชนี แล้วคลิปจะขึ้นที่นี่";
     $("alGrid").innerHTML = albums.map(function(a, i){
-      return '<button class="alt album" data-i="' + i + '" type="button"><span class="alimg"><img alt="" decoding="async"><i class="alph"></i></span><b>' + esc(a.name) + "</b><small>" + a.items.length + " คลิป" + (a.items.some(done) ? " · AI " + a.items.filter(done).length : "") + "</small></button>";
+      return '<button class="alt album" data-i="' + i + '" type="button"><span class="alimg"><img alt="" decoding="async"><i class="alph"></i></span><b>' + esc(a.name) + "</b><small>" + a.items.length + " คลิป" + (mode === "phone" && a.items.some(done) ? " · AI " + a.items.filter(done).length : "") + "</small></button>";
     }).join("");
     strips();
-    $("alGrid").querySelectorAll("[data-i]").forEach(function(el){ el._e = albums[+el.dataset.i].items[0]; if(io) io.observe(el); else fill(el); });
+    $("alGrid").querySelectorAll("[data-i]").forEach(function(el){ el._cands = albums[+el.dataset.i].items.slice(0, 3); if(io) io.observe(el); else fill(el); });
   }
   function openAlbum(i){
     var a = albums[i]; if(!a) return; curAlbum = a;

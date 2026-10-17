@@ -295,6 +295,10 @@ try {
   await al.click('#alMove'); await al.waitForTimeout(200); await al.locator('#pkList .alrow', { hasText: 'Alabasta' }).click(); await al.waitForTimeout(600);
   const mv = await al.evaluate(() => ({ b: FT.ui.lib().find((c) => c.name === 'b.mp4'), names: [...document.querySelectorAll('#alGrid .album')].map((x) => x.querySelector('b').textContent + ':' + x.querySelector('small').textContent.split(' · ')[0]).join(','), home: !document.getElementById('alHome').hidden }));
   check('อัลบั้มแบบภาค: เลือกคลิปที่ไม่แน่ใจ แล้วย้ายเข้า Alabasta → ล็อกภาค (arcFixed) และกลับหน้ารวมที่จัดกลุ่มใหม่', mv.b.arc === 'Alabasta' && mv.b.arcFixed === true && mv.home && /Alabasta:2 คลิป/.test(mv.names) && !/ยังไม่แน่ใจ/.test(mv.names), JSON.stringify(mv));
+  // v8.2: แท็บเหลือ 4 (อัลบั้ม/ค้นหา/ผู้กำกับ/ตั้งค่า) · ชื่อหัวหน้าตามแท็บ · ส่วนทำดัชนีเองย้ายเป็นแถบพับในตั้งค่า (ปุ่มเดิมยังอยู่ครบ)
+  await al.click('.tabs [data-p=set]'); await al.waitForTimeout(150);
+  const t82 = await al.evaluate(() => ({ tabs: [...document.querySelectorAll('.tabs button')].map((b) => b.textContent).join('|'), h1: document.getElementById('pgTitle').textContent, inSet: !!document.querySelector('#p-set #p-idx #startBtn') && !!document.querySelector('#p-set #p-idx #filesDocsBtn') }));
+  check('footage: แท็บเหลือ 4, ชื่อหัวหน้าตามแท็บ, ทำดัชนีเองอยู่ในตั้งค่า', t82.tabs === 'อัลบั้ม|ค้นหา|ผู้กำกับ|ตั้งค่า' && t82.h1 === 'ตั้งค่า' && t82.inSet, JSON.stringify(t82));
   await al.close();
   // v8.0: ชื่อไฟล์ยาวไม่มีเว้นวรรคในกล่องข้อความ ไม่ทำให้หน้าล้นจอ · อัลบั้มโชว์ผลสแกนรอบก่อนทันทีที่เปิด · ชีตจำนวนคนไม่มีช่องค้นหา
   const v8 = await browser.newContext({ viewport: { width: 380, height: 800 } }); const v8p = await v8.newPage(); const v8Err = []; v8p.on('pageerror', (e) => v8Err.push(e.message));

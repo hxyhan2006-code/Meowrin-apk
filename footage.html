@@ -5,79 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
 <title>ฟุตเทจ · Meowrin factory</title>
-<link rel="icon" type="image/png" href="icon-192.png?v=8.1">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.1">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.2">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Mitr:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="footage.css?v=8.1">
+<link rel="stylesheet" href="footage.css?v=8.2">
 </head>
 <body>
 <header>
-  <div class="wrap"><a class="back" href="./" aria-label="กลับแอพ"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></a><h1>ดัชนีฟุตเทจ</h1><button class="tipbtn" id="tipBtn" type="button" aria-label="โชว์/ซ่อนคำอธิบาย"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg></button></div>
-  <nav class="tabs"><button data-p="album" class="on">อัลบั้ม</button><button data-p="find">ค้นหา</button><button data-p="idx">อัปโหลด</button><button data-p="plan">ผู้กำกับ</button><button data-p="set">ตั้งค่า</button></nav>
+  <div class="wrap"><a class="back" href="./" aria-label="กลับแอพ"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></a><h1 id="pgTitle">อัลบั้ม</h1><button class="tipbtn" id="tipBtn" type="button" aria-label="โชว์/ซ่อนคำอธิบาย"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg></button></div>
+  <nav class="tabs"><button data-p="album" data-t="อัลบั้ม" class="on">อัลบั้ม</button><button data-p="find" data-t="ค้นหาฉาก">ค้นหา</button><button data-p="plan" data-t="ตัดต่ออัตโนมัติ">ผู้กำกับ</button><button data-p="set" data-t="ตั้งค่า">ตั้งค่า</button></nav>
 </header>
 
 <main class="wrap">
-  <!-- อัปโหลด (เพิ่มฟุตเทจ → ทำดัชนี + อัปคลัง · คลังคลาวด์ · ต้นทุน · คิว) -->
-  <section class="page" id="p-idx">
-    <div class="panel">
-      <h2>เพิ่มฟุตเทจเข้าคลัง</h2>
-      <button class="btn" id="filesDocsBtn" type="button" style="width:100%"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg>เลือกจากแอพไฟล์ (เลือกทั้งโฟลเดอร์ได้)</button>
-      <label for="albumName">อัลบั้มของคลิปที่เลือก</label>
-      <input id="albumName" type="text" placeholder="พิมพ์ชื่ออัลบั้มที่จะอัปโหลด (ว่าง = ไม่ระบุ)" autocomplete="off" maxlength="40">
-      <input id="filesDocs" type="file" multiple hidden><!-- ไม่ใส่ accept → Android เปิดแอพไฟล์ เข้า Pictures/Gallery/owner/<อัลบั้ม> แล้วเลือกทั้งหมดได้ -->
-      <p class="hint tip" style="margin-top:6px">เลือกทั้งโฟลเดอร์มั่วๆ ได้เลย (Pictures → Gallery → owner → ชื่ออัลบั้ม · กดค้างไฟล์แรก → เลือกทั้งหมด) · คลิปที่ทำแล้วข้ามเอง · ถ้าตั้งค่าคลังไว้ จะอัปไฟล์ขึ้นคลังให้อัตโนมัติ · AI ดูและจัดหมวดตัวละครให้เอง</p>
-      <div class="row" style="margin-top:12px">
-        <button class="btn" id="startBtn" disabled>เริ่มทำดัชนี</button>
-        <button class="btn ghost" id="pauseBtn" hidden>พัก</button>
-      </div>
-      <button class="btn ghost small" id="retryBtn" hidden style="margin-top:8px;width:100%">ลองใหม่คลิปที่ error</button>
-      <div id="runMsg"></div>
-      <div class="prog"><i id="progBar"></i></div>
-      <p class="hint" id="progTxt"></p>
-      <p class="hint" id="wakeInfo" hidden></p>
-      <p class="hint tip"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg>เปิดหน้านี้ค้างไว้ระหว่างทำ ถ้าสลับแอพ เบราว์เซอร์จะหยุดอ่านวิดีโอ (กลับมาแล้วกด เริ่ม/ทำต่อ ได้)</p>
-    </div>
-    <div class="panel">
-      <h2><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>ดัชนีละเอียด</h2>
-      <p class="hint tip" style="margin-top:0">AI ดูเฟรมต้น/กลาง/ท้ายของทุกฉาก + ติดป้ายระยะภาพ (ใกล้/กลาง/ไกล) ความแรงของฉาก อารมณ์ เหตุการณ์ในเรื่อง และภาพมีลายน้ำ/ซับ/เบลอไหม → ค้นหาและผู้กำกับเลือกฉากแม่นขึ้น · คลิปใหม่ทำแบบนี้ให้เองแล้ว · คลิปเก่าอัปเกรดได้จากคลังโดยไม่ต้องเลือกไฟล์ (อ่านเฉพาะช่วงที่ใช้ ไม่โหลดทั้งไฟล์)</p>
-      <p class="hint" id="deepInfo"></p>
-      <button class="btn" id="deepBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>อัปเกรดคลิปเก่า</button>
-      <p class="hint" id="godInfo" style="margin-top:12px"></p>
-      <button class="btn" id="godBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>ตรวจขั้นเทพ</button>
-      <h3 style="margin:18px 0 4px;font-size:15px"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>ตรวจตัวละครซ้ำ</h3>
-      <p class="hint tip" style="margin-top:0">ถ้าฉากที่มีตัวละคร (เช่น แชงคูส อุซป) ค้นไม่เจอ ให้ AI ดูรูปที่เก็บไว้อีกรอบ แบบถามเจาะจงว่ามีใครในรายชื่อ 38 ตัวละครบ้าง (บอกลักษณะเด่นของแต่ละตัวให้ด้วย) แล้วเติมเฉพาะที่ขาด · ถูกกว่าและเร็วกว่าอัปเกรดดัชนีละเอียด ไม่ต้องเปิดไฟล์วิดีโอ</p>
-      <p class="hint" id="rcInfo"></p>
-      <button class="btn" id="rcBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>ตรวจตัวละครซ้ำ</button>
-    </div>
-    <div class="panel">
-      <h2>คลังบนคลาวด์</h2>
-      <p class="hint" id="cloudOff" style="margin-top:0">ยังไม่ได้ตั้งค่าคลัง (แท็บ ตั้งค่า → คลังวิดีโอ) · ตั้งแล้วฟุตเทจทั้งหมดอยู่บนคลาวด์ ไม่ต้องเลือกไฟล์ทุกครั้ง</p>
-      <div id="cloudBox" hidden>
-        <p class="hint" id="cloudInfo" style="margin-top:0"></p>
-        <ul class="albums" id="cloudAlbums"></ul>
-        <button class="btn ghost" id="cloudList" style="width:100%;margin-top:10px">ดูไฟล์ในคลัง</button>
-        <button class="btn" id="cloudQueue" hidden style="width:100%;margin-top:8px"></button>
-        <div id="cloudMsg"></div>
-      </div>
-    </div>
-    <div class="panel">
-      <h2>ต้นทุนและเวลา</h2>
-      <div class="stats" id="stats"></div>
-      <p class="hint" id="estTxt"></p>
-    </div>
-    <div class="panel">
-      <h2>คิวรอบนี้</h2>
-      <ul class="q" id="queue"><li class="empty">ยังไม่ได้เลือกไฟล์</li></ul>
-    </div>
-  </section>
 
   <!-- คลัง (ค้นหา + ชิปตัวละคร/จำนวนคน) -->
   <section class="page on" id="p-album">
     <div class="alseg" id="alSeg"><button data-m="phone" class="on" type="button">ในมือถือ</button><button data-m="char" type="button">ตัวละคร</button><button data-m="arc" type="button">ภาค</button></div>
     <div id="alHome">
-      <div class="alhead"><div><b id="alTitle">อัลบั้มของฉัน</b><small id="alSub"></small></div><button class="btn small ghost" id="alScan" type="button">สแกนใหม่</button></div>
+      <div class="alhead"><div><small id="alSub"></small></div><button class="btn small ghost" id="alScan" type="button">สแกนใหม่</button></div>
       <div class="alai" id="alAi"></div>
       <div class="algrid" id="alGrid"></div>
       <p class="hint" id="alMsg"></p>
@@ -142,6 +89,60 @@
       <button class="btn small" id="gdFootQuick" type="button">สำรองตอนนี้</button>
     </div>
     <div id="gdFootQuickMsg"></div>
+    <details class="panel fold" id="p-idx"><summary><span>ทำดัชนีเอง (เลือกไฟล์ · คิว · ขั้นเทพ · คลังออนไลน์)</span></summary><div class="fbody">
+  <!-- อัปโหลด (เพิ่มฟุตเทจ → ทำดัชนี + อัปคลัง · คลังคลาวด์ · ต้นทุน · คิว) -->
+
+    <div class="panel">
+      <h2>เพิ่มฟุตเทจเข้าคลัง</h2>
+      <button class="btn" id="filesDocsBtn" type="button" style="width:100%"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg>เลือกจากแอพไฟล์ (เลือกทั้งโฟลเดอร์ได้)</button>
+      <label for="albumName">อัลบั้มของคลิปที่เลือก</label>
+      <input id="albumName" type="text" placeholder="พิมพ์ชื่ออัลบั้มที่จะอัปโหลด (ว่าง = ไม่ระบุ)" autocomplete="off" maxlength="40">
+      <input id="filesDocs" type="file" multiple hidden><!-- ไม่ใส่ accept → Android เปิดแอพไฟล์ เข้า Pictures/Gallery/owner/<อัลบั้ม> แล้วเลือกทั้งหมดได้ -->
+      <p class="hint tip" style="margin-top:6px">เลือกทั้งโฟลเดอร์มั่วๆ ได้เลย (Pictures → Gallery → owner → ชื่ออัลบั้ม · กดค้างไฟล์แรก → เลือกทั้งหมด) · คลิปที่ทำแล้วข้ามเอง · ถ้าตั้งค่าคลังไว้ จะอัปไฟล์ขึ้นคลังให้อัตโนมัติ · AI ดูและจัดหมวดตัวละครให้เอง</p>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="startBtn" disabled>เริ่มทำดัชนี</button>
+        <button class="btn ghost" id="pauseBtn" hidden>พัก</button>
+      </div>
+      <button class="btn ghost small" id="retryBtn" hidden style="margin-top:8px;width:100%">ลองใหม่คลิปที่ error</button>
+      <div id="runMsg"></div>
+      <div class="prog"><i id="progBar"></i></div>
+      <p class="hint" id="progTxt"></p>
+      <p class="hint" id="wakeInfo" hidden></p>
+      <p class="hint tip"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg>เปิดหน้านี้ค้างไว้ระหว่างทำ ถ้าสลับแอพ เบราว์เซอร์จะหยุดอ่านวิดีโอ (กลับมาแล้วกด เริ่ม/ทำต่อ ได้)</p>
+    </div>
+    <div class="panel">
+      <h2><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>ดัชนีละเอียด</h2>
+      <p class="hint tip" style="margin-top:0">AI ดูเฟรมต้น/กลาง/ท้ายของทุกฉาก + ติดป้ายระยะภาพ (ใกล้/กลาง/ไกล) ความแรงของฉาก อารมณ์ เหตุการณ์ในเรื่อง และภาพมีลายน้ำ/ซับ/เบลอไหม → ค้นหาและผู้กำกับเลือกฉากแม่นขึ้น · คลิปใหม่ทำแบบนี้ให้เองแล้ว · คลิปเก่าอัปเกรดได้จากคลังโดยไม่ต้องเลือกไฟล์ (อ่านเฉพาะช่วงที่ใช้ ไม่โหลดทั้งไฟล์)</p>
+      <p class="hint" id="deepInfo"></p>
+      <button class="btn" id="deepBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>อัปเกรดคลิปเก่า</button>
+      <p class="hint" id="godInfo" style="margin-top:12px"></p>
+      <button class="btn" id="godBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>ตรวจขั้นเทพ</button>
+      <h3 style="margin:18px 0 4px;font-size:15px"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>ตรวจตัวละครซ้ำ</h3>
+      <p class="hint tip" style="margin-top:0">ถ้าฉากที่มีตัวละคร (เช่น แชงคูส อุซป) ค้นไม่เจอ ให้ AI ดูรูปที่เก็บไว้อีกรอบ แบบถามเจาะจงว่ามีใครในรายชื่อ 38 ตัวละครบ้าง (บอกลักษณะเด่นของแต่ละตัวให้ด้วย) แล้วเติมเฉพาะที่ขาด · ถูกกว่าและเร็วกว่าอัปเกรดดัชนีละเอียด ไม่ต้องเปิดไฟล์วิดีโอ</p>
+      <p class="hint" id="rcInfo"></p>
+      <button class="btn" id="rcBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>ตรวจตัวละครซ้ำ</button>
+    </div>
+    <div class="panel">
+      <h2>คลังบนคลาวด์</h2>
+      <p class="hint" id="cloudOff" style="margin-top:0">ยังไม่ได้ตั้งค่าคลัง (แท็บ ตั้งค่า → คลังวิดีโอ) · ตั้งแล้วฟุตเทจทั้งหมดอยู่บนคลาวด์ ไม่ต้องเลือกไฟล์ทุกครั้ง</p>
+      <div id="cloudBox" hidden>
+        <p class="hint" id="cloudInfo" style="margin-top:0"></p>
+        <ul class="albums" id="cloudAlbums"></ul>
+        <button class="btn ghost" id="cloudList" style="width:100%;margin-top:10px">ดูไฟล์ในคลัง</button>
+        <button class="btn" id="cloudQueue" hidden style="width:100%;margin-top:8px"></button>
+        <div id="cloudMsg"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>ต้นทุนและเวลา</h2>
+      <div class="stats" id="stats"></div>
+      <p class="hint" id="estTxt"></p>
+    </div>
+    <div class="panel">
+      <h2>คิวรอบนี้</h2>
+      <ul class="q" id="queue"><li class="empty">ยังไม่ได้เลือกไฟล์</li></ul>
+    </div>
+    </div></details>
     <div class="sech">อัลบั้ม</div>
     <details class="panel fold"><summary><span>เปลี่ยนชื่ออัลบั้ม</span><em class="state idle">...</em></summary><div class="fbody">
       <label>อัลบั้มเดิม</label>
@@ -266,6 +267,6 @@
 <video id="vid" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:2px;height:2px"></video>
 
 <div class="asheet" id="pkSheet" hidden><div class="abox" role="dialog"><div class="pkhead"><h3 id="pkTitle"></h3><span id="pkInfo"></span></div><input id="pkQ" type="search" autocomplete="off"><div id="pkList"></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="pkClear" type="button">ล้างที่เลือก</button><button class="btn" id="pkDone" type="button">เสร็จ</button></div></div></div>
-<script src="store.js?v=8.1" data-boot="icons.js?v=8.1 dialog.js?v=8.1 native.js?v=8.1 budget.js?v=8.1 footage-core.js?v=8.1 footage-pick.js?v=8.1 r2.js?v=8.1 footage.js?v=8.1 local.js?v=8.1 footage-find.js?v=8.1 footage-album.js?v=8.1 footage-dup.js?v=8.1 footage-audit.js?v=8.1 footage-cloud.js?v=8.1 mp4fix.js?v=8.1 footage-stitch.js?v=8.1 voicestore.js?v=8.1 footage-plan.js?v=8.1 gdrive.js?v=8.1"></script>
+<script src="store.js?v=8.2" data-boot="icons.js?v=8.2 dialog.js?v=8.2 native.js?v=8.2 budget.js?v=8.2 footage-core.js?v=8.2 footage-pick.js?v=8.2 r2.js?v=8.2 footage.js?v=8.2 local.js?v=8.2 footage-find.js?v=8.2 footage-album.js?v=8.2 footage-dup.js?v=8.2 footage-audit.js?v=8.2 footage-cloud.js?v=8.2 mp4fix.js?v=8.2 footage-stitch.js?v=8.2 voicestore.js?v=8.2 footage-plan.js?v=8.2 gdrive.js?v=8.2"></script>
 </body>
 </html>
