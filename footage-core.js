@@ -324,6 +324,38 @@
     return r;
   }
 
+  /* ---------- ถาม AI หาฟุต (footage-ask.js) · ข้อความล้วน ไม่ส่งรูป ราคาถูก ----------
+     askExpand: คำถามไทย → ชื่อตัวละคร + คำค้นไทย/คำใกล้เคียง (ไว้ให้ค้นในดัชนีในเครื่อง) · askPick: รายการฉากผู้สมัคร (คำอธิบายจากดัชนี) → AI เลือกที่ตรง + ตอบสั้นๆ ไม่เจอก็ตอบว่าไม่เจอ */
+  async function askText(prompt, effort){
+    var body = { model:cfg.model, usage:{ include:true }, messages:[{ role:"user", content:prompt }] };
+    if(/^google\//.test(cfg.model)) body.reasoning = { effort:effort || "low" };
+    var r = await post(body), j;
+    try{ j = parseJSON(r.text); }catch(err){ err.cost = r.cost; throw err; }
+    r.json = j; return r;
+  }
+  async function askExpand(question){
+    var r = await askText([
+      "You help a Thai One Piece video editor search his own footage library (anime clips, scenes described in Thai/English). Turn his question into search terms.",
+      "Return ONLY JSON: {\"chars\":[\"English character names that must be in the scene, [] if none\"],\"keys\":[\"6-14 short Thai keywords/synonyms: emotion, action, event, place, what is seen (e.g. ร้องไห้, น้ำตา, เศร้า)\"],\"arc\":\"English arc name or empty\"}",
+      "Question: " + question ].join("\n"));
+    var j = r.json, arr = function(x){ return Array.isArray(x) ? x.map(String).filter(Boolean).slice(0, 16) : []; };
+    r.chars = arr(j.chars); r.keys = arr(j.keys); r.arc = String(j.arc || ""); return r;
+  }
+  /* cands:[{ n, clip, album, at, who, sum }] → { answer, picks:[{ n, why }], none } */
+  async function askPick(question, cands){
+    var list = cands.map(function(c){ return c.n + ". [" + c.clip + " · " + c.at + "] " + (c.who ? c.who + " · " : "") + c.sum; }).join("\n");
+    var r = await askText([
+      "You are the footage librarian for a Thai One Piece editor. He asks a question about his footage. Below are candidate scenes from his library, each with an automatic description (it can be imperfect).",
+      "Pick the scenes that truly answer the question (best first, at most 12). If nothing truly matches, say so honestly: none=true and picks=[]. Never invent scenes not in the list.",
+      "Write answer in short casual Thai (1-3 sentences): how many matching scenes and in which clips (name + minute), or that there is none. For each pick give a short Thai reason.",
+      "Return ONLY JSON: {\"answer\":\"Thai\",\"none\":false,\"picks\":[{\"n\":<number>,\"why\":\"short Thai\"}]}",
+      "Question: " + question, "Candidates:", list ].join("\n"), "medium");
+    var j = r.json;
+    r.answer = String(j.answer || ""); r.none = !!j.none;
+    r.picks = (Array.isArray(j.picks) ? j.picks : []).map(function(p){ return { n:Number(p.n), why:String(p.why || "") }; }).filter(function(p){ return p.n > 0; });
+    return r;
+  }
+
   async function describeGod(chunk, album, dur){
     var model = cfg.godModel || cfg.model, content = [{ type:"text", text:godPrompt(album, dur, chunk.length) }];
     chunk.forEach(function(sc){
@@ -337,5 +369,5 @@
     r.json = j; return r;
   }
 
-  window.FT = { classifyArcs:classifyArcs, cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize };
+  window.FT = { classifyArcs:classifyArcs, cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize, askExpand:askExpand, askPick:askPick };
 })();

@@ -362,6 +362,29 @@ try {
   await sq.fill('#q', ''); await sq.waitForTimeout(500);
   const sq2 = await sq.evaluate(() => ({ main: !document.getElementById('alMain').hidden, res: document.getElementById('results').hidden }));
   check('ค้นหาในหน้าอัลบั้ม: ไม่พิมพ์ = ตารางอัลบั้ม · พิมพ์ "ลูฟี่หัวเราะภาคสกายเปีย" = เจอฉากเดียวที่ตรง (ไม่ใช่ฉากโซโร/ภาคอื่น) · ล้างแล้วกลับตารางอัลบั้ม', sq0.main && sq0.res && sq1.main && sq1.cards === 1 && sq1.txt && sq2.main && sq2.res && !sqErr.length, JSON.stringify([sq0, sq1, sq2]) + sqErr.join());
+  // ถาม AI หาฟุต (footage-ask.js): คำถามไทย → AI แปลงเป็นตัวละคร+คำค้น → ค้นดัชนีในเครื่อง (ฉากซันจิเท่านั้นเข้า AI) → AI เลือก → การ์ดฉาก · ไม่เจอเลย = บอกว่าไม่เจอโดยไม่เรียก AI ขั้นเลือก · AI บอกไม่ตรง = ไม่โชว์ฉากหลอก
+  const ak = await context.newPage(); const akErr = []; ak.on('pageerror', (e) => akErr.push(e.message));
+  await ak.goto(base + '/footage.html'); await ak.waitForFunction(() => window.FT && FT.ui && document.getElementById('askBtn'), null, { timeout: 20000 }); await ak.waitForTimeout(400);
+  await ak.evaluate(() => {
+    const mk = (id, name, chars, th, sum, emo) => ({ id, name, size: 5, album: 'x', duration: 20, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 4, e: 9, thumb: '', ai: { characters: chars, characters_th: th, emotion: emo, summary_th: sum } }] });
+    FT.ui.lib().push(mk('a1', 'sanji_cry.mp4', ['Sanji'], ['ซันจิ'], 'ซันจิร้องไห้น้ำตาไหล', 'crying'), mk('a2', 'sanji_laugh.mp4', ['Sanji'], ['ซันจิ'], 'ซันจิหัวเราะ', 'laughing'), mk('a3', 'zoro_cry.mp4', ['Zoro'], ['โซโร'], 'โซโรร้องไห้', 'crying'));
+    MWStore.set('mw_openrouter_key_v1', 'k'); window.__bodies = []; window.__mode = 'ok';
+    const real = window.fetch; window.fetch = async (u, o) => {
+      if (!/openrouter/.test(String(u))) return real(u, o);
+      const t = JSON.parse(o.body).messages[0].content; window.__bodies.push(t);
+      const out = /search terms/.test(t) ? (window.__mode === 'none' ? { chars: [], keys: ['กินเค้ก'], arc: '' } : { chars: ['Sanji'], keys: ['ร้องไห้', 'น้ำตา'], arc: '' }) : (window.__mode === 'nopick' ? { answer: 'ดูแล้วไม่มีฉากไหนตรง', none: true, picks: [] } : { answer: 'เจอ 1 ฉากใน sanji_cry นาที 0:04', none: false, picks: [{ n: 1, why: 'ซันจิร้องไห้' }] });
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(out) } }], usage: { cost: 0.002 } }) };
+    };
+  });
+  await ak.fill('#q', 'ซันจิร้องไห้อยู่คลิปไหน'); await ak.click('#askBtn'); await ak.waitForFunction(() => /เจอ 1 ฉาก/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
+  const ak1 = await ak.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length, txt: document.getElementById('results').textContent, pick: window.__bodies[1], main: document.getElementById('alMain').hidden }));
+  check('ถาม AI: AI เห็นเฉพาะฉากซันจิที่เกี่ยวข้อง (ไม่มีโซโร) · โชว์การ์ดฉากที่ AI เลือก 1 ใบ พร้อมชื่อคลิป · ตารางอัลบั้มซ่อน', ak1.cards === 1 && /sanji_cry/.test(ak1.txt) && /sanji_cry/.test(ak1.pick) && !/zoro_cry/.test(ak1.pick) && ak1.main, JSON.stringify(ak1).slice(0, 400));
+  await ak.evaluate(() => { window.__mode = 'nopick'; window.__bodies = []; }); await ak.click('#askBtn'); await ak.waitForFunction(() => /ไม่มีฉากไหนตรง/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
+  check('ถาม AI: AI บอกไม่มีฉากไหนตรง → ไม่โชว์การ์ดหลอก บอกตรงๆ', (await ak.evaluate(() => document.querySelectorAll('#results .card').length)) === 0 && /ไม่มีฉากไหนตรง/.test(await ak.evaluate(() => document.getElementById('results').textContent)));
+  await ak.evaluate(() => { window.__mode = 'none'; window.__bodies = []; }); await ak.fill('#q', 'ฉากกินเค้ก'); await ak.click('#askBtn'); await ak.waitForFunction(() => /ไม่เจอฉากที่ตรงในคลังเลย/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
+  check('ถาม AI: ค้นในคลังไม่เจอผู้สมัครเลย = บอกว่าไม่เจอ และไม่เรียก AI ขั้นเลือก (ไม่เสียเงินเพิ่ม)', (await ak.evaluate(() => window.__bodies.length)) === 1 && !akErr.length, akErr.join());
+  await ak.fill('#q', ''); await ak.waitForTimeout(300);
+  check('ถาม AI: ล้างคำค้น = ล้างคำตอบ', await ak.evaluate(() => document.getElementById('askOut').hidden));
   // ให้ AI ดูภาคของคลิปที่ยังไม่แน่ใจ (โหมดภาค): ถามราคาก่อน · AI ตอบภาค = เข้าอัลบั้มภาคนั้น (arcAi) · ตอบว่าง = ยังไม่แน่ใจและไม่ลองซ้ำ
   await sq.evaluate(() => { const c = FT.ui.lib().find((x) => x.name === 'sk.mp4'); c.scenes[0].thumb = 'data:image/jpeg;base64,/9j/4AAQ'; FT.classifyArcs = async (items, arcs) => { window.__arcCalls = (window.__arcCalls || 0) + 1; return { cost: 0.01, map: { 1: 'Alabasta' } }; }; MWStore.set('mw_openrouter_key_v1', 'k'); });
   await sq.click('#alSeg [data-m=arc]'); await sq.waitForTimeout(300);

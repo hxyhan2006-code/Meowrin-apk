@@ -235,3 +235,7 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 .mode-plan .tabs{display:none}
 #alMain[hidden],#results[hidden]{display:none}
 #p-album>.panel{margin-bottom:16px}
+
+.askans{background:var(--field);border:1px solid var(--line-strong);border-radius:12px;padding:12px;margin-top:10px;line-height:1.55;white-space:pre-wrap}
+.askans small{display:block;margin-top:6px;color:var(--muted);font-size:12px}
+#askOut[hidden]{display:none}
