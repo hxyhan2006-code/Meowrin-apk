@@ -157,7 +157,7 @@
   }
   function save(file, say){ /* บันทึกลงโฟลเดอร์ Download แล้วเปิดจากแกลเลอรีใน CapCut · ในแอพ APK เซฟลง Documents/Meowrin ด้วยปลั๊กอิน */
     if(window.MWNative && MWNative.isNative()){
-      MWNative.save(file, file.name).then(function(r){ say(r.gallery ? "บันทึกแล้ว: อยู่ในแกลเลอรี อัลบั้ม Meowrin (" + r.name + ") เปิด CapCut → โปรเจกต์ใหม่ → เลือกจากแกลเลอรีได้เลย (สำเนาอยู่ที่ " + r.path + " ด้วย)" : "บันทึกแล้วที่ " + r.path + " (" + r.name + ") · ถ้าไม่เห็นในแกลเลอรี/CapCut ให้กดปุ่ม แชร์ไฟล์ แล้วเลือก CapCut หรือ ไฟล์", "ok"); },
+      MWNative.save(file, file.name).then(function(r){ say(r.gallery ? "บันทึกแล้ว " + (r.size / 1048576).toFixed(1) + " MB (ตรวจขนาดแล้ว): อยู่ในแกลเลอรี อัลบั้ม Meowrin (" + r.name + ") เปิด CapCut → โปรเจกต์ใหม่ → เลือกจากแกลเลอรีได้เลย (สำเนาอยู่ที่ " + r.path + " ด้วย)" : "บันทึกแล้ว " + (r.size / 1048576).toFixed(1) + " MB ที่ " + r.path + " (" + r.name + ") · ถ้าไม่เห็นในแกลเลอรี/CapCut ให้กดปุ่ม แชร์ไฟล์ แล้วเลือก CapCut หรือ ไฟล์", "ok"); },
                                           function(e){ say("บันทึกไม่ได้: " + e.message); });
       return;
     }

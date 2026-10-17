@@ -39,7 +39,9 @@
     var path = DIR + "/" + name, uri;
     try{ uri = await writeChunked(fs, path, "DOCUMENTS", blob); }
     catch(e){ path = DIR + "/" + altName(name); uri = await writeChunked(fs, path, "DOCUMENTS", blob); } /* ชื่อเดิมเขียนทับไม่ได้ (ไฟล์ค้างจากการติดตั้งรอบก่อน) → ใช้ชื่อใหม่ */
-    var out = { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1), gallery:false };
+    try{ var stt = await fs.stat({ path:path, directory:"DOCUMENTS" }); if(stt && stt.size != null && stt.size !== blob.size) throw new Error("ไฟล์ที่เซฟได้ไม่ครบ (" + stt.size + " จาก " + blob.size + " ไบต์) ลองบันทึกใหม่"); }
+    catch(e){ if(/ไม่ครบ/.test(e.message)) throw e; } /* stat ไม่ได้ = ข้ามการตรวจ ไม่ล้มการบันทึก */
+    var out = { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1), gallery:false, size:blob.size };
     if(/\.(mp4|mov|webm)$/i.test(name)) out.gallery = await toGallery(uri, out.name);
     if(window.MWHist) try{ MWHist.addFile({ name:out.name, uri:uri, rel:path, size:blob.size }); }catch(e){} /* ประวัติงาน: จดไฟล์วิดีโอ/srt ที่เซฟ */
     return out;

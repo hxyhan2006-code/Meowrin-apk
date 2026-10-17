@@ -702,6 +702,15 @@ try {
     check('ประวัติในตัดต่ออัตโนมัติ: ปุ่มสามขีดโชว์เฉพาะโหมดตัดต่อ · ชีตมีตารางช็อต + วิดีโอที่ส่งออกของเครื่องมือนี้ (ไม่มีโปรเจกต์สตูดิโอปน)', pb === '2' && /ตารางทดสอบ/.test(prows) && /meowrin_1234\.mp4/.test(prows) && !/โปรเจกต์ทดสอบ/.test(prows), JSON.stringify([pb, prows]));
     await hp.evaluate(() => document.querySelector('.mwhs [data-id="plan-1"] [data-o]').click()); await hp.waitForURL(/hist=1/); await hp.waitForFunction(() => document.getElementById('plText'), null, { timeout: 20000 }); await hp.waitForTimeout(500);
     check('ประวัติในตัดต่ออัตโนมัติ: แตะ "เปิด" ตาราง → ใส่บทกลับมา', (await hp.evaluate(() => document.getElementById('plText').value)) === 'บทจากประวัติ');
+    /* ลบรอบนี้จากประวัติ → ตารางช็อตที่ค้างอยู่ (mw_footage_direct_v1) หายไปด้วย · ตารางที่ไม่มีในประวัติ (ของรุ่นก่อนมีประวัติ) ไม่โดนลบ */
+    await hp.evaluate(() => { MWStore.set('mw_footage_direct_v1', { mode: 'fast', at: 555, script: 'บทซ้ำ', shots: [] }); MWHist.add('plan', { key: 555, title: 'บทซ้ำ', data: { mode: 'fast', at: 555, script: 'บทซ้ำ', shots: [] } }); });
+    await hp.goto(base + '/footage.html?tab=plan'); await hp.waitForFunction(() => window.FT && window.MWHist && document.getElementById('plText'), null, { timeout: 20000 }); await hp.waitForTimeout(800);
+    await hp.evaluate(() => MWHist.remove('plan-555')); await hp.waitForTimeout(300);
+    check('ลบประวัติของรอบนี้ → ตารางช็อตที่ค้างหายไปด้วย (บทเดิมกำกับใหม่ได้)', (await hp.evaluate(() => MWStore.get('mw_footage_direct_v1', null))) === null);
+    await hp.evaluate(() => { MWStore.set('mw_footage_direct_v1', { mode: 'fast', at: 777, script: 'เก่า', shots: [] }); });
+    await hp.goto(base + '/footage.html?tab=plan'); await hp.waitForFunction(() => window.FT && window.MWHist && document.getElementById('plText'), null, { timeout: 20000 }); await hp.waitForTimeout(800);
+    await hp.evaluate(() => MWHist.remove('plan-1')); await hp.waitForTimeout(300);
+    check('ตารางที่ไม่เคยอยู่ในประวัติ ไม่ถูกลบเมื่อลบประวัติอันอื่น', !!(await hp.evaluate(() => MWStore.get('mw_footage_direct_v1', null))));
     await hp.goto(base + '/footage.html'); await hp.waitForFunction(() => window.FT, null, { timeout: 20000 });
     check('ประวัติ: หน้าอัลบั้ม (ไม่ใช่โหมดตัดต่อ) ไม่มีปุ่มสามขีดของตัดต่ออัตโนมัติ', !(await hp.evaluate(() => !!document.getElementById('planHistBtn').offsetParent)));
     await hp.goto(base + '/sub/index.html'); await hp.waitForFunction(() => window.MWHistSheet && window.MWHist, null, { timeout: 20000 });

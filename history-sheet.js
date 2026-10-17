@@ -43,7 +43,7 @@
         : x.kind === "studio" ? ((x.data && x.data.clips || []).length) + " คลิป" : (x.file.size ? mb(x.file.size) : x.file.name.split(".").pop());
       return '<div class="mwhs-r" data-id="' + esc(x.id) + '"><div class="mwhs-t"' + (th ? ' style="background-image:url(' + th + ')"' : "") + '>' + (th ? "" : '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 3v18M16 3v18M3 8h5M3 16h5M16 8h5M16 16h5"/></svg>') + '</div>'
         + '<div class="mwhs-i"><b>' + esc(x.title || x.id) + "</b><small>" + when(x.at) + " · " + esc(meta) + (isFile ? " · วิดีโอที่ส่งออก" : "") + '</small></div>'
-        + '<div class="mwhs-b"><button type="button" data-o="1">' + (isFile && !vid ? "ที่อยู่" : "เปิด") + '</button>' + (x.kind === "plan" ? '<button type="button" data-s="1">สตูดิโอ</button>' : "") + '<button type="button" class="d" data-d="1">ลบ</button></div></div>';
+        + '<div class="mwhs-b"><button type="button" data-o="1">' + (isFile && !vid ? "ที่อยู่" : "เปิด") + '</button>' + (isFile ? '<button type="button" data-sh="1">แชร์</button>' : "") + (x.kind === "plan" ? '<button type="button" data-s="1">สตูดิโอ</button>' : "") + '<button type="button" class="d" data-d="1">ลบ</button></div></div>';
     }).join("") : '<p class="mwhs-e">ยังไม่มีงาน · พอทำงานเสร็จจะขึ้นที่นี่ (เก็บล่าสุด ' + MWHist.max() + ' อัน ตั้งเลขได้ที่ ตั้งค่า > ผลงานล่าสุด)</p>';
   }
   function say(row, t){ var m = row.querySelector(".mwhs-m"); if(!m){ m = document.createElement("p"); m.className = "mwhs-m"; row.appendChild(m); } m.textContent = t; }
@@ -53,6 +53,12 @@
     if(b.dataset.d){ /* ลบ = แตะสองครั้ง (ไม่พึ่งกล่องยืนยันของหน้า) · ไฟล์วิดีโอ = ลบไฟล์จริงออกจากมือถือ */
       if(!b.classList.contains("arm")){ b.classList.add("arm"); b.textContent = it.kind === "file" ? "ลบไฟล์จริง?" : "แน่ใจนะ?"; setTimeout(function(){ b.classList.remove("arm"); b.textContent = "ลบ"; }, 3000); return; }
       await MWHist.remove(it.id); render(); return;
+    }
+    if(b.dataset.sh){ /* แชร์ไฟล์ที่เซฟไว้ (เปิดใน CapCut/ไฟล์/แกลเลอรี) · ส่ง uri ตรงๆ ไม่อ่านไฟล์เข้าแรม */
+      var sh = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.Share;
+      if(!sh || !it.file.uri){ say(row, "แชร์ไม่ได้ในเบราว์เซอร์ · ไฟล์อยู่ที่ Documents/" + it.file.rel); return; }
+      try{ await sh.share({ title:it.file.name, files:[it.file.uri], dialogTitle:"แชร์" }); }catch(err){ if(!/cancel/i.test(String(err && err.message))) say(row, "แชร์ไม่ได้: " + (err && err.message || err) + " (ไฟล์อาจถูกย้ายหรือลบ)"); }
+      return;
     }
     if(it.kind !== "file"){ close(); openItem(it, b.dataset.s ? "studio" : ""); return; }
     var msg = playFile(it); if(msg) say(row, msg);

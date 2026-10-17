@@ -13,6 +13,18 @@
   function savePlan(){ save(KEY, plan); if(window.MWHist) MWHist.add("plan", { key:plan.at, title:String(plan.script || "").replace(/\s+/g, " ").trim().slice(0, 40) || "ตารางช็อต", data:plan }); } /* ประวัติงาน: เก็บตารางช็อตแต่ละรอบ */
   var plan = load(KEY, null); /* { mode, at, cost, ms, script, shots:[{ t, want, chars, keys, shot, dur, cands:[{ id, si }], why, use }] } (cands[0] = ที่ใช้อยู่) */
   var say = function(t, k){ U.msg("plShareMsg", t, k); };
+  /* ลบรอบนี้ออกจากประวัติ (หรือถูกตัดเพราะเกิน max) → ตารางช็อต/วิดีโอด้านล่างของรอบนั้นหายไปด้วย · บทเดิมกำกับใหม่ได้เสมอ */
+  var histSeen = false;
+  function histHas(){ return !!(plan && window.MWHist && MWHist.get("plan-" + plan.at)); }
+  if(window.MWHist){
+    MWHist.ready.then(function(){ histSeen = histHas(); });
+    MWHist.onChange(function(){
+      if(!plan) return;
+      if(histHas()){ histSeen = true; return; }
+      if(histSeen) resetPlan();
+    });
+  }
+  function resetPlan(){ plan = null; histSeen = false; try{ MWStore.del(KEY); }catch(e){} if(cuts){ URL.revokeObjectURL(cuts.url); cuts = null; } lastPick = ""; $("plBatches").innerHTML = ""; $("plShareMsg").textContent = ""; render(); }
   function isLong(){ return !plan || plan.mode !== "fast"; }
   var MODES = [
     { k:"long", name:"แบบ 1: ไปตัดเอง", desc:"ช็อตละประโยค คลิปละ ≤10 วิ คั่นจอเขียว + ตื๊ด", icon:"scissors" },
@@ -173,6 +185,7 @@
     if(!U.lib().some(function(c){ return c.status === "done"; })){ U.msg("plMsg", "คลังยังว่าง ไปอัปโหลดฟุตเทจก่อน", "err"); return; }
     if(!FT.orKey()){ U.msg("plMsg", "ยังไม่มี OpenRouter key ในเบราว์เซอร์นี้", "err"); return; }
     busy = true; this.disabled = true; var cost = 0, t0 = Date.now(), errs = 0;
+    if(cuts){ URL.revokeObjectURL(cuts.url); cuts = null; } lastPick = ""; $("plBatches").innerHTML = ""; say(""); /* กำกับใหม่ = เริ่มสะอาด ไม่เอาวิดีโอ/ข้อความของรอบก่อนค้าง (บทเดิมกี่รอบก็ได้) */
     try{
       U.msg("plMsg", "AI กำลังแบ่งบทเป็นช็อต...");
       var voice = mode === "fast" && voiceSel && window.MWVoice ? await MWVoice.get(+voiceSel) : null;
