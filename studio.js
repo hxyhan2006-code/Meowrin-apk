@@ -1,5 +1,5 @@
-/* studio.js — หน้าสตูดิโอตัดต่อ (studio.html) รอบ 1: เปิดโปรเจกต์ที่ส่งมาจากตัดต่ออัตโนมัติ · พรีวิว (studio-player.js) · ไทม์ไลน์
-   (เส้นเล่นอยู่กลางจอ เลื่อนไทม์ไลน์ = กรอ, สองนิ้ว = ซูม) · แตะคลิป = เลือก · แบ่ง/ลบ/เลิกทำ/ทำซ้ำ (studio-model.js) · ส่งออก mp4 (exporter.js)
+/* studio.js — หน้าสตูดิโอตัดต่อ (studio.html) รอบ 1-2: เปิดโปรเจกต์ที่ส่งมาจากตัดต่ออัตโนมัติ · พรีวิว (studio-player.js) · ไทม์ไลน์
+   (เส้นเล่นอยู่กลางจอ เลื่อนไทม์ไลน์ = กรอ, สองนิ้ว = ซูม) · แตะคลิป = เลือก · แบ่ง/ลบ/ทำซ้ำคลิป/ย้ายซ้ายขวา/ลากขอบยืดหด/เลิกทำ (studio-model.js) · ส่งออก mp4 (exporter.js)
    ข้อมูลโปรเจกต์ทั้งหมดอยู่ใน MWStudio ไฟล์นี้วาดหน้าจออย่างเดียว */
 (function(){
   "use strict";
@@ -41,7 +41,7 @@
       h.push(Math.round(s * 2) % (step * 2) === 0 ? '<span class="tk" style="left:' + x + 'px">' + fmt(s).slice(0, 5) + "</span>" : '<span class="tk dot" style="left:' + x + 'px"></span>'); }
     proj.clips.forEach(function(c, i){
       var w = Math.max(6, c.len * pps - 2), bg = c.thumb ? ' style="left:' + (P + st[i] * pps) + "px;width:" + w + "px;background-image:url(" + c.thumb + ')"' : ' style="left:' + (P + st[i] * pps) + "px;width:" + w + 'px"';
-      h.push('<div class="clip' + (i === sel ? " sel" : "") + (c.uri ? "" : " black") + '" data-i="' + i + '"' + bg + "><span>" + c.len.toFixed(1) + "s</span></div>");
+      h.push('<div class="clip' + (i === sel ? " sel" : "") + (c.uri ? "" : " black") + '" data-i="' + i + '"' + bg + "><span>" + c.len.toFixed(1) + "s</span>" + (i === sel ? '<i class="gl" aria-label="ลากขอบซ้าย ตัดหัวคลิป"></i><i class="gr" aria-label="ลากขอบขวา ยืดหดท้ายคลิป"></i>' : "") + "</div>");
     });
     if(proj.voice) h.push('<div class="vo" style="left:' + P + "px;width:" + Math.max(6, proj.voice.dur * pps) + 'px">เสียงพากย์ · ' + esc(proj.voice.name || "เทคที่เลือก") + "</div>");
     proj.texts.forEach(function(x){ h.push('<div class="tx" style="left:' + (P + x.at * pps) + "px;width:" + Math.max(4, x.len * pps) + 'px">' + esc(x.t) + "</div>"); });
@@ -57,6 +57,19 @@
   }, { passive:true });
   $("stTlIn").addEventListener("click", function(e){
     var c = e.target.closest(".clip"); sel = c ? +c.dataset.i : -1; render();
+  });
+  $("stTlIn").addEventListener("pointerdown", function(e){ /* ลากขอบคลิปที่เลือกอยู่ = ยืด/หดคลิป (คลิปหลังจากนั้นขยับตาม) · ปล่อยแล้วค่อยบันทึก = เลิกทำได้ทีเดียว */
+    var g = e.target.closest(".gl,.gr"); if(!g) return;
+    var el = g.parentNode, i = +el.dataset.i, c = proj.clips[i], side = g.classList.contains("gl") ? "start" : "end", x0 = e.clientX, d = 0;
+    e.preventDefault(); player.pause(); g.setPointerCapture(e.pointerId);
+    function mv(ev){ d = (ev.clientX - x0) / pps; var r = MWStudio.trimTo(c, side, d); el.style.width = Math.max(6, r.len * pps - 2) + "px"; el.querySelector("span").textContent = r.len.toFixed(1) + "s"; }
+    function up(){
+      g.removeEventListener("pointermove", mv); g.removeEventListener("pointerup", up); g.removeEventListener("pointercancel", up);
+      var at = MWStudio.starts(proj)[i];
+      if(ed.trim(i, side, d)){ var n = proj.clips[i]; player.seek(side === "start" ? at : at + n.len - 0.05); say(side === "start" ? "ตัดหัวคลิปแล้ว (ช่วงท้ายยังเหมือนเดิม)" : "ปรับความยาวท้ายคลิปแล้ว"); }
+      else{ render(); if(Math.abs(d) > 0.02) say(side === "end" && c.max > 0 ? "คลิปต้นทางมีแค่นี้ ยืดต่อไม่ได้" : "สั้นสุดแล้ว", true); }
+    }
+    g.addEventListener("pointermove", mv); g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
   });
   (function pinch(){ /* สองนิ้วบนไทม์ไลน์ = ซูมเข้า/ออก (เวลาที่เส้นเล่นอยู่คงที่) */
     var d0 = 0, p0 = pps, tl = $("stTl");
@@ -79,6 +92,12 @@
     if(ed.split(player.t)){ sel = at.i + 1; render(); say("แบ่งคลิปตรงเส้นเล่นแล้ว"); }
     else say(at.i < 0 ? "เลื่อนเส้นเล่นไปไว้บนคลิปที่จะแบ่งก่อน" : "เส้นเล่นชิดขอบคลิปเกินไป เลื่อนเข้าไปกลางคลิปอีกนิด", true);
   });
+  function picked(){ return sel >= 0 ? sel : MWStudio.clipAt(proj, player.t).i; }
+  $("stDup").addEventListener("click", function(){ player.pause(); var i = picked(); if(i < 0){ say("แตะเลือกคลิปที่จะทำซ้ำก่อน", true); return; } if(ed.duplicate(i)){ sel = i + 1; render(); say("ทำซ้ำคลิปแล้ว (ต่อท้ายคลิปเดิม)"); } });
+  [["stLeft", -1], ["stRight", 1]].forEach(function(b){ $(b[0]).addEventListener("click", function(){
+    player.pause(); var i = picked(); if(i < 0){ say("แตะเลือกคลิปที่จะย้ายก่อน", true); return; }
+    if(ed.move(i, b[1])){ sel = i + b[1]; render(); player.seek(MWStudio.starts(proj)[sel]); say("ย้ายคลิปไป" + (b[1] < 0 ? "ซ้าย" : "ขวา") + "แล้ว"); } else say("อยู่" + (b[1] < 0 ? "หน้าสุด" : "ท้ายสุด") + "แล้ว", true);
+  }); });
   $("stDel").addEventListener("click", function(){
     player.pause(); var i = sel >= 0 ? sel : MWStudio.clipAt(proj, player.t).i;
     if(proj.clips.length < 2){ say("ต้องเหลืออย่างน้อย 1 คลิป", true); return; }

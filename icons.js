@@ -33,6 +33,7 @@
     back:    '<path d="M15 18l-6-6 6-6"/>',
     fwd:     '<path d="M9 18l6-6-6-6"/>',
     info:    '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    copy:    '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/>',
     undo:    '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/>',
     redo:    '<path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h4"/>',
     split:   '<path d="M12 3v18"/><rect x="3" y="7" width="6" height="10" rx="1.5"/><rect x="15" y="7" width="6" height="10" rx="1.5"/>',

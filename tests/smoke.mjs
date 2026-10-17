@@ -587,6 +587,26 @@ try {
   check('สตูดิโอ: ส่งออกใช้วิธีวางภาพเดียวกับพรีวิว (เต็มกรอบ ไม่ตัดขอบ)', sx.frames === 30 && sx.top < 40 && sx.midR > 120, JSON.stringify(sx));
   const over = await sp.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: innerWidth, tb: document.querySelector('.tools').getBoundingClientRect().bottom, ih: innerHeight }));
   check('สตูดิโอ: ไม่มี error · หน้าไม่ล้นจอ · แถบเครื่องมืออยู่ในจอ', !spErr.length && over.sw <= over.iw + 1 && over.tb <= over.ih + 1, spErr.join(' | ') + JSON.stringify(over));
+  // สตูดิโอรอบ 2: ลากขอบยืด/หด (ขอบซ้ายตัดหัว ขอบขวายืดท้าย ไม่เกินความยาวคลิปต้นทาง) · ทำซ้ำ · ย้ายซ้าย/ขวา · เลิกทำ
+  await sp.evaluate(async () => { await MWStore.ready; const p = MWStudio.blank('รอบสอง'); p.bg = 'black'; const mk = (id, from, len, max) => ({ id, uri: null, name: id, size: 1, from, len, max, thumb: '', t: id }); p.clips = [mk('a', 2, 2, 10), mk('b', 0, 1, 10), mk('c', 0, 1, 0)]; MWStudio.save(p); });
+  await sp.reload(); await sp.waitForFunction(() => window.MWStudioUI, null, { timeout: 20000 });
+  const pure = await sp.evaluate(() => { const c = { from: 2, len: 2, max: 10 }, t = MWStudio.trimTo; return [t(c, 'end', 3), t(c, 'end', 99), t(c, 'end', -5), t(c, 'start', 1), t(c, 'start', -5), t(c, 'start', 9), t({ from: 0, len: 1, max: 0 }, 'end', 50)].map((r) => r.from + '/' + r.len).join(' '); });
+  check('สตูดิโอ: คำนวณลากขอบถูก (ยืดท้ายไม่เกินคลิปต้นทาง · ตัดหัวแล้วช่วงท้ายคงเดิม · สั้นสุด 0.1 วิ · ไม่รู้ความยาวต้นทาง = ยืดได้)', pure === '2/5 2/8 2/0.1 3/1 0/4 3.9/0.1 0/51', pure);
+  const sel0 = await sp.evaluate(() => { document.querySelector('#stTlIn .clip[data-i="0"]').click(); return !!document.querySelector('#stTlIn .clip.sel .gl') && !!document.querySelector('#stTlIn .clip.sel .gr'); });
+  check('สตูดิโอ: เลือกคลิป → ขึ้นมือจับซ้าย/ขวา (เฉพาะคลิปที่เลือก)', sel0 && (await sp.evaluate(() => document.querySelectorAll('#stTlIn .gl').length)) === 1);
+  const drag = async (cls, dx) => { const b = await sp.locator('#stTlIn .clip.sel ' + cls).boundingBox(); await sp.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await sp.mouse.down(); await sp.mouse.move(b.x + b.width / 2 + dx / 2, b.y + b.height / 2, { steps: 4 }); await sp.mouse.move(b.x + b.width / 2 + dx, b.y + b.height / 2, { steps: 4 }); await sp.mouse.up(); await sp.waitForTimeout(150); return sp.evaluate(() => MWStudioUI.ed().p.clips.map((c) => c.from + '/' + c.len).join(' ')); };
+  const pps = await sp.evaluate(() => { const c = document.querySelector('#stTlIn .clip[data-i="0"]'); return (c.getBoundingClientRect().width + 2) / 2; });
+  const d1 = await drag('.gr', pps); /* ลากขอบขวาไปขวา 1 วิ → ยาว 3 */
+  const d2 = await drag('.gl', pps / 2); /* ลากขอบซ้ายไปขวา 0.5 วิ → เริ่ม 2.5 ยาว 2.5 */
+  check('สตูดิโอ: ลากขอบขวา +1 วิ → ยาว 3 วิ · ลากขอบซ้าย +0.5 วิ → ตัดหัว (เริ่ม 2.5 ท้ายคงเดิม) · คลิปถัดไปขยับตามเอง', /^2\/3 /.test(d1) && /^2\.5\/2\.5 /.test(d2) && (await sp.evaluate(() => MWStudio.starts(MWStudioUI.ed().p).join(','))) === '0,2.5,3.5', d1 + ' | ' + d2);
+  await sp.evaluate(() => document.getElementById('stUndo').click());
+  check('สตูดิโอ: เลิกทำลากขอบ = กลับครั้งละขั้น', (await sp.evaluate(() => MWStudioUI.ed().p.clips[0].from + '/' + MWStudioUI.ed().p.clips[0].len)) === '2/3');
+  const ops = await sp.evaluate(() => { const ed = MWStudioUI.ed(), ids = () => ed.p.clips.map((c) => c.name).join(''), o = {};
+    document.querySelector('#stTlIn .clip[data-i="0"]').click(); document.getElementById('stDup').click(); o.dup = ids(); o.dupSel = document.querySelector('#stTlIn .clip.sel').dataset.i; o.uniq = new Set(ed.p.clips.map((c) => c.id)).size === 4;
+    document.getElementById('stRight').click(); o.right = ids(); o.rightSel = document.querySelector('#stTlIn .clip.sel').dataset.i;
+    document.getElementById('stLeft').click(); document.getElementById('stLeft').click(); o.left = ids(); document.getElementById('stLeft').click(); o.edge = ids() === o.left; o.msg = document.getElementById('stMsg').textContent;
+    document.getElementById('stUndo').click(); document.getElementById('stUndo').click(); o.undo = ids(); return o; });
+  check('สตูดิโอ: ทำซ้ำคลิป (ต่อท้ายอันเดิม รหัสไม่ซ้ำ) · ย้ายซ้าย/ขวาตามที่เลือก · สุดทางไม่ย้าย · เลิกทำ', ops.dup === 'aabc' && ops.dupSel === '1' && ops.uniq && ops.right === 'abac' && ops.rightSel === '2' && ops.left === 'aabc' && ops.edge && /หน้าสุด/.test(ops.msg), JSON.stringify(ops));
   await sp.evaluate(() => MWStore.del('mw_studio_v1'));
   await sp.close();
   }

@@ -2,7 +2,7 @@
    ทุกการแก้ (Han กดเอง หรือ AI สั่งในรอบหลัง) ผ่านฟังก์ชันในไฟล์นี้ → เลิกทำ/ทำซ้ำได้หมด · ไม่แตะ DOM (หน้าฟุตเทจโหลดไว้ใช้ fromPlan ด้วย)
    เก็บใน MWStore key mw_studio_v1 { cur: โปรเจกต์ที่เปิดอยู่ }
    โปรเจกต์ = { v:1, id, name, at, ratio:"9:16", bg:"blur"|"black", voice:{ id, name, dur }|null,
-     clips:[{ id, uri, name, size, from, len, thumb, t }]  แถวภาพ ต่อกันเรียงตามลำดับ (uri ว่าง = จอดำ) from = วินาทีในคลิปต้นทาง, len = ยาวบนไทม์ไลน์
+     clips:[{ id, uri, name, size, from, len, max, thumb, t }]  แถวภาพ ต่อกันเรียงตามลำดับ (uri ว่าง = จอดำ) from = วินาทีในคลิปต้นทาง, len = ยาวบนไทม์ไลน์, max = ความยาวคลิปต้นทาง (0 = ไม่รู้ ยืดได้ไม่จำกัด)
      texts:[{ at, len, t }] }  ข้อความของแต่ละช็อต (รอบนี้ใช้ดูอย่างเดียว) */
 (function(){
   "use strict";
@@ -32,7 +32,7 @@
       if(!(len > 0)) len = Math.max(MIN, (x.to - x.from) || 1);
       var prev = p.clips[p.clips.length - 1];
       if(!x.c && voice && prev){ prev.len = r2(prev.len + len); }
-      else p.clips.push({ id:uid(), uri:x.c ? uriOf(x.c) : null, name:x.c ? x.c.name : "", size:x.c ? x.c.size : 0, from:r2(x.from || 0), len:r2(len), thumb:x.sc && x.sc.thumb || "", t:x.t || "" });
+      else p.clips.push({ id:uid(), uri:x.c ? uriOf(x.c) : null, name:x.c ? x.c.name : "", size:x.c ? x.c.size : 0, from:r2(x.from || 0), len:r2(len), max:x.c && x.c.duration || 0, thumb:x.sc && x.sc.thumb || "", t:x.t || "" });
       p.texts.push({ at:r2(voice ? x.at : (p.texts.length ? p.texts[p.texts.length - 1].at + p.texts[p.texts.length - 1].len : 0)), len:r2(len), t:x.t || "" });
     });
     return p;
@@ -59,7 +59,19 @@
     var b = JSON.parse(JSON.stringify(c)); b.id = uid(); b.from = r2(c.from + a.off); b.len = r2(c.len - a.off); c.len = r2(a.off);
     this.p.clips.splice(a.i + 1, 0, b); return this.done();
   };
+  function trimTo(c, side, d){ /* ผลของการลากขอบ: side "start" = ลากขอบซ้าย (ตัดหัวคลิป เล่นช่วงท้ายเหมือนเดิม) "end" = ลากขอบขวา (ยืด/หดท้ายคลิป) · d วินาที (+ = ไปทางขวา) · คืน { from, len } ที่ปรับให้อยู่ในช่วงเป็นไปได้ */
+    var from = c.from, len = c.len;
+    if(side === "end"){ len += d; if(c.max > 0) len = Math.min(len, c.max - c.from); }
+    else { d = Math.min(Math.max(d, -from), len - MIN); from += d; len -= d; }
+    return { from:r2(Math.max(0, from)), len:r2(Math.max(MIN, len)) };
+  }
+  Editor.prototype.trim = function(i, side, d){ var c = this.p.clips[i]; if(!c) return false; var r = trimTo(c, side, d); if(r.from === c.from && r.len === c.len) return false; this.snap(); c.from = r.from; c.len = r.len; return this.done(); };
+  Editor.prototype.move = function(i, dir){ /* dir -1 = ไปทางซ้าย (เร็วขึ้น) · +1 = ไปทางขวา */
+    var j = i + dir, a = this.p.clips; if(i < 0 || i >= a.length || j < 0 || j >= a.length) return false;
+    this.snap(); var t = a[i]; a[i] = a[j]; a[j] = t; return this.done();
+  };
+  Editor.prototype.duplicate = function(i){ var c = this.p.clips[i]; if(!c) return false; this.snap(); var b = JSON.parse(JSON.stringify(c)); b.id = uid(); this.p.clips.splice(i + 1, 0, b); return this.done(); };
   Editor.prototype.remove = function(i){ if(i < 0 || i >= this.p.clips.length) return false; this.snap(); this.p.clips.splice(i, 1); return this.done(); };
 
-  window.MWStudio = { KEY:KEY, RATIOS:RATIOS, blank:blank, duration:duration, clipsLen:clipsLen, starts:starts, clipAt:clipAt, fromPlan:fromPlan, load:load, save:save, Editor:Editor };
+  window.MWStudio = { KEY:KEY, RATIOS:RATIOS, blank:blank, duration:duration, clipsLen:clipsLen, starts:starts, clipAt:clipAt, trimTo:trimTo, MIN:MIN, fromPlan:fromPlan, load:load, save:save, Editor:Editor };
 })();
