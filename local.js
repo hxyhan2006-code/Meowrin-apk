@@ -19,7 +19,7 @@
     var M = plug("Media"), F = plug("Filesystem"); if(!M || !F) throw new Error("ใช้ได้เฉพาะในแอพ APK");
     var albums = (await M.getAlbums()).albums || [], next = {}, items = [], seen = {}, files = 0, n = 0;
     for(var i = 0; i < albums.length; i++){
-      var p = albums[i].identifier; if(!p || seen[p]) continue; seen[p] = 1; n++; if(onStep) onStep(i + 1, albums.length);
+      var p = albums[i].identifier; if(!p || seen[p] || /\/Meowrin\/library(\/|$)/.test(p)) continue; /* โฟลเดอร์สำเนาของแอพ MediaStore ก็ลิสต์เป็นอัลบั้ม · ข้ามตรงนี้ เพราะสแกนแยกด้านล่าง ไม่งั้นคลิปขึ้นซ้ำ 2 ชุด */ seen[p] = 1; n++; if(onStep) onStep(i + 1, albums.length);
       try{ ((await F.readdir({ path:p })).files || []).forEach(function(f){ if(f.type !== "directory" && f.uri && VEXT.test(f.name)){ next[key(f.name, f.size)] = f.uri; items.push({ name:f.name, size:f.size, mtime:f.mtime || 0, uri:f.uri, album:albums[i].name || p.split("/").pop(), dir:p + "/" }); files++; } }); }
       catch(e){ /* โฟลเดอร์ที่อ่านไม่ได้ ข้าม */ }
     }

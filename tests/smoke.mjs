@@ -350,9 +350,10 @@ try {
   const lb = await context.newPage(); const lbE = []; lb.on('pageerror', (e) => lbE.push(e.message));
   await lb.addInitScript(() => { const fsx = { lib: { 'Meowrin/library/luffy': [{ name: 'old.mp4', type: 'file', size: 50, uri: 'file:///docs/Meowrin/library/luffy/old.mp4' }] }, ops: [] };
     window.__fs = fsx; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true, convertFileSrc: (x) => 'https://localhost/_cs' + x.replace('file://', ''),
-    Plugins: { Media: { getAlbums: async () => ({ albums: [{ name: 'luffy', identifier: '/storage/Pictures/Gallery/owner/luffy' }] }) },
+    Plugins: { Media: { getAlbums: async () => ({ albums: [{ name: 'luffy', identifier: '/storage/Pictures/Gallery/owner/luffy' }, { name: 'luffy', identifier: '/storage/emulated/0/Documents/Meowrin/library/luffy' }] }) },
       Filesystem: {
         readdir: async ({ path, directory }) => { if (directory === 'DOCUMENTS') { if (path === 'Meowrin/library') return { files: Object.keys(fsx.lib).map((k) => ({ name: k.split('/').pop(), type: 'directory' })) }; if (fsx.lib[path]) return { files: fsx.lib[path] }; throw new Error('nope'); }
+          if (path.includes('/Meowrin/library/')) return { files: [{ name: 'old.mp4', type: 'file', size: 50, uri: 'file:///docs/Meowrin/library/luffy/old.mp4' }, ...(fsx.lib['Meowrin/library/luffy'] || []).filter((f) => f.name !== 'old.mp4')] }; /* MediaStore เห็นโฟลเดอร์สำเนาเป็นอัลบั้มด้วย */
           return { files: [{ name: 'old.mp4', type: 'file', size: 50, uri: 'file:///storage/Pictures/Gallery/owner/luffy/old.mp4' }, { name: 'new1.mp4', type: 'file', size: 70, uri: 'file:///storage/Pictures/Gallery/owner/luffy/new1.mp4' }, { name: 'new2.mp4', type: 'file', size: 80, uri: 'file:///storage/Pictures/Gallery/owner/luffy/new2.mp4' }] }; },
         mkdir: async (o) => { fsx.ops.push(['mkdir', o.path]); }, deleteFile: async (o) => { fsx.ops.push(['del', o.path]); throw new Error('no such'); },
         copy: async (o) => { fsx.ops.push(['copy', o.from, o.to]); }, rename: async (o) => { fsx.ops.push(['rename', o.from, o.to]); const d = o.to.replace(/\/[^/]+$/, ''), n = o.to.split('/').pop(); (fsx.lib[d] = fsx.lib[d] || []).push({ name: n, type: 'file', size: n === 'new1.mp4' ? 70 : 80, uri: 'file:///docs/' + o.to }); } } } }; });
@@ -363,9 +364,9 @@ try {
   await lb.click('#libGo'); await lb.waitForTimeout(300);
   const lDlg = await lb.evaluate(() => document.body.textContent.includes('ก๊อป 2 คลิป') && document.body.textContent.includes('ต้นฉบับไม่ถูกแตะ'));
   await lb.getByRole('button', { name: 'เริ่มก๊อป', exact: true }).click(); await lb.waitForTimeout(1500);
-  const l1 = await lb.evaluate(() => ({ ops: window.__fs.ops.filter((o) => o[0] === 'copy' || o[0] === 'rename').map((o) => o.slice(1).join('>')), info: document.getElementById('libInfo').textContent, todo: MWLib.todo().length, url: MWLocal.urlOf({ name: 'new1.mp4', size: 70 }), over: document.documentElement.scrollWidth > innerWidth + 1 }));
+  const l1 = await lb.evaluate(() => ({ ops: window.__fs.ops.filter((o) => o[0] === 'copy' || o[0] === 'rename').map((o) => o.slice(1).join('>')), info: document.getElementById('libInfo').textContent, todo: MWLib.todo().length, url: MWLocal.urlOf({ name: 'new1.mp4', size: 70 }), n: MWLocal.list().length, over: document.documentElement.scrollWidth > innerWidth + 1 }));
   check('เก็บคลิปไว้ในแอพ: ข้ามคลิปที่มีสำเนาแล้ว (old) · ถามก่อนพร้อมบอกว่าต้นฉบับไม่ถูกแตะ · ก๊อป 2 คลิปไปชื่อ .part แล้วเปลี่ยนชื่อ · สแกนใหม่แล้วเล่นจากสำเนา · ไม่ลบต้นฉบับ',
-    l0.todo.join() === 'new1.mp4,new2.mp4' && lDlg && l1.ops.length === 4 && l1.ops[0] === 'file:///storage/Pictures/Gallery/owner/luffy/new1.mp4>Meowrin/library/luffy/new1.mp4.part' && l1.ops[1] === 'Meowrin/library/luffy/new1.mp4.part>Meowrin/library/luffy/new1.mp4' && l1.todo === 0 && /ก๊อปครบแล้ว 3 คลิป/.test(l1.info) && /docs\/Meowrin\/library\/luffy\/new1\.mp4$/.test(l1.url || '') && !l1.over && !lbE.length, JSON.stringify([l0, l1]) + lbE.join());
+    l0.todo.join() === 'new1.mp4,new2.mp4' && l0.info.includes('1/3') === false && lDlg && l1.ops.length === 4 && l1.ops[0] === 'file:///storage/Pictures/Gallery/owner/luffy/new1.mp4>Meowrin/library/luffy/new1.mp4.part' && l1.ops[1] === 'Meowrin/library/luffy/new1.mp4.part>Meowrin/library/luffy/new1.mp4' && l1.todo === 0 && /ก๊อปครบแล้ว 3 คลิป/.test(l1.info) && /docs\/Meowrin\/library\/luffy\/new1\.mp4$/.test(l1.url || '') && l1.n === 3 && !l1.over && !lbE.length, JSON.stringify([l0, l1]) + lbE.join());
   await lb.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));
