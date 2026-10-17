@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
 <title>ฟุตเทจ · Meowrin factory</title>
-<link rel="icon" type="image/png" href="icon-192.png?v=8.21">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.21">
-<link rel="stylesheet" href="fonts.css?v=8.21"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
-<link rel="stylesheet" href="footage.css?v=8.21">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.22">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.22">
+<link rel="stylesheet" href="fonts.css?v=8.22"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
+<link rel="stylesheet" href="footage.css?v=8.22">
 </head>
 <body>
 <header>
@@ -84,7 +84,7 @@
   <!-- ตั้งค่า -->
   <section class="page" id="p-set">
     <div class="qbk">
-      <div><b>สำรองดัชนีขึ้น Google Drive</b><small id="gdFootQuickInfo">ตรวจสอบ...</small></div>
+      <div><b>สำรองดัชนีเป็นไฟล์</b><small id="gdFootQuickInfo">ตรวจสอบ...</small></div>
       <button class="btn small" id="gdFootQuick" type="button">สำรองตอนนี้</button>
     </div>
     <div id="gdFootQuickMsg"></div>
@@ -159,16 +159,7 @@
         <button class="btn ghost" id="importBtn">กู้คืน</button>
       </div>
       <input id="importFile" type="file" accept="application/json,.json" hidden>
-      <h2 style="margin-top:16px">Google Drive</h2>
       <div id="stInfo"></div>
-      <div id="gdState"></div>
-      <button class="btn" id="gdConnect" style="width:100%;margin-top:10px">เชื่อม Google Drive</button>
-      <div class="row" style="margin-top:8px">
-        <button class="btn ghost" id="gdFootNow">สำรองดัชนีขึ้น Drive</button>
-        <button class="btn ghost" id="gdFootRestore">ดึงดัชนีจาก Drive</button>
-      </div>
-      <p class="hint tip" id="gdDriveHint">อัปเฉพาะคลิปใหม่/ที่เปลี่ยน · ทำดัชนีเสร็จแต่ละรอบ ถ้าเชื่อมอยู่จะอัปให้เอง · ใส่ Client ID ที่ ตั้งค่า ของแอพหลัก</p>
-      <div id="gdMsg"></div>
       <button class="btn ghost small" id="wipeBtn" style="margin-top:10px;width:100%">ลบดัชนีทั้งหมด</button>
       <div id="setMsg"></div>
     </div></details>
@@ -240,6 +231,6 @@
 <video id="vid" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:2px;height:2px"></video>
 
 <div class="asheet" id="pkSheet" hidden><div class="abox" role="dialog"><div class="pkhead"><h3 id="pkTitle"></h3><span id="pkInfo"></span></div><input id="pkQ" type="search" autocomplete="off"><div id="pkList"></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="pkClear" type="button">ล้างที่เลือก</button><button class="btn" id="pkDone" type="button">เสร็จ</button></div></div></div>
-<script src="store.js?v=8.21" data-boot="icons.js?v=8.21 dialog.js?v=8.21 native.js?v=8.21 budget.js?v=8.21 footage-core.js?v=8.21 footage-pick.js?v=8.21 footage.js?v=8.21 local.js?v=8.21 library.js?v=8.21 footage-find.js?v=8.21 footage-album.js?v=8.21 footage-dup.js?v=8.21 footage-audit.js?v=8.21 mp4fix.js?v=8.21 footage-stitch.js?v=8.21 voicestore.js?v=8.21 footage-plan.js?v=8.21 gdrive.js?v=8.21"></script>
+<script src="store.js?v=8.22" data-boot="icons.js?v=8.22 dialog.js?v=8.22 native.js?v=8.22 budget.js?v=8.22 footage-core.js?v=8.22 footage-pick.js?v=8.22 footage.js?v=8.22 local.js?v=8.22 library.js?v=8.22 footage-find.js?v=8.22 footage-album.js?v=8.22 footage-dup.js?v=8.22 footage-audit.js?v=8.22 mp4fix.js?v=8.22 footage-stitch.js?v=8.22 voicestore.js?v=8.22 footage-plan.js?v=8.22 backup.js?v=8.22"></script>
 </body>
 </html>

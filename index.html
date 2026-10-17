@@ -4,17 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
-<link rel="manifest" href="manifest.json?v=8.21">
+<link rel="manifest" href="manifest.json?v=8.22">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Meowrin">
-<link rel="icon" type="image/png" href="icon-192.png?v=8.21">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.21">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.22">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.22">
 <title>Meowrin factory</title>
-<link rel="stylesheet" href="fonts.css?v=8.21"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
-<link rel="stylesheet" href="style.css?v=8.21">
-<link rel="stylesheet" href="sheet.css?v=8.21">
+<link rel="stylesheet" href="fonts.css?v=8.22"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
+<link rel="stylesheet" href="style.css?v=8.22">
+<link rel="stylesheet" href="sheet.css?v=8.22">
 </head>
 <body>
 <div class="wrap">
@@ -184,7 +184,7 @@
       <a class="tool" href="sub/index.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 14h6M7 10h10"/></svg><b>ซับจอเขียว</b><small>ทำซับจากเสียงพากย์</small></a>
     </div>
     <div class="qbk">
-      <div><b>สำรองขึ้น Google Drive</b><small id="gdQuickInfo">ตรวจสอบ...</small></div>
+      <div><b>สำรองเป็นไฟล์</b><small id="gdQuickInfo">ตรวจสอบ...</small></div>
       <button class="btn small" id="gdQuick" type="button">สำรองตอนนี้</button>
     </div>
     <div id="gdQuickMsg"></div>
@@ -295,20 +295,6 @@
     </div></details>
     <details class="fold top"><summary><span>สำรองข้อมูล</span><em class="state ok" id="stTag">ตรวจสอบ...</em></summary><div class="fbody">
       <div id="stInfo"></div>
-      <details class="fold" id="gdFold">
-        <summary><span>Google Drive (สำรองอัตโนมัติ)</span><em class="state idle" id="gdTag">ยังไม่ได้ตั้ง</em></summary>
-        <div class="fbody">
-          <p class="hint" style="margin-top:0">ใส่ OAuth Client ID ของ Google Cloud (ไม่ใช่ API key) ครั้งเดียว แล้วกด เชื่อม ทุกครั้งที่เปิดแอพรอบใหม่ ระหว่างที่เชื่อมอยู่ แอพสำรองขึ้นโฟลเดอร์ "meowrin factory" ใน Drive เองทุกครั้งที่ข้อมูลเปลี่ยน (ไม่รวม API key) · ดัชนีฟุตเทจสำรองที่หน้าฟุตเทจ</p>
-          <input id="gdClient" type="text" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off" aria-label="Google OAuth Client ID">
-          <div id="gdState"></div>
-          <button class="btn" id="gdConnect" style="width:100%;margin-top:10px">เชื่อม Google Drive</button>
-          <div class="row" style="margin-top:8px">
-            <button class="btn ghost" id="gdNow">สำรองตอนนี้</button>
-            <button class="btn ghost" id="gdRestore">กู้คืนจาก Drive</button>
-          </div>
-          <div id="gdMsg"></div>
-        </div>
-      </details>
       <p class="hint">ไฟล์สำรองแบบโหลดลงเครื่อง: ช่อง รายการ "ทำแล้ว" รายการที่เก็บไว้ ประวัติบท prompt และรายการเสียง (ไม่รวม API key และคลิปที่ดึงมา ซึ่งดึงใหม่ได้)</p>
       <div class="row">
         <button class="btn ghost" id="exportBtn">โหลดไฟล์สำรอง</button>
@@ -401,6 +387,6 @@
   </div>
 </div>
 
-<script src="store.js?v=8.21" data-boot="version.js?v=8.21 icons.js?v=8.21 dialog.js?v=8.21 native.js?v=8.21 budget.js?v=8.21 sync.js?v=8.21 app.js?v=8.21 llm.js?v=8.21 ai.js?v=8.21 voicestore.js?v=8.21 tts.js?v=8.21 gdrive.js?v=8.21 ota.js?v=8.21"></script>
+<script src="store.js?v=8.22" data-boot="version.js?v=8.22 icons.js?v=8.22 dialog.js?v=8.22 native.js?v=8.22 budget.js?v=8.22 sync.js?v=8.22 app.js?v=8.22 llm.js?v=8.22 ai.js?v=8.22 voicestore.js?v=8.22 tts.js?v=8.22 backup.js?v=8.22 ota.js?v=8.22"></script>
 </body>
 </html>
