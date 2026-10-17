@@ -302,3 +302,13 @@ textarea.vtext,#tab-voice textarea.vtext:focus{display:block;width:100%;min-heig
 .qbk .btn{flex:none}
 
 .ver{margin:28px 0 8px;text-align:center;font-size:12px;color:var(--muted)}
+
+/* ผลงานล่าสุด (history-ui.js) */
+.hs{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.hs:first-child{border-top:0}
+.hs .hi{flex:1;min-width:0}
+.hs .hi b{display:block;font-weight:500;overflow-wrap:anywhere}
+.hs .hi small{color:var(--muted);font-size:12.5px}
+.hs .hb{display:flex;gap:6px;flex:none}
+.hs .hb .btn{min-height:40px;padding:0 12px;font-size:14px}
+.hs video{width:100%;max-height:50vh;margin-top:8px;border-radius:10px;background:#000}

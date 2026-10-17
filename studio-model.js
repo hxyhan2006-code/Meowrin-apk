@@ -40,7 +40,7 @@
 
   /* ---------- เก็บ / เปิด ---------- */
   function load(){ var s = MWStore.get(KEY, {}) || {}; return s.cur && Array.isArray(s.cur.clips) ? s.cur : null; }
-  function save(p){ p.at = Date.now(); MWStore.set(KEY, { cur:p }); }
+  function save(p){ p.at = Date.now(); MWStore.set(KEY, { cur:p }); if(window.MWHist) MWHist.add("studio", { key:p.id, title:p.name, data:p }); } /* ประวัติงานเก็บทุกโปรเจกต์ (ล่าสุด N อัน) */
 
   /* ---------- ตัวแก้ + เลิกทำ/ทำซ้ำ (เก็บภาพรวมของโปรเจกต์ก่อนแก้ทุกครั้ง) ---------- */
   function Editor(p, onChange){

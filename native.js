@@ -28,7 +28,9 @@
     var path = DIR + "/" + name, uri;
     try{ uri = await writeChunked(fs, path, "DOCUMENTS", blob); }
     catch(e){ path = DIR + "/" + altName(name); uri = await writeChunked(fs, path, "DOCUMENTS", blob); } /* ชื่อเดิมเขียนทับไม่ได้ (ไฟล์ค้างจากการติดตั้งรอบก่อน) → ใช้ชื่อใหม่ */
-    return { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1) };
+    var out = { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1) };
+    if(window.MWHist) try{ MWHist.addFile({ name:out.name, uri:uri, rel:path, size:blob.size }); }catch(e){} /* ประวัติงาน: จดไฟล์วิดีโอ/srt ที่เซฟ */
+    return out;
   }
   function canShare(file){
     if(plug("Filesystem") && plug("Share")) return true;

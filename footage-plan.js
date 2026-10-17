@@ -10,6 +10,7 @@
   var KEY = "mw_footage_direct_v1", CAND = 6, PER_CLIP = 2, CHUNK = 6, RATE = 13, MIN_DUR = 1, MAX_DUR = 10, LONG = 10, LEAD = 1, SEP = 2, MAX_CHARS = 3000;
   function load(k, d){ return MWStore.get(k, d); } /* store.js: IndexedDB + แคช */
   function save(k, v){ return MWStore.set(k, v); }
+  function savePlan(){ save(KEY, plan); if(window.MWHist) MWHist.add("plan", { key:plan.at, title:String(plan.script || "").replace(/\s+/g, " ").trim().slice(0, 40) || "ตารางช็อต", data:plan }); } /* ประวัติงาน: เก็บตารางช็อตแต่ละรอบ */
   var plan = load(KEY, null); /* { mode, at, cost, ms, script, shots:[{ t, want, chars, keys, shot, dur, cands:[{ id, si }], why, use }] } (cands[0] = ที่ใช้อยู่) */
   var say = function(t, k){ U.msg("plShareMsg", t, k); };
   function isLong(){ return !plan || plan.mode !== "fast"; }
@@ -63,6 +64,12 @@
       voiceSel = String(rec.id); await refreshVoices(); voiceSel = String(rec.id); showVoice(); render();
     }catch(err){ say("เปิดเสียงที่เลือกไม่ได้: " + err.message, "err"); }
   })();
+  if(new URLSearchParams(location.search).get("hist") && plan){ /* เปิดจากประวัติงาน (ตั้งค่า > ผลงานล่าสุด): ใส่บท/แบบ/เสียงของรอบนั้นให้ ตารางช็อตเดิมก็กลับมา */
+    history.replaceState(null, "", location.pathname + "?tab=plan");
+    mode = plan.mode === "fast" ? "fast" : "long"; showMode(); $("plText").value = plan.script || "";
+    var hv = plan.voice ? String(plan.voice.id) : ""; voiceSel = hv;
+    refreshVoices().then(function(){ voiceSel = hv; showVoice(); render(); });
+  }
   $("plText").addEventListener("input", function(){ if(mode === "fast") autoVoice(); if($("plOut").hidden === sameScript()) render(); });
   async function audioDur(blob){ return new Promise(function(ok){ var a = new Audio(), u = URL.createObjectURL(blob); a.preload = "metadata"; a.src = u;
     a.onloadedmetadata = function(){ URL.revokeObjectURL(u); ok(isFinite(a.duration) ? a.duration : 0); }; a.onerror = function(){ URL.revokeObjectURL(u); ok(0); }; }); }
@@ -180,7 +187,7 @@
       });
       plan = { mode:mode, voice:voice ? { id:voice.id, name:voice.name || "", dur:vdur } : null, at:Date.now(), cost:cost, ms:Date.now() - t0, script:script, shots:shots.map(function(x){
         return { t:x.t, want:x.want, chars:x.chars, keys:x.keys, shot:x.shot, dur:x.dur, at:x.at, why:x.why, use:true, cands:x.pool.map(function(p){ return { id:p.c.id, si:p.si }; }) }; }) };
-      save(KEY, plan);
+      savePlan();
       U.msg("plMsg", errs ? "เสร็จ แต่มี " + errs + " ชุดที่ AI เลือกไม่ได้ ใช้ผลค้นในเครื่องแทน (กดใหม่ได้)" : "", errs ? "err" : "");
       render();
     }catch(err){ U.msg("plMsg", "กำกับไม่ได้: " + err.message, "err"); }
@@ -216,11 +223,11 @@
   $("plRows").addEventListener("click", function(e){
     var b = e.target.closest("[data-alt]"); if(!b) return;
     var p = b.dataset.alt.split("|"), x = plan.shots[+p[0]], j = +p[1]; if(!j) return;
-    x.cands.unshift(x.cands.splice(j, 1)[0]); x.why = "เลือกเอง"; save(KEY, plan); render(); /* ตัวที่แตะขึ้นเป็นตัวแรก (ตัวที่ใช้) */
+    x.cands.unshift(x.cands.splice(j, 1)[0]); x.why = "เลือกเอง"; savePlan(); render(); /* ตัวที่แตะขึ้นเป็นตัวแรก (ตัวที่ใช้) */
   });
   $("plRows").addEventListener("change", function(e){
     var c = e.target.closest("[data-use]"); if(!c) return;
-    plan.shots[+c.dataset.use].use = c.checked; save(KEY, plan); render();
+    plan.shots[+c.dataset.use].use = c.checked; savePlan(); render();
   });
 
   /* ---------- วิดีโอยาว (จอเขียว + ตื๊ด คั่นทุกช็อต) ---------- */

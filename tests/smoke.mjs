@@ -306,7 +306,7 @@ try {
   const ovf = await v8p.evaluate(() => { const m = document.getElementById('setMsg'); m.innerHTML = '<div class="msg">' + 'x'.repeat(6) + '_HOW_BADLY_THE_STRAW_HATS_EXPLOIT_SANJI_long_long_name_without_spaces.mp4</div>'; document.querySelector('nav [data-tab=settings]').click(); document.querySelector('#setMsg').closest('details').open = true; document.querySelector('#setMsg').closest('details.top').open = true; return document.documentElement.scrollWidth - document.documentElement.clientWidth; });
   check('ข้อความชื่อไฟล์ยาวไม่มีเว้นวรรค ไม่ทำให้หน้าล้นจอ', ovf <= 1, 'ล้น ' + ovf + ' px');
   await v8p.evaluate(() => MWStore.set('mw_local_v1', { auto: true, st: { albums: 1, files: 2, at: 1 }, list: [{ name: 'p.mp4', size: 11, uri: 'file:///storage/emulated/0/Pictures/Gallery/owner/nami/p.mp4', album: 'nami', dir: '/storage/emulated/0/Pictures/Gallery/owner/nami/' }, { name: 'q.mp4', size: 12, uri: 'file:///storage/emulated/0/Pictures/Gallery/owner/nami/q.mp4', album: 'nami', dir: '/storage/emulated/0/Pictures/Gallery/owner/nami/' }] }));
-  await v8p.goto(base + '/footage.html'); await v8p.waitForFunction(() => window.FT && FT.ui && document.getElementById('alGrid'), null, { timeout: 20000 }); await v8p.waitForTimeout(600);
+  await v8p.goto(base + '/footage.html'); await v8p.waitForFunction(() => window.FT && FT.ui && document.getElementById('alGrid'), null, { timeout: 20000 }); await v8p.waitForSelector('#alGrid .album', { timeout: 8000 }).catch(() => {}); await v8p.waitForTimeout(300); // รอจนอัลบั้มขึ้นจริง (เดิมรอเวลาตายตัว เครื่องช้าแล้วพลาดเป็นครั้งคราว)
   const rs = await v8p.evaluate(() => [...document.querySelectorAll('#alGrid .album')].map((a) => a.querySelector('b').textContent + ':' + a.querySelector('small').textContent).join(','));
   check('อัลบั้ม: เปิดหน้าแล้วโชว์อัลบั้มจากผลสแกนรอบก่อนทันที (ไม่ต้องรอสแกนใหม่)', /nami:2 คลิป/.test(rs), rs);
   await v8.close();
@@ -589,6 +589,53 @@ try {
   check('สตูดิโอ: ไม่มี error · หน้าไม่ล้นจอ · แถบเครื่องมืออยู่ในจอ', !spErr.length && over.sw <= over.iw + 1 && over.tb <= over.ih + 1, spErr.join(' | ') + JSON.stringify(over));
   await sp.evaluate(() => MWStore.del('mw_studio_v1'));
   await sp.close();
+  }
+  // ประวัติงาน (history.js + history-ui.js): เก็บ N อันล่าสุดต่อชนิด · key เดิม = แก้ของเดิม · เก็บเฉพาะวิดีโอ/srt (ไม่เก็บ mp3) · สูตรที่เกินถูกลบพร้อมไฟล์สำรอง · ไฟล์วิดีโอไม่ลบเอง · ล้างข้อมูลแล้วดึงกลับจากไฟล์ · แผงในตั้งค่า · เปิดตารางกลับในตัดต่ออัตโนมัติ
+  {
+    const hp = await context.newPage(); const hErr = []; hp.on('pageerror', (e) => hErr.push(e.message));
+    await hp.goto(base + '/index.html'); await hp.waitForFunction(() => window.MW && window.MWHist, null, { timeout: 20000 });
+    const h = await hp.evaluate(async () => {
+      MWStore.del('mw_hist_v1'); const out = {}, files = {}, dels = [];
+      window.Capacitor = { isNativePlatform: () => true, Plugins: { Filesystem: {
+        writeFile: async ({ path, data }) => { files[path] = data; }, deleteFile: async ({ path }) => { dels.push(path); delete files[path]; },
+        readdir: async ({ path }) => path === 'Meowrin/history' ? { files: Object.keys(files).filter((p) => p.startsWith('Meowrin/history/')).map((p) => ({ name: p.split('/').pop(), type: 'file' })) } : { files: [{ name: 'meowrin_studio_2201.mp4', type: 'file', size: 5, uri: 'file:///d/a.mp4', mtime: 5 }, { name: 'x.mp3', type: 'file', size: 1, mtime: 6 }, { name: 'history', type: 'directory' }] },
+        readFile: async ({ path }) => ({ data: files[path] }) } } };
+      const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
+      MWHist.setMax(5);
+      for (let i = 0; i < 8; i++) MWHist.add('plan', { key: 100 + i, title: 'บทที่ ' + i, data: { script: 'ก' + i } });
+      MWHist.add('plan', { key: 107, title: 'แก้ซ้ำ', data: { script: 'ใหม่' } });
+      out.plan = MWHist.list('plan').map((x) => x.key).join(','); out.top = MWHist.list('plan')[0].title;
+      MWHist.addFile({ name: 'voice.mp3', rel: 'Meowrin/voice.mp3', uri: 'u', size: 1 });
+      for (let i = 0; i < 7; i++) MWHist.addFile({ name: 'meowrin_' + (1000 + i) + '.mp4', rel: 'Meowrin/meowrin_' + (1000 + i) + '.mp4', uri: 'file:///d/' + i + '.mp4', size: 1000 + i });
+      MWHist.addFile({ name: 'subtitle.srt', rel: 'Meowrin/subtitle.srt', uri: 'u2', size: 3 });
+      MWHist.addFile({ name: 'meowrin_studio_2200.mp4', rel: 'Meowrin/meowrin_studio_2200.mp4', uri: 'u3', size: 4 });
+      out.files = MWHist.list('file').length; out.tools = [...new Set(MWHist.list('file').map((x) => x.tool))].sort().join('|'); out.mp3 = MWHist.list('file').some((x) => /mp3/.test(x.title));
+      await sleep(1500); out.mirror = Object.keys(files).filter((p) => p.startsWith('Meowrin/history/')).sort().join(','); out.pruneDel = dels.filter((p) => p.startsWith('Meowrin/history/')).length;
+      out.noAutoDelVideo = !dels.some((p) => /\.mp4$/.test(p));
+      const purged = await MWHist.purgeFiles(); out.purged = purged; out.delFiles = dels.filter((p) => /\.(mp4|srt)$/.test(p)).length; out.left = MWHist.list('file').length;
+      const first = MWHist.list('plan')[0].id; await MWHist.remove(first); out.removed = MWHist.list('plan').length;
+      MWStore.del('mw_hist_v1'); out.restored = await MWHist.restore(); out.afterPlan = MWHist.list('plan').length; out.afterFile = MWHist.list('file').map((x) => x.title).join('|'); out.title = MWHist.list('plan').map((x) => x.title).join('|');
+      delete window.Capacitor; return out;
+    });
+    check('ประวัติงาน: เก็บสูตรแค่ 5 ล่าสุดต่อชนิด · key เดิมแก้ของเดิมแล้วขึ้นบนสุด', h.plan === '107,106,105,104,103' && h.top === 'แก้ซ้ำ', JSON.stringify(h));
+    check('ประวัติงาน: ไฟล์เก็บเฉพาะ mp4/srt (ไม่เก็บ mp3) · จัดชนิดตามชื่อไฟล์ (สตูดิโอ/ตัดต่ออัตโนมัติ/ซับ)', h.files === 9 && !h.mp3 && h.tools === 'ซับจอเขียว|ตัดต่ออัตโนมัติ|สตูดิโอ', JSON.stringify(h));
+    check('ประวัติงาน: สูตรเขียนสำเนาลงไฟล์ ที่เกิน max ถูกลบไฟล์สำรองด้วย แต่ไฟล์วิดีโอไม่ถูกลบเอง', h.mirror.split(',').length === 5 && h.pruneDel === 3 && h.noAutoDelVideo, JSON.stringify(h));
+    check('ประวัติงาน: ล้างไฟล์เก่า = ลบเฉพาะที่เกิน 5 ล่าสุด (4 ไฟล์) · ลบทีละอัน · ล้างข้อมูลแล้วดึงสูตร+ไฟล์กลับจาก Documents', h.purged === 4 && h.delFiles === 4 && h.left === 5 && h.removed === 4 && h.restored === 5 && h.afterPlan === 4 && h.afterFile === 'meowrin_studio_2201.mp4' && /บทที่ 6/.test(h.title), JSON.stringify(h));
+    await hp.evaluate(() => { MWHist.setMax(30); MWStore.set('mw_hist_v1', { max: 30, items: [] }); MWHist.add('plan', { key: 1, title: 'ตารางทดสอบ', data: { mode: 'fast', script: 'บทจากประวัติ', at: 1, shots: [] } }); MWHist.add('studio', { key: 'p1', title: 'โปรเจกต์ทดสอบ', data: { v: 1, id: 'p1', name: 'โปรเจกต์ทดสอบ', clips: [], texts: [], ratio: '9:16', bg: 'blur', voice: null } }); MWHist.addFile({ name: 'meowrin_1234.mp4', rel: 'Meowrin/meowrin_1234.mp4', uri: 'file:///x.mp4', size: 3145728 }); });
+    await hp.click('nav button[data-tab="settings"]'); await hp.evaluate(() => { document.getElementById('hsFold').open = true; }); await hp.waitForTimeout(300);
+    const ui = await hp.evaluate(() => ({ rows: [...document.querySelectorAll('#hsList .hs b')].map((b) => b.textContent).join('|'), tag: document.getElementById('hsTag').textContent, small: [...document.querySelectorAll('#hsList .hs small')].map((s) => s.textContent).join('|'), max: document.getElementById('hsMax').value, over: document.documentElement.scrollWidth > innerWidth + 1 }));
+    check('ประวัติงาน: แผง "ผลงานล่าสุด" ในตั้งค่าโชว์ตัดต่อ/สตูดิโอ/ไฟล์ พร้อมชนิด ขนาด ไม่ล้นจอ', ui.rows.includes('ตารางทดสอบ') && ui.rows.includes('โปรเจกต์ทดสอบ') && ui.rows.includes('meowrin_1234.mp4') && ui.tag === '3 รายการ' && /3\.0 MB/.test(ui.small) && ui.max === '30' && !ui.over, JSON.stringify(ui));
+    await hp.evaluate(() => { document.querySelector('#hsList .hs[data-id="plan-1"] [data-o]').click(); });
+    await hp.waitForURL(/footage\.html\?tab=plan&hist=1/); await hp.waitForFunction(() => window.FT && document.getElementById('plText'), null, { timeout: 20000 }); await hp.waitForTimeout(600);
+    const back = await hp.evaluate(() => ({ text: document.getElementById('plText').value, url: location.search, mode: document.getElementById('plModeBtn').textContent }));
+    check('ประวัติงาน: เปิดตารางเก่าจากประวัติ → ตัดต่ออัตโนมัติใส่บท/แบบของรอบนั้นกลับมา', back.text === 'บทจากประวัติ' && back.url === '?tab=plan' && /แบบ 2/.test(back.mode), JSON.stringify(back));
+    await hp.goto(base + '/index.html'); await hp.waitForFunction(() => window.MWHist, null, { timeout: 20000 });
+    await hp.evaluate(() => { MWStore.del('mw_studio_v1'); });
+    await hp.click('nav button[data-tab="settings"]'); await hp.evaluate(() => { document.getElementById('hsFold').open = true; document.querySelector('#hsList .hs[data-id="studio-p1"] [data-o]').click(); });
+    await hp.waitForURL(/studio\.html/); await hp.waitForFunction(() => window.MWStudioUI, null, { timeout: 20000 });
+    check('ประวัติงาน: เปิดโปรเจกต์สตูดิโอเก่าจากประวัติ → สตูดิโอเปิดโปรเจกต์นั้น · ไม่มี error', (await hp.evaluate(() => document.getElementById('stName').textContent)) === 'โปรเจกต์ทดสอบ' && !hErr.length, hErr.join(' | '));
+    await hp.evaluate(() => { MWStore.del('mw_hist_v1'); MWStore.del('mw_studio_v1'); MWStore.del('mw_footage_direct_v1'); });
+    await hp.close();
   }
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
