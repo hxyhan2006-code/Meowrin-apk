@@ -232,3 +232,4 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 .alhead small{font-size:13px}
 .mode-plan .tabs{display:none}
 #alMain[hidden],#results[hidden]{display:none}
+#p-album>.panel{margin-bottom:16px}

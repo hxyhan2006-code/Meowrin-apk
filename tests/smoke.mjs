@@ -320,6 +320,15 @@ try {
   await sq.fill('#q', ''); await sq.waitForTimeout(500);
   const sq2 = await sq.evaluate(() => ({ main: !document.getElementById('alMain').hidden, res: document.getElementById('results').hidden }));
   check('ค้นหาในหน้าอัลบั้ม: ไม่พิมพ์ = ตารางอัลบั้ม · พิมพ์ "ลูฟี่หัวเราะภาคสกายเปีย" = เจอฉากเดียวที่ตรง (ไม่ใช่ฉากโซโร/ภาคอื่น) · ล้างแล้วกลับตารางอัลบั้ม', sq0.main && sq0.res && sq1.main && sq1.cards === 1 && sq1.txt && sq2.main && sq2.res && !sqErr.length, JSON.stringify([sq0, sq1, sq2]) + sqErr.join());
+  // ตัวกรองภาค (รวมกับตัวละครได้) + ช่องว่างใต้แผงค้นหา
+  await sq.evaluate(() => { FT.ui.lib().push({ id: 'sk2', name: 'sk2.mp4', size: 10, album: 'luffy', duration: 20, status: 'done', lastModified: 2, cover: '', scenes: [{ s: 0, e: 4, thumb: '', ai: { characters: ['Luffy'], arc: 'Skypiea' } }, { s: 4, e: 9, thumb: '', ai: { characters: ['Zoro'], arc: 'Skypiea arc' } }] }); FT.ui.search(); });
+  await sq.click('#chips [data-open=r]'); await sq.waitForTimeout(200);
+  const arcRows = await sq.evaluate(() => [...document.querySelectorAll('#pkList .alrow')].map((r) => r.textContent.replace(/\s+/g, ' ').trim()).join('|'));
+  await sq.locator('#pkList .alrow', { hasText: 'Skypiea' }).click(); await sq.click('#pkDone'); await sq.waitForTimeout(400);
+  const ar1 = await sq.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length, main: document.getElementById('alMain').hidden, chip: [...document.querySelectorAll('#chips .chip')].some((c) => /Skypiea/.test(c.textContent)) }));
+  await sq.click('#chips [data-open=c]'); await sq.waitForTimeout(200); await sq.locator('#pkList .alrow', { hasText: 'Zoro' }).click(); await sq.click('#pkDone'); await sq.waitForTimeout(400);
+  const ar2 = await sq.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length, gap: parseFloat(getComputedStyle(document.querySelector('#p-album > .panel')).marginBottom) }));
+  check('ตัวกรองภาค: มีรายการภาค (Skypiea 1 คลิป ยังไม่แน่ใจ) · เลือก Skypiea เจอ 2 ฉากของคลิปนั้น · ใส่ตัวละคร Zoro ด้วยเหลือ 1 ฉาก · มีช่องว่างใต้แผงค้นหา', /Skypiea/.test(arcRows) && /ยังไม่แน่ใจ/.test(arcRows) && ar1.cards === 2 && ar1.main && ar1.chip && ar2.cards === 1 && ar2.gap >= 12, JSON.stringify([arcRows, ar1, ar2]));
   await sq.close();
   // ปุ่มย้อนของมือถือ (ปลั๊กอิน App): ปิดหน้าต่าง/กลับแท็บก่อน แล้วค่อยถามออกแอพ · เลือก "อยู่ต่อ" ไม่ออก
   const bk = await context.newPage(); const bkE = [];  bk.on('pageerror', (e) => bkE.push(e.message));

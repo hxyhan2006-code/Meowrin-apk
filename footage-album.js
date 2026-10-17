@@ -46,23 +46,7 @@
     allE.forEach(function(e){ put(e.album, e); });
     return mk(function(a, b){ return b.items.length - a.items.length; });
   }
-  /* ---------- ภาค (arc) ---------- */
-  var UNSURE = "ยังไม่แน่ใจ";
-  var ARCS = ["Romance Dawn", "Orange Town", "Syrup Village", "Baratie", "Arlong Park", "Loguetown", "Reverse Mountain", "Whisky Peak", "Little Garden", "Drum Island", "Alabasta", "Jaya", "Skypiea", "Long Ring Long Land", "Water 7", "Enies Lobby", "Thriller Bark", "Sabaody Archipelago", "Amazon Lily", "Impel Down", "Marineford", "Return to Sabaody", "Fish-Man Island", "Punk Hazard", "Dressrosa", "Zou", "Whole Cake Island", "Wano Country", "Egghead"];
-  var ARC_RX = [[/return to sabaody|post.?war/, "Return to Sabaody"], [/romance dawn|shells town|alvida/, "Romance Dawn"], [/orange town|buggy/, "Orange Town"], [/syrup|kuro|captain kuro/, "Syrup Village"], [/baratie|don krieg/, "Baratie"], [/arlong|cocoyasi/, "Arlong Park"], [/logue ?town/, "Loguetown"], [/reverse mountain|laboon/, "Reverse Mountain"], [/whisk?e?y ?peak|baroque works intro/, "Whisky Peak"], [/little garden/, "Little Garden"], [/drum/, "Drum Island"], [/alabasta|arabasta/, "Alabasta"], [/jaya/, "Jaya"], [/skypiea|sky island/, "Skypiea"], [/long ring|davy back/, "Long Ring Long Land"], [/water ?(7|seven)|galley.?la/, "Water 7"], [/enies|buster call|cp9/, "Enies Lobby"], [/thriller/, "Thriller Bark"], [/sabaody|human auction/, "Sabaody Archipelago"], [/amazon lily/, "Amazon Lily"], [/impel/, "Impel Down"], [/marine ?ford|summit war|paramount/, "Marineford"], [/fish.?man|hody/, "Fish-Man Island"], [/punk hazard/, "Punk Hazard"], [/dress ?rosa|colosseum/, "Dressrosa"], [/\bzou\b/, "Zou"], [/whole cake|big mom/, "Whole Cake Island"], [/wano|onigashima/, "Wano Country"], [/egghead|vegapunk/, "Egghead"]];
-  function normArc(raw){
-    var s = String(raw || "").trim().replace(/\s+arc$/i, ""), low = s.toLowerCase(); if(!low || /^(unknown|none|n\/a|na|-|unsure|unclear)$/.test(low)) return "";
-    for(var i = 0; i < ARC_RX.length; i++) if(ARC_RX[i][0].test(low)) return ARC_RX[i][1];
-    return s.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }); /* ภาคที่ไม่อยู่ในรายชื่อ (สะกดแปลก/ตอนพิเศษ) เก็บชื่อตามที่ AI ตอบ */
-  }
-  function arcRank(n){ if(n === UNSURE) return 1000; var i = ARCS.indexOf(n); return i < 0 ? 500 : i; }
-  function arcOf(c){ /* { arc, sure } · ที่ผู้ใช้ตั้งเอง (c.arcFixed) ชนะเสมอ · AI: ต้องมีฉากที่บอกภาคพอ (≥25% ของฉาก) และภาคเดียวกัน ≥60% */
-    if(c.arcFixed && c.arc) return { arc:c.arc, sure:true };
-    var t = {}, n = 0; (c.scenes || []).forEach(function(sc){ var a = normArc(sc.ai && sc.ai.arc); if(a){ t[a] = (t[a] || 0) + 1; n++; } });
-    if(!n) return { arc:"", sure:false };
-    var top = Object.keys(t).sort(function(x, y){ return t[y] - t[x]; })[0];
-    return { arc:top, sure:t[top] / n >= 0.6 && n >= Math.max(1, Math.ceil((c.scenes || []).length * 0.25)) };
-  }
+  var UNSURE = U.UNSURE, ARCS = U.ARCS, arcRank = U.arcRank, arcOf = U.arcOf; /* นิยามภาคอยู่ footage-find.js (ใช้ร่วมกับตัวกรองภาคในช่องค้นหา) */
   function done(e){ return !!(e.c && e.c.status === "done"); } /* AI ทำดัชนีคลิปนี้แล้ว */
   function fileUrl(e){ try{ return e.uri && window.MWLocal ? MWLocal.fileUrl(e.uri) : null; }catch(err){ return null; } }
   function dur(e, t){ var d = e.c && e.c.duration || t && t.d; if(!d) return ""; d = Math.round(d); return Math.floor(d / 60) + ":" + String(d % 60).padStart(2, "0"); }
