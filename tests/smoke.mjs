@@ -79,10 +79,10 @@ try {
   await main.page.click('#vSavedList .vplay'); await main.page.waitForTimeout(600);
   const playing = await main.page.evaluate(() => window.__auds.some((a) => !a.paused));
   await main.page.click('#vSavedClose'); await main.page.waitForTimeout(300);
-  // เสียงที่อยู่แค่ในคลัง: ปุ่ม "ดึงมาเครื่องนี้" ต้องเห็นและกดได้ทันที (เดิมซ่อนอยู่ตามกฎการ์ดที่ยังไม่กาง แตะไม่ได้เลย)
-  await main.page.evaluate(() => { MWVoice.cloudOn = () => true; MWVoice.cloudList = async () => [{ id: 1699999999999, size: 400000 }]; });
-  await main.page.click('#vSavedBtn'); await main.page.waitForTimeout(1200);
-  check('เสียงที่เก็บไว้: เสียงที่อยู่แค่ในคลังมีปุ่ม "ดึงมาเครื่องนี้" ที่มองเห็น', await main.page.isVisible('#vSavedCloud [data-vpull]'));
+  // เสียงที่เก็บไว้: ไม่มีของคลัง R2 เหลือ (ไม่มีส่วน "อยู่ในคลัง" / ปุ่มอัปขึ้นคลัง / ดึงมาเครื่องนี้) · ปุ่มดาวน์โหลดในแอพบันทึกผ่าน MWNative (ไม่ใช้ <a download> ที่ในแอพไม่เซฟ)
+  await main.page.click('#vSavedBtn'); await main.page.waitForTimeout(800);
+  const svr = await main.page.evaluate(() => ({ cloudLeft: !!document.querySelector('#vSavedCloud, [data-vup], [data-vpull], [data-vdelc]'), hasDl: !!document.querySelector('#vSavedList a[data-vdl]'), api: ['cloudOn', 'cloudList', 'cloudPut', 'cloudDel', 'pull'].filter((k) => k in MWVoice) }));
+  check('เสียงที่เก็บไว้: ไม่เหลือส่วนของคลัง R2 · มีปุ่มดาวน์โหลด (data-vdl)', !svr.cloudLeft && svr.hasDl && !svr.api.length, JSON.stringify(svr));
   await main.page.click('#vSavedClose'); await main.page.waitForTimeout(300);
   // แถวปุ่มใต้เสียงที่เจนแล้ว ต้องไม่ล้นจอ (ล้น = มือถือซูมออกทั้งหน้า) แม้ปุ่มโชว์ครบทั้ง 5
   await main.page.evaluate(() => { document.querySelector('#vBody').hidden = false; document.querySelector('#vNo').hidden = true; document.querySelector('#ttsOut').hidden = false; ['ttsSub', 'ttsDirect', 'ttsRaw', 'ttsShare'].forEach((i) => { document.getElementById(i).hidden = false; }); });

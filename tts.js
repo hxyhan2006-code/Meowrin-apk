@@ -211,9 +211,9 @@
       take.url = URL.createObjectURL(take.blob);
       take.rawUrl = take.blob !== take.raw ? URL.createObjectURL(take.raw) : "";
       a.takes.push(take); a.sel = a.takes.length - 1;
-      if(window.MWVoice){ /* เก็บในเครื่อง 10 เทค + สำรองขึ้นคลัง R2 (ถ้าตั้งค่าไว้) ให้หน้าฟุตเทจใช้ต่อ */
+      if(window.MWVoice){ /* เก็บเทคไว้ในเครื่อง (ฐานข้อมูล + ไฟล์ Documents/Meowrin/voice) ให้หน้าฟุตเทจ/ซับใช้ต่อ */
         var vrec = { id:Date.now(), text:text, name:take.name, blob:take.blob, align:take.align }; take.vid = vrec.id; /* vid = รหัสในที่เก็บเสียง ใช้เปิดหน้าซับด้วยเทคนี้ */
-        MWVoice.put(vrec).then(function(){ return MWVoice.cloudPut(vrec).catch(function(err){ MW.toast("สำรองเสียงขึ้นคลังไม่ได้: " + err.message); }); })
+        MWVoice.put(vrec)
           .then(function(){ if(!$("vSavedSheet").hidden) renderSaved(); else countSaved(); }).catch(function(){});
       }
       MW.toast(a.takes.length > 1 ? "ได้เทค " + a.takes.length + " แล้ว" : "สร้างเสียงแล้ว");
@@ -277,40 +277,24 @@
     }, Promise.resolve());
   }
   var openCard = ""; /* การ์ดที่กางปุ่มอยู่ (ทีละใบ) (ทำซับ/ตัดต่อ/ดาวน์โหลด/ลบ ซ่อนไว้จนกว่าจะแตะ) */
-  function localCard(r, on){
-    var st = r.cloud ? MWIcon("cloud") + "อยู่ในคลัง" : on ? "ยังไม่อยู่ในคลัง" : "เฉพาะเครื่องนี้";
+  function localCard(r){
     return '<div class="vcard' + (String(r.id) === openCard ? " open" : "") + '" data-id="' + r.id + '"><div class="vtop"><button class="vplay" data-vplay="' + r.id + '" aria-label="เล่น/หยุด">' + PLAY + '</button>'
-      + '<div class="vmeta"><b>' + MW.esc(dateOf(r.id)) + '</b><small>' + (r.blob.size / 1048576).toFixed(1) + ' MB · ' + (r.text || "").length.toLocaleString() + ' ตัวอักษร · ' + st + '</small></div><button class="vmore" data-vmore="' + r.id + '" aria-label="เมนูเทคนี้">' + MWIcon("more") + '</button></div>'
+      + '<div class="vmeta"><b>' + MW.esc(dateOf(r.id)) + '</b><small>' + (r.blob.size / 1048576).toFixed(1) + ' MB · ' + (r.text || "").length.toLocaleString() + ' ตัวอักษร</small></div><button class="vmore" data-vmore="' + r.id + '" aria-label="เมนูเทคนี้">' + MWIcon("more") + '</button></div>'
       + '<p class="vstxt">' + MW.esc((r.text || "").replace(/\s+/g, " ").slice(0, 140)) + '</p>'
       + '<div class="vprog"><div class="vbar" data-vbar="' + r.id + '"><i></i></div><span class="vtime">0:00</span></div>'
       + '<div class="vact"><a class="btn small" href="sub/index.html?voice=' + r.id + '">ทำซับ</a><a class="btn small ghost" href="footage.html?voice=' + r.id + '">' + MWIcon("film") + 'ตัดต่อภาพ</a>'
-      + '<a class="btn ghost small" href="' + savedUrls[r.id] + '" download="' + MW.esc(r.name || "meowrin.mp3") + '">ดาวน์โหลด</a>'
-      + (on && !r.cloud ? '<button class="btn ghost small" data-vup="' + r.id + '">' + MWIcon("cloud") + 'อัปขึ้นคลัง</button>' : "")
+      + '<a class="btn ghost small" data-vdl="' + r.id + '" href="' + savedUrls[r.id] + '" download="' + MW.esc(r.name || "meowrin.mp3") + '">ดาวน์โหลด</a>'
       + '<button class="btn ghost small" data-vdel="' + r.id + '">ลบ</button></div></div>';
   }
-  function cloudCard(c){
-    return '<div class="vcard open"><div class="vtop"><div class="vmeta"><b>' + MW.esc(dateOf(c.id)) + '</b><small>' + (c.size / 1048576).toFixed(1) + ' MB · ' + MWIcon("cloud") + 'อยู่ในคลัง</small></div></div>'
-      + '<div class="vact"><button class="btn small" data-vpull="' + c.id + '">' + MWIcon("down") + 'ดึงมาเครื่องนี้</button><button class="btn ghost small" data-vdelc="' + c.id + '">ลบจากคลัง</button></div></div>';
-  }
-  async function renderSaved(){ /* วาดเสียงในเครื่องก่อน (resolve เมื่อเสร็จ) · เสียงที่อยู่แค่ในคลังเติมทีหลังเฉพาะส่วนของมัน ไม่วาดการ์ดในเครื่องซ้ำ (กันกะพริบ/เสียงสะดุด) */
+  async function renderSaved(){ /* วาดเสียงที่เก็บไว้ (resolve เมื่อเสร็จ) */
     if(!window.MWVoice) return;
-    var tok = ++rsTok, box = $("vSavedList"), list = [], on = MWVoice.cloudOn();
+    var tok = ++rsTok, box = $("vSavedList"), list = [];
     try{ list = await MWVoice.list(); }catch(err){ box.innerHTML = '<p class="empty">เปิดที่เก็บเสียงไม่ได้</p>'; return; }
     stopSaved(); Object.keys(savedUrls).forEach(function(k){ URL.revokeObjectURL(savedUrls[k]); }); savedUrls = {};
     list.forEach(function(r){ savedUrls[r.id] = URL.createObjectURL(r.blob); });
-    var empty = '<p class="empty">ยังไม่มีเสียงที่เก็บไว้ · สร้างเสียงแล้วจะเก็บให้อัตโนมัติ (50 เทคล่าสุด' + (on ? " + สำรองบนคลัง" : "") + ')</p>';
-    box.innerHTML = '<div id="vSavedLocal">' + (list.map(function(r){ return localCard(r, on); }).join("") || (on ? '<p class="empty">กำลังโหลด...</p>' : empty)) + '</div><div id="vSavedCloud"></div>';
+    box.innerHTML = list.map(localCard).join("") || '<p class="empty">ยังไม่มีเสียงที่เก็บไว้ · สร้างเสียงแล้วจะเก็บให้อัตโนมัติ (50 เทคล่าสุด)</p>';
     setSavedN(list.length);
     fillDurations(list, tok);
-    if(!on) return;
-    try{
-      var cloud = await MWVoice.cloudList();
-      if(tok !== rsTok) return; /* มีการวาดรอบใหม่แล้ว ผลเก่าทิ้ง */
-      var only = cloud.filter(function(c){ return !list.some(function(r){ return r.id === c.id; }); });
-      setSavedN(list.length + only.length);
-      if(!list.length) $("vSavedLocal").innerHTML = only.length ? "" : empty;
-      $("vSavedCloud").innerHTML = only.length ? '<p class="hint" style="margin:12px 0 4px">' + MWIcon("cloud") + 'อยู่ในคลังแต่ยังไม่ได้ดึงมาเครื่องนี้</p>' + only.map(cloudCard).join("") : "";
-    }catch(err){ if(tok === rsTok && !list.length) $("vSavedLocal").innerHTML = empty; /* คลังไม่ตอบ = แสดงเฉพาะในเครื่อง */ }
   }
   function closeSaved(){ stopSaved(); MW.closeModal("vSavedSheet"); }
   $("vSavedBtn").addEventListener("click", async function(){ await renderSaved(); MW.openModal("vSavedSheet"); }); /* เปิดชีตหลังข้อมูลในเครื่องพร้อมแล้ว ไม่โชว์ของว่าง/ของเก่าแว้บ */
@@ -325,25 +309,20 @@
     var mt = e.target.closest(".vmeta, [data-vmore]"), mc = mt && mt.closest(".vcard[data-id]");
     if(mc){ openCard = openCard === mc.dataset.id ? "" : mc.dataset.id; /* แตะที่เดิมซ้ำ = ปิด · แตะอันอื่น = ปิดอันเก่าแล้วเปิดอันใหม่ */
       $("vSavedList").querySelectorAll(".vcard[data-id]").forEach(function(c){ c.classList.toggle("open", c.dataset.id === openCard); }); return; }
+    var dl = e.target.closest("a[data-vdl]"); /* ดาวน์โหลดเทคที่เก็บไว้: ในแอพ <a download> ไม่เซฟ → ใช้ MWNative.save (ลงโฟลเดอร์ Documents/Meowrin) */
+    if(dl && window.MWNative && MWNative.isNative()){ e.preventDefault(); var rv = await MWVoice.get(+dl.dataset.vdl); if(rv) MWNative.save(rv.blob, rv.name || "meowrin.mp3").then(function(r){ MW.toast("บันทึกแล้วที่ " + r.path); }, function(err){ MW.toast("บันทึกไม่ได้: " + (err.message || err)); }); return; }
     var b = e.target.closest("button"); if(!b) return; var d = b.dataset;
     if(d.vplay){ playSaved(+d.vplay); return; }
-    if(d.vdel || d.vdelc){ /* ลบ: แตะครั้งแรกปุ่มเปลี่ยนเป็น "แน่ใจนะ?" แตะซ้ำภายใน 3 วิถึงลบ (ไม่ใช้กล่องของเบราว์เซอร์) */
+    if(d.vdel){ /* ลบ: แตะครั้งแรกปุ่มเปลี่ยนเป็น "แน่ใจนะ?" แตะซ้ำภายใน 3 วิถึงลบ (ไม่ใช้กล่องของเบราว์เซอร์) */
       MW.confirmTap(b, b.textContent, async function(){
         try{
-          if(d.vdel){ var rec = await MWVoice.get(+d.vdel), withCloud = rec && rec.cloud; await MWVoice.del(+d.vdel); if(withCloud) await MWVoice.cloudDel(+d.vdel); }
-          else await MWVoice.cloudDel(+d.vdelc);
+          await MWVoice.del(+d.vdel);
           MW.toast("ลบแล้ว");
         }catch(err){ MW.toast("ทำไม่ได้: " + err.message); }
         renderSaved();
       });
       return;
     }
-    try{
-      if(d.vup){ b.disabled = true; b.textContent = "กำลังอัป..."; var r = await MWVoice.get(+d.vup); await MWVoice.cloudPut(r); }
-      else if(d.vpull){ b.disabled = true; b.textContent = "กำลังดึง..."; await MWVoice.pull(+d.vpull); }
-      else return;
-    }catch(err){ MW.toast("ทำไม่ได้: " + err.message); }
-    renderSaved();
   });
 
   $("ttsBtn").addEventListener("click", generate);

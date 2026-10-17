@@ -28,22 +28,21 @@
 
   /* ---------- เสียงพากย์ (เทคล่าสุดจากแท็บเสียงของแอพหลัก เก็บใน MWVoice) ---------- */
   function norm(s){ return String(s || "").replace(/\s+/g, ""); }
-  var voices = [], cl = [], voiceSel = "";
+  var voices = [], voiceSel = "";
   var matchText = function(t){ return function(v){ var x = norm(v.text); return t && x && (x === t || x.indexOf(t) >= 0 || t.indexOf(x) >= 0); }; };
   function showVoice(){
-    var v = voices.find(function(x){ return String(x.id) === voiceSel; }), c = cl.find(function(x){ return String(x.id) === voiceSel; });
-    fsel("plVoiceBtn", v ? (v.name || "เสียง") + " · " + new Date(v.id).toLocaleTimeString("th-TH", { hour:"2-digit", minute:"2-digit" }) : c ? "(ในคลัง) " + new Date(c.id).toLocaleString("th-TH", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }) : "ไม่ใส่เสียง (ประมาณเวลาจากตัวอักษร)", !voiceSel, "speaker");
+    var v = voices.find(function(x){ return String(x.id) === voiceSel; });
+    fsel("plVoiceBtn", v ? (v.name || "เสียง") + " · " + new Date(v.id).toLocaleTimeString("th-TH", { hour:"2-digit", minute:"2-digit" }) : "ไม่ใส่เสียง (ประมาณเวลาจากตัวอักษร)", !voiceSel, "speaker");
     $("plVoiceInfo").textContent = voices.length ? "" : "ยังไม่มีเสียง · สร้างเสียงในแอพหลัก (แท็บ เสียง) ก่อน แล้วกลับมาเลือกที่นี่";
   }
   function autoVoice(){ /* เสียงที่เลือกไว้ยังอยู่ก็คงไว้ ไม่งั้นเลือกเทคที่ตรงกับบทให้ */
     var m = voices.find(matchText(norm($("plText").value)));
-    if(!voices.concat(cl).some(function(v){ return String(v.id) === voiceSel; })) voiceSel = m ? String(m.id) : "";
+    if(!voices.some(function(v){ return String(v.id) === voiceSel; })) voiceSel = m ? String(m.id) : "";
     showVoice();
   }
   async function refreshVoices(){
     var on = mode === "fast"; $("plVoiceRow").hidden = !on; if(!on || !window.MWVoice) return;
     try{ voices = await MWVoice.list(); }catch(err){ voices = []; }
-    cl = []; if(MWVoice.cloudOn()){ try{ cl = (await MWVoice.cloudList()).filter(function(c){ return !voices.some(function(v){ return v.id === c.id; }); }); }catch(err){} } /* เสียงที่อยู่ในคลังแต่ยังไม่ได้ดึงมาเครื่องนี้ */
     autoVoice();
   }
   $("plVoiceBtn").addEventListener("click", function(){
@@ -51,7 +50,7 @@
     FT.pick.open({ title:"เสียงพากย์", search:false, icon:"speaker", items:function(){ /* มีบทอยู่แล้ว = โชว์เฉพาะเสียงที่ตรงกับบทนั้น · แตะตัวที่เลือกอยู่ซ้ำ = ยกเลิก */
       return [{ k:"", name:"ไม่ใส่เสียง", desc:t ? "ประมาณเวลาจากตัวอักษร" : "ประมาณเวลาจากตัวอักษร · เลือกบทก่อนจะเห็นเฉพาะเสียงของบทนั้น", icon:"x", on:!voiceSel }]
         .concat(voices.filter(function(v){ return !t || match(v) || String(v.id) === voiceSel; }).map(function(v){ return { k:String(v.id), name:(v.name || "เสียง"), desc:time(v.id) + (v.align ? " · มีเวลาคำพูด" : " · ไม่มีเวลาคำพูด (ประมาณตามตัวอักษร)"), on:String(v.id) === voiceSel }; }))
-        .concat(t ? [] : cl.map(function(c){ return { k:String(c.id), name:"(ในคลัง) " + new Date(c.id).toLocaleString("th-TH", { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }), desc:"ดึงมาให้ตอนกำกับ", icon:"cloud", on:String(c.id) === voiceSel }; })); },
+        ; },
       onPick:function(k){ voiceSel = k === voiceSel ? "" : k; showVoice(); } });
   });
   /* เปิดจากปุ่ม "ตัดต่อภาพ" ในแอพหลัก (footage.html?voice=รหัสเทค): ไปแท็บผู้กำกับ โหมด AI ตัดให้ ใส่บทและเลือกเสียงของเทคนั้นให้ */
@@ -59,7 +58,7 @@
   if(voiceQ && window.MWVoice) (async function(){
     history.replaceState(null, "", location.pathname);
     try{
-      var rec = await MWVoice.get(+voiceQ) || await MWVoice.pull(+voiceQ);
+      var rec = await MWVoice.get(+voiceQ);
       mode = "fast"; showMode(); if(rec.text) $("plText").value = rec.text;
       voiceSel = String(rec.id); await refreshVoices(); voiceSel = String(rec.id); showVoice(); render();
     }catch(err){ say("เปิดเสียงที่เลือกไม่ได้: " + err.message, "err"); }
@@ -147,7 +146,7 @@
     busy = true; this.disabled = true; var cost = 0, t0 = Date.now(), errs = 0;
     try{
       U.msg("plMsg", "AI กำลังแบ่งบทเป็นช็อต...");
-      var voice = mode === "fast" && voiceSel && window.MWVoice ? (await MWVoice.get(+voiceSel) || await MWVoice.pull(+voiceSel)) : null;
+      var voice = mode === "fast" && voiceSel && window.MWVoice ? await MWVoice.get(+voiceSel) : null;
       var b = await FT.beats(script, mode); cost += b.cost;
       if(!b.shots.length) throw new Error("AI แบ่งช็อตไม่ได้ ลองใหม่อีกครั้ง");
       var vdur = voice ? (await audioDur(voice.blob) || (voice.align ? voice.align.en[voice.align.en.length - 1] : 0)) : 0;
