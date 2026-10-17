@@ -22,8 +22,10 @@
     + '.mwhs-b{display:flex;gap:6px;flex:none}.mwhs-b button{min-height:40px;padding:0 14px;border-radius:10px;border:1px solid rgba(57,217,138,.55);background:rgba(57,217,138,.14);color:#39d98a;font:600 14px "IBM Plex Sans Thai",sans-serif}'
     + '.mwhs-b button.d{border-color:rgba(255,255,255,.14);background:#1a221f;color:#f4f4f5;font-weight:400}.mwhs-b button.d.arm{border-color:#f59e0b;color:#f59e0b}'
     + '.mwhs-m{width:100%;margin:0;color:#f59e0b;font-size:12.5px}'
-    + '.mwhp{position:fixed;inset:0;z-index:9500;background:#000;display:flex;flex-direction:column;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}.mwhp-h{display:flex;align-items:center;gap:10px;padding:10px 12px;color:#f4f4f5;font:500 15px "IBM Plex Sans Thai",sans-serif}.mwhp-h b{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
-    + '.mwhp video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}.mwhp .mwhs-m{padding:10px 16px}';
+    + '.mwhp{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px}'
+    + '.mwhp-c{width:min(100%,340px);background:#131917;border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px}'
+    + '.mwhp-h{display:flex;align-items:center;gap:8px;color:#f4f4f5;font:500 14px "IBM Plex Sans Thai",sans-serif}.mwhp-h b{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mwhp .mwhs-x{width:36px;height:36px}.mwhp .mwhs-x:after,.mwhp .mwhs-x:before{left:9px;top:17px}'
+    + '.mwhp video{display:block;width:100%;max-height:54vh;object-fit:contain;background:#000;border-radius:10px}.mwhp .mwhs-m{padding:0 4px}';
   function ensure(){
     if(sheet) return;
     sheet = document.createElement("div"); sheet.className = "mwhs"; sheet.hidden = true;
@@ -61,11 +63,12 @@
     if(!/\.(mp4|webm|mov)$/i.test(it.file.name) || !window.Capacitor || !Capacitor.convertFileSrc || !it.file.uri) return "ไฟล์อยู่ที่ Documents/" + it.file.rel + " (เปิดจากแอพไฟล์ของมือถือ)";
     ensure(); closePlayer();
     player = document.createElement("div"); player.className = "mwhp";
-    player.innerHTML = '<div class="mwhp-h"><b></b><button class="mwhs-x" type="button" aria-label="ปิด">ปิด</button></div><video controls playsinline autoplay></video><p class="mwhs-m" hidden></p>';
+    player.innerHTML = '<div class="mwhp-c"><div class="mwhp-h"><b></b><button class="mwhs-x" type="button" aria-label="ปิด">ปิด</button></div><video controls playsinline autoplay></video><p class="mwhs-m" hidden></p></div>';
     player.querySelector("b").textContent = it.title || it.file.name;
     var v = player.querySelector("video"); v.src = Capacitor.convertFileSrc(it.file.uri);
     v.onerror = function(){ var m = player.querySelector(".mwhs-m"); m.hidden = false; m.textContent = "เล่นไฟล์นี้ไม่ได้ (ไฟล์ถูกย้ายหรือลบไปแล้ว?) · Documents/" + it.file.rel; };
     player.querySelector(".mwhs-x").addEventListener("click", closePlayer);
+    player.addEventListener("click", function(e){ if(e.target === player) closePlayer(); }); /* แตะพื้นที่มืดข้างนอก = ปิด */
     document.body.appendChild(player);
     var prev = window.MWBackHook; playHook = function(){ if(player){ closePlayer(); return true; } return prev ? prev() : false; }; playHook.prev = prev; window.MWBackHook = playHook;
     return "";
