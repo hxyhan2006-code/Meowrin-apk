@@ -21,7 +21,10 @@
   function nameFor(x, n){ var base = String(x.name || "clip").replace(/\.[a-z0-9]+$/i, "").replace(/[\\/:*?"<>|]+/g, "_").slice(0, 40), t = function(v){ var r = Math.round(v); return Math.floor(r / 60) + "m" + ("0" + (r % 60)).slice(-2) + "s"; };
     return String(n).padStart(2, "0") + "_" + base + "_" + t(x.s) + "-" + t(x.e) + "." + (fmt === "webm" ? "webm" : "mp4"); }
 
-  function renderBar(){ var n = st.items.length, b = $("bskBar"); b.hidden = !n; b.querySelector("span").textContent = "ตะกร้าฉาก " + n + " ฉาก"; if(!$("bskSheet").hidden) renderList(); }
+  function syncButtons(){ /* ปุ่ม เก็บฉาก ทุกใบบนหน้าให้ตรงกับตะกร้า (ลบ/ล้าง/ตัดเสร็จในชีตแล้วดาวบนการ์ดต้องหาย) */
+    document.querySelectorAll(".bskadd[data-bk]").forEach(function(b){ var h = U.shownAt(+b.dataset.bk), on = !!(h && h.sc && has(h.c, h.sc)); b.classList.toggle("on", on); b.innerHTML = MWIcon("star") + (on ? "ในตะกร้า" : "เก็บฉาก"); });
+  }
+  function renderBar(){ var n = st.items.length, b = $("bskBar"); b.hidden = !n; document.body.classList.toggle("hasbsk", n > 0); syncButtons(); b.querySelector("span").textContent = "ตะกร้าฉาก " + n + " ฉาก"; if(!$("bskSheet").hidden) renderList(); }
   function renderList(msg){
     var tot = st.items.reduce(function(s, x){ return s + len(x); }, 0);
     $("bskInfo").textContent = st.items.length ? st.items.length + " ฉาก · รวม " + U.tm(tot) + " นาที" : "ตะกร้าว่าง · กด เก็บฉาก บนการ์ดฉากตอนค้นหา";
@@ -75,7 +78,7 @@
   $("bskList").addEventListener("click", function(e){ var b = e.target.closest("[data-rm]"); if(!b || run) return; remove(b.dataset.rm); renderBar(); renderList(); });
   $("bskPad").addEventListener("change", function(){ st.pad = this.checked; save(); });
   $("bskStop").addEventListener("click", function(){ stopF = true; $("bskStop").hidden = true; });
-  $("bskClear").addEventListener("click", async function(){ if(!await MWDialog.confirm("ล้างตะกร้าทั้งหมด?", { ok:"ล้าง" })) return; clear(); renderList(""); document.querySelectorAll(".bskadd.on").forEach(function(b){ b.classList.remove("on"); b.innerHTML = MWIcon("star") + "เก็บฉาก"; }); });
+  $("bskClear").addEventListener("click", async function(){ if(!await MWDialog.confirm("ล้างตะกร้าทั้งหมด?", { ok:"ล้าง" })) return; clear(); renderList(""); });
   $("bskCopy").addEventListener("click", async function(){
     var t = st.items.map(function(x, i){ return (i + 1) + ". " + x.name + " · " + U.tm(x.s) + "–" + U.tm(x.e) + (x.sum ? " · " + x.sum : ""); }).join("\n");
     try{ await navigator.clipboard.writeText(t); $("bskMsg").textContent = "คัดลอกรายการแล้ว"; }catch(e){ await MWDialog.copy(t); }

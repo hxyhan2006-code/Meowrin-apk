@@ -517,7 +517,10 @@ try {
   await sp.evaluate(() => document.getElementById('bkHost').scrollIntoView()); await sp.locator('#bkHost .bskadd').click(); await sp.waitForTimeout(200);
   const bk1 = await sp.evaluate(() => ({ bar: !document.getElementById('bskBar').hidden, txt: document.getElementById('bskBar').textContent, on: document.querySelector('#bkHost .bskadd').classList.contains('on'), big: !document.getElementById('big').hidden, n: FT.basket.list().length }));
   check('ตะกร้าฉาก: การ์ดมีปุ่ม เก็บฉาก · กดแล้วปุ่มเป็น ในตะกร้า + แถบลอยขึ้นพร้อมจำนวน · ไม่เปิดรูปใหญ่', bk0.btn && bk1.bar && /1 ฉาก/.test(bk1.txt) && bk1.on && !bk1.big && bk1.n === 1, JSON.stringify([bk0, bk1]));
-  await sp.click('#bskBar'); await sp.waitForSelector('#bskSheet:not([hidden])', { timeout: 4000 }); await sp.click('#bskRun');
+  await sp.click('#bskBar'); await sp.waitForSelector('#bskSheet:not([hidden])', { timeout: 4000 }); await sp.locator('#bskList [data-rm]').first().click(); await sp.waitForTimeout(150);
+  const bkr = await sp.evaluate(() => ({ on: document.querySelector('#bkHost .bskadd').classList.contains('on'), txt: document.querySelector('#bkHost .bskadd').textContent, n: FT.basket.list().length }));
+  check('ตะกร้าฉาก: เอาฉากออกจากชีต → ดาวบนการ์ดกลับเป็น เก็บฉาก ทันที (บั๊กเดิม: ดาวค้าง)', !bkr.on && /เก็บฉาก/.test(bkr.txt) && bkr.n === 0, JSON.stringify(bkr));
+  await sp.evaluate(() => { const c = FT.ui.lib().find((x) => x.id === 'bk1'); FT.basket.add(c, c.scenes[0]); document.getElementById('bskBar').dispatchEvent(new Event('click')); }); await sp.waitForSelector('#bskSheet:not([hidden])', { timeout: 4000 }); await sp.click('#bskRun');
   await sp.waitForFunction(() => /ตัดเสร็จ/.test(document.getElementById('bskMsg').textContent), null, { timeout: 30000 });
   const bk2 = await sp.evaluate(async () => { const sv = window.__saved[0], mb = await FT.speech.loadMB(); let dur = -1, err = ''; try { const inp = new mb.Input({ source: new mb.BlobSource(sv.blob), formats: mb.ALL_FORMATS }); dur = await inp.computeDuration(); } catch (e) { err = e.message; }
     return { n: window.__saved.length, nm: sv.nm, size: sv.size, noHist: sv.noHist, dur, err, msg: document.getElementById('bskMsg').textContent, left: FT.basket.list().length, over: document.documentElement.scrollWidth > innerWidth + 1 }; });

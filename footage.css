@@ -291,3 +291,5 @@ details.fold.step>summary .st small{display:block;margin-top:3px;font-family:"IB
 #bskSheet .abox{display:flex;flex-direction:column;max-height:84vh;overflow:hidden;padding-bottom:calc(22px + env(safe-area-inset-bottom))}#bskSheet .abox>*{flex:none}#bskSheet #bskList{flex:1 1 auto;min-height:0;max-height:40vh;overflow-y:auto;overscroll-behavior:contain}
 .bskrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}.bskrow:first-child{border-top:0}.bskrow .tx{flex:1;min-width:0}.bskrow b{display:block;font-weight:500;overflow-wrap:anywhere;font-size:14px}.bskrow small{display:block;color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}.bskrow .btn{flex:none;width:40px;padding:0}.bskrow .ic{margin:0}
 #bskSheet .row .btn{flex:1}
+body.hasbsk main{padding-bottom:84px}
+#bskSheet .row .btn{white-space:nowrap;padding:0 8px}
