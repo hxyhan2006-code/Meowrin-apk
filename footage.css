@@ -257,5 +257,6 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 #spPanel .spc summary{display:flex;flex-direction:column;gap:2px;padding:10px 12px;cursor:pointer;list-style:none}#spPanel .spc summary::-webkit-details-marker{display:none}
 #spPanel .spc summary b{font-weight:500;overflow-wrap:anywhere;font-size:14px}#spPanel .spc summary small{color:var(--muted);font-size:12.5px}
 #spPanel .spc[open]>*:not(summary){margin-left:12px;margin-right:12px}#spPanel .spc[open]{padding-bottom:10px}
-#spPanel .splines div{padding:4px 0;font-size:14px;line-height:1.5;overflow-wrap:anywhere;border-top:1px solid var(--line)}#spPanel .splines div:first-child{border-top:0}
+#spPanel .splines .spln{display:block;width:100%;padding:6px 0;border:0;border-top:1px solid var(--line);background:none;color:var(--text);font:inherit;font-size:14px;line-height:1.5;text-align:left;overflow-wrap:anywhere}#spPanel .splines .spln:first-child{border-top:0}#spPanel .splines .spln:active{background:var(--accent-soft)}#spPanel .spplay{margin:0 0 6px;width:calc(100% - 24px)}
 #spPanel .splines i{font-style:normal;color:var(--accent);font-size:12.5px;margin-right:8px}#spPanel .splines b{font-weight:500;margin-right:4px}
+.alplay .alline{margin:0 14px 12px;min-height:2.6em;text-align:center;color:#fff;font-size:15px;line-height:1.4;overflow-wrap:anywhere}

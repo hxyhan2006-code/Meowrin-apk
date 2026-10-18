@@ -79,8 +79,9 @@
     $("spStop").hidden = !run;
     var recent = clips().filter(function(c){ return c.speech; }).sort(function(a, b){ return b.speech.at - a.speech.at; }).slice(0, TRIAL);
     $("spList").innerHTML = recent.map(function(c){ var s = c.speech;
-      var body = s.silent ? "<p class=\"hint\">ไม่มีเสียงพูด (เงียบ/ไม่มีแทร็กเสียง)</p>" : s.segs.length ? (s.sum ? "<p class=\"hint\">สรุป: " + U.esc(s.sum) + "</p>" : "") + "<div class=\"splines\">" + s.segs.map(function(g){ return "<div><i>" + tm(g.s) + "</i>" + (g.who ? "<b>" + U.esc(g.who) + "</b> " : "") + U.esc(g.t) + "</div>"; }).join("") + "</div>" : "<p class=\"hint\">AI ไม่พบบทพูด</p>";
-      return "<details class=\"spc\"><summary><b>" + U.esc(c.name) + "</b><small>" + tm(s.sec) + " · " + (s.silent ? "เงียบ" : s.segs.length + " บรรทัด · " + U.money(s.cost || 0)) + "</small></summary>" + body + "</details>"; }).join("");
+      var body = s.silent ? "<p class=\"hint\">ไม่มีเสียงพูด (เงียบ/ไม่มีแทร็กเสียง)</p>" : s.segs.length ? (s.sum ? "<p class=\"hint\">สรุป: " + U.esc(s.sum) + "</p>" : "") + "<div class=\"splines\">" + s.segs.map(function(g){ return "<button type=\"button\" class=\"spln\" data-id=\"" + U.esc(c.id) + "\" data-t=\"" + g.s + "\"><i>" + tm(g.s) + "</i>" + (g.who ? "<b>" + U.esc(g.who) + "</b> " : "") + U.esc(g.t) + "</button>"; }).join("") + "</div>" : "<p class=\"hint\">AI ไม่พบบทพูด</p>";
+      var playBtn = s.silent ? "" : "<button type=\"button\" class=\"btn small spplay\" data-id=\"" + U.esc(c.id) + "\" data-t=\"0\">" + MWIcon("play") + "เล่นคลิปเทียบเสียง</button>";
+      return "<details class=\"spc\"><summary><b>" + U.esc(c.name) + "</b><small>" + tm(s.sec) + " · " + (s.silent ? "เงียบ" : s.segs.length + " บรรทัด · " + U.money(s.cost || 0)) + "</small></summary>" + playBtn + body + "</details>"; }).join("");
   }
   async function runList(list, label){
     if(run || !list.length) return; run = true; stopF = false; var done = 0, fail = 0, bad = 0, cost0 = stats().cost, last = "";
@@ -102,6 +103,9 @@
     var pend = pending(); if(!pend.length) return;
     if(!await MWDialog.confirm("ให้ AI ฟังเสียงที่เหลือ " + pend.length + " คลิป?\n\nประมาณ " + U.money(pend.length * (stats().avg || GUESS)) + " (จากค่าเฉลี่ยที่ฟังไปแล้ว " + U.money(stats().avg) + " ต่อคลิป ราคาจริงอาจต่างไป)\n\nต้องเปิดแอพค้างไว้ พักและทำต่อได้ ไม่ฟังคลิปเดิมซ้ำ", { ok:"เริ่ม" })) return;
     runList(pend, "ฟังเสียง");
+  });
+  $("spList").addEventListener("click", function(e){ /* กดบรรทัดบทพูด/ปุ่มเล่น = เปิดตัวเล่นเต็มจอของคลิปนั้นที่เวลานั้น (เทียบกับเสียงจริง) */
+    var b = e.target.closest("[data-id]"); if(!b || !U.playAt) return; var c = U.lib().find(function(x){ return x.id === b.dataset.id; }); if(c) U.playAt(c, Math.max(0, parseFloat(b.dataset.t) - 0.3));
   });
   $("spStop").addEventListener("click", function(){ stopF = true; $("spStop").hidden = true; });
   document.addEventListener("ft:lib", function(){ if(!run) render(); });

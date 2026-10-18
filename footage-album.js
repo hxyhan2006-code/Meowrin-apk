@@ -181,7 +181,7 @@
     }catch(err){ arcMsg = (err.budget ? "ถึงเพดานงบ: " : "ไม่สำเร็จ: ") + (err.message || err) + " · ทำไปแล้ว " + n + " คลิป (กดใหม่ทำต่อ)"; }
     arcRun = false; await U.wake(false); build(); if(view === "home") renderHome();
   }
-  Object.assign(U, { runIndexFor:runFor, runArcs:runArcs, arcTodoCount:function(){ return arcTodo().length; } }); /* ให้แผงจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ / ให้ AI ดูภาค ได้เลย */
+  Object.assign(U, { playAt:playAt, runIndexFor:runFor, runArcs:runArcs, arcTodoCount:function(){ return arcTodo().length; } }); /* ให้แผงจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ / ให้ AI ดูภาค ได้เลย */
   var wasRunning = false;
   document.addEventListener("ft:queue", function(){ /* คิวเดินอยู่: อัปเดตแค่แถบ · จบรอบค่อยวาดตารางใหม่ (ไม่ให้กะพริบทุกวินาที) */
     var r = U.queueInfo().running; build(); if(curAlbum) curAlbum = albums.find(function(a){ return a.name === curAlbum.name; }) || null; strips();
@@ -216,17 +216,23 @@
   });
   function closeAlbum(){ $("alView").hidden = true; $("alHome").hidden = false; curAlbum = null; view = "home"; sel = null; selUi(); if(dirty){ dirty = false; renderHome(); } }
   var playDone = null;
-  async function openPlayer(e){
-    var v = $("alVid"); $("alpT").textContent = e.name; $("alpS").textContent = (curAlbum ? curAlbum.name + " · " : "") + dur(e, null); $("alpMsg").textContent = "";
+  async function openPlayer(e, t0){ /* t0 = เริ่มเล่นที่วินาทีนี้ (กดบรรทัดบทพูดจากแผงฟังเสียง) */
+    var v = $("alVid"); $("alpT").textContent = e.name; $("alpS").textContent = (curAlbum ? curAlbum.name + " · " : "") + dur(e, null); $("alpMsg").textContent = ""; $("alpLine").textContent = "";
     $("alPlay").hidden = false; history.pushState({ al:2 }, ""); view = "player";
     var url = fileUrl(e);
     if(!url && e.c){ try{ var s = await U.srcUrl(e.c); if(s){ url = s.url; playDone = s.done; } }catch(err){} }
     if(!url){ $("alpMsg").textContent = "ไม่เจอไฟล์ของคลิปนี้ในมือถือ (ลองสแกนใหม่)"; return; }
     v.onerror = function(){ $("alpMsg").textContent = "เล่นไฟล์นี้ไม่ได้"; };
     if(window.MWLocal) MWLocal.seekable(v, function(m){ $("alpMsg").textContent = m; }); /* กรอแล้วเด้งไป 0:00 = โหลดเป็น Blob ให้กรอได้ */
+    var sp = e.c && e.c.speech && e.c.speech.segs && e.c.speech.segs.length ? e.c.speech.segs : null; /* มีบทพูด = โชว์บรรทัดที่กำลังพูดใต้วิดีโอ ไว้เทียบกับเสียงจริง */
+    v.ontimeupdate = sp ? function(){ var t = v.currentTime, g = sp.find(function(x){ return t >= x.s - 0.2 && t <= x.e + 0.5; }); $("alpLine").textContent = g ? U.tm(g.s) + "  " + (g.who ? g.who + ": " : "") + g.t : ""; } : null;
+    v.onloadedmetadata = t0 ? function(){ v.onloadedmetadata = null; v.currentTime = Math.min(t0, Math.max(0, v.duration - 0.1)); } : null;
     v.src = url; v.play().catch(function(){});
   }
-  function stopPlayer(){ var v = $("alVid"); try{ v.pause(); }catch(e){} if(window.MWLocal) MWLocal.release(v); if(playDone){ playDone(); playDone = null; } v.removeAttribute("src"); v.load(); $("alPlay").hidden = true; }
+  function playAt(c, t){ /* เปิดตัวเล่นเต็มจอของคลิปนี้ ที่วินาที t (ใช้จากแผงฟังเสียง) */
+    var en = allE.find(function(x){ return x.c === c; }) || { name:c.name, size:c.size, c:c, uri:null }; return openPlayer(en, t);
+  }
+  function stopPlayer(){ var v = $("alVid"); v.ontimeupdate = v.onloadedmetadata = null; try{ v.pause(); }catch(e){} if(window.MWLocal) MWLocal.release(v); if(playDone){ playDone(); playDone = null; } v.removeAttribute("src"); v.load(); $("alPlay").hidden = true; }
   window.addEventListener("popstate", function(){ /* ปุ่มย้อนของมือถือ/ของหน้า: ปิดชั้นบนสุดก่อน */
     if(view === "player"){ stopPlayer(); view = curAlbum ? "album" : "home"; }
     else if(view === "album") closeAlbum();
