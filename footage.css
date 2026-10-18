@@ -261,3 +261,4 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 #spPanel .splines i{font-style:normal;color:var(--accent);font-size:12.5px;margin-right:8px}#spPanel .splines b{font-weight:500;margin-right:4px}
 .alplay .alline{margin:0 14px 12px;min-height:2.6em;text-align:center;color:#fff;font-size:15px;line-height:1.4;overflow-wrap:anywhere}
 #spPanel .splook{margin:6px 0;padding:6px 0;border-top:1px dashed var(--line-strong);font-size:13.5px;color:var(--muted)}#spPanel .splook i{font-style:normal;color:var(--accent);font-size:12.5px;margin-right:8px}#spPanel>label.chk{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:14px}
+#spPanel .splines b.un{opacity:.55;font-weight:400}#spPanel .splines .splook{margin:2px 0;padding:6px 8px;border:0;border-left:2px solid var(--accent);background:var(--accent-soft);color:var(--muted);border-radius:0 8px 8px 0}

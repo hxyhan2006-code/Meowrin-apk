@@ -334,26 +334,26 @@
     r.json = j; return r;
   }
   /* ---------- ฟังเสียงคลิป (footage-speech.js) · ส่งเสียงโมโน 16 kHz (wav base64 ≤ ~3 นาที) ให้โมเดลที่รับเสียงได้ (Gemini) ถอดบทพูดพร้อมเวลา ---------- */
-  async function transcribe(b64, dur, hint, frames){ /* frames = [{ n, s, e, img }] ภาพของฉากในช่วงเสียงนี้ (s/e = วินาทีนับจากต้นเสียงท่อนนี้) → ดูพร้อมฟัง: ระบุว่าใครพูด + สีหน้าท่าทาง */
+  async function transcribe(b64, dur, hint, frames, scenes){ /* frames = [{ s, img } | { n, s, e, img }] ภาพตามเวลา (s/e = วินาทีนับจากต้นเสียงท่อนนี้; มี n = ภาพของฉากที่ n) · scenes = [{ n, s, e }] ขอบเขตฉากในท่อนนี้ → ดูพร้อมฟัง: ใครพูด + ใครทำอะไรที่ไหนยังไงต่อฉาก */
     var watch = frames && frames.length, roster = "Luffy, Zoro, Nami, Usopp, Sanji, Chopper, Robin, Franky, Brook, Jinbe, Ace, Sabo, Shanks, Garp, Buggy, Hancock, Law, Kid, Mihawk, Crocodile, Doflamingo, Kaido, Big Mom, Blackbeard, Whitebeard, Akainu, Aokiji, Kizaru, Smoker, Tashigi, Vivi, Carrot, Yamato, Perona, Rayleigh";
     var prompt = [
-      "This is the audio track of a short One Piece anime clip" + (watch ? ", together with pictures of its scenes in time order" : "") + ". The dialogue is almost always a THAI dub (sometimes Japanese or English). Audio length: " + Math.round(dur) + "s." + (hint ? " Context from the editor (may be wrong): " + hint : ""),
+      "This is the audio track of a short One Piece anime clip" + (watch ? ", together with picture frames of the clip in time order" : "") + ". The dialogue is almost always a THAI dub (sometimes Japanese or English). Audio length: " + Math.round(dur) + "s." + (hint ? " Context from the editor (may be wrong): " + hint : ""),
       "Transcribe ONLY the spoken words (dialogue, narration, shouted attack names) in the language spoken, Thai in Thai script. Ignore music, sound effects and silence. Do not invent words: if a part is unclear or there is no speech, leave it out.",
       "Group the speech into short segments (one sentence or breath each). s and e are seconds from the START OF THIS AUDIO (e.g. 3.4)."
     ];
     if(watch){
-      prompt.push("Each picture is labelled with its scene number and its start-end seconds in this audio (left = start, middle, right = end of that scene). Use BOTH the pictures and the voice to say WHO speaks each segment: the character on screen at that moment whose mouth/pose matches, a speech bubble/name, what the words say (names called, self-introductions), and the Thai-dub voice you recognise. Put the English name in \"who\" (prefer: " + roster + ") or empty if you cannot tell. NEVER guess: narrator/off-screen unknown voice = \"\" (or \"Narrator\" for the storyteller voice).");
-      prompt.push("Also for each scene number give \"looks\": one short Thai phrase about the main character's facial expression/pose/action in that scene (e.g. \"ซันจิหน้าตื่นเต้น ชี้นิ้ว\"). Skip scenes with nothing notable.");
-      prompt.push("Return ONLY JSON, no markdown: {\"segments\":[{\"s\":0.0,\"e\":2.1,\"t\":\"text\",\"who\":\"Sanji\"}],\"looks\":[{\"i\":<scene number>,\"t\":\"Thai phrase\"}],\"summary_th\":\"one short Thai sentence about what happens (empty if nothing)\"}");
+      prompt.push("Each picture is labelled with its time (seconds from the start of this audio). Use BOTH the pictures and the voice to say WHO speaks each segment: look at the frames at that segment's time and pick the character whose mouth is open / who is gesturing or shouting; also use names called in the words, self-introductions, speech bubbles and the Thai-dub voice you recognise. Put the English name in \"who\" (prefer: " + roster + "). Narrator voice = \"Narrator\". Set \"sure\": true only when you are confident; if unsure still give your best guess but \"sure\": false; if you have no idea leave \"who\" empty. Several characters on screen: the speaker is NOT necessarily the one in the centre.");
+      if(scenes && scenes.length) prompt.push("Scene boundaries of this clip (scene number: start-end seconds): " + scenes.map(function(x){ return x.n + ": " + x.s.toFixed(1) + "-" + x.e.toFixed(1); }).join("; ") + ". For EVERY scene number listed, write \"t\": 1-2 short Thai sentences saying WHO (by name) does WHAT, WHERE (place/setting) and HOW (expression, emotion, manner), e.g. \"ซันจิยืนคาบบุหรี่บนดาดฟ้าเรือ สีหน้าจริงจัง ส่งจดหมายให้นามิ\". Be specific, do not repeat the dialogue.");
+      prompt.push("Return ONLY JSON, no markdown: {\"segments\":[{\"s\":0.0,\"e\":2.1,\"t\":\"text\",\"who\":\"Sanji\",\"sure\":true}],\"scenes\":[{\"i\":<scene number>,\"t\":\"Thai description\"}],\"summary_th\":\"one short Thai sentence about what happens (empty if nothing)\"}");
     } else {
       prompt.push("Add \"who\" only when the speaker is clearly named in the speech or obvious, else leave it empty.");
       prompt.push("Return ONLY JSON, no markdown: {\"segments\":[{\"s\":0.0,\"e\":2.1,\"t\":\"text\",\"who\":\"\"}],\"summary_th\":\"one short Thai sentence about what is being said (empty if no speech)\"}");
     }
     var content = [{ type:"text", text:prompt.join("\n") }];
-    if(watch) frames.forEach(function(f){ content.push({ type:"text", text:"Scene " + f.n + " (" + f.s.toFixed(1) + "s-" + f.e.toFixed(1) + "s):" }); content.push({ type:"image_url", image_url:{ url:f.img } }); });
+    if(watch) frames.forEach(function(f){ content.push({ type:"text", text:(f.n ? "Scene " + f.n + " (" + f.s.toFixed(1) + "s-" + f.e.toFixed(1) + "s):" : "t=" + f.s.toFixed(1) + "s") }); content.push({ type:"image_url", image_url:{ url:f.img } }); });
     content.push({ type:"input_audio", input_audio:{ data:b64, format:"wav" } });
     var body = { model:cfg.model, usage:{ include:true }, messages:[{ role:"user", content:content }] };
-    if(/^google\//.test(cfg.model)) body.reasoning = { effort:"low" };
+    if(/^google\//.test(cfg.model)) body.reasoning = { effort:watch ? "medium" : "low" };
     var r = await post(body), j;
     try{ j = parseJSON(r.text); }catch(err){ err.cost = r.cost; err.raw = r.text; throw err; }
     r.json = j; return r;
