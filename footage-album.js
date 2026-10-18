@@ -109,7 +109,7 @@
   function renderHome(){
     build();
     var native = window.MWLocal && MWLocal.native && MWLocal.native(), n = allE.filter(function(e){ return e.album !== MISSING; }).length, doneN = allE.filter(done).length;
-    var base = mode === "phone" ? (albums.length ? albums.length + " อัลบั้ม · " + n + " คลิป" : "") : mode === "char" ? albums.length + " ตัวละคร (เจอตั้งแต่ 3 คลิป) · จากคลิปที่ AI ดูแล้ว " + doneN
+    var base = mode === "phone" ? (albums.length ? albums.filter(function(x){ return x.name !== MISSING; }).length + " อัลบั้ม · " + n + " คลิป" : "") /* ไม่นับอัลบั้ม "ไม่เจอในมือถือ" (ไม่ใช่อัลบั้มจริง และคลิปในนั้นไม่รวมใน n) */ : mode === "char" ? albums.length + " ตัวละคร (เจอตั้งแต่ 3 คลิป) · จากคลิปที่ AI ดูแล้ว " + doneN
       : albums.filter(function(x){ return x.name !== UNSURE; }).length + " ภาค" + (albums.some(function(x){ return x.name === UNSURE; }) ? " · ยังไม่แน่ใจ " + albums.find(function(x){ return x.name === UNSURE; }).items.length + " คลิป (เลือกแล้วย้ายเองได้)" : "");
     $("alSub").textContent = base + (scanning() ? (base ? " · " : "") + "กำลังสแกนหาคลิปใหม่..." : "");
     $("alScan").hidden = !native; $("orgBtn").hidden = !native; /* จัดอัลบั้มใหม่ (footage-organize.js) ใช้ได้เฉพาะในแอพ */

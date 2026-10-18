@@ -16,8 +16,7 @@
   function buildPlan(){ /* คืน { moves:[{ name, size, from, to, album, toAlbum, clipId }], byAlbum:{ ชื่อ:จำนวน }, unsure, dup, skipped } */
     var moves = [], byAlbum = {}, seenTo = {}, unsure = 0, dup = 0, same = 0, noIdx = []; /* noIdx = ไฟล์ในอัลบั้มจริงที่ยังไม่ได้ทำดัชนี (ย้ายไม่ได้ เพราะยังไม่รู้ภาค) */
     (MWLocal.list() || []).forEach(function(it){
-      if(it.lib) return;
-      var m = /^(.*\/Gallery\/owner)\/([^\/]+)\/$/.exec(it.dir || ""); if(!m) return; /* เฉพาะอัลบั้มจริงของแกลเลอรี (ไม่แตะสำเนาในแอพ/โฟลเดอร์อื่น) */
+      var m = /^(.*\/Gallery\/owner)\/([^\/]+)\/$/.exec(it.dir || ""); if(!m) return; /* เฉพาะอัลบั้มจริงของแกลเลอรี (สำเนาในแอพอยู่ Documents/Meowrin/library จึงไม่เข้า) · ห้ามกรองด้วย it.lib: local.js ติดป้าย lib ให้ "ต้นฉบับที่มีสำเนาแล้ว" ด้วย ไม่ได้แปลว่าเป็นสำเนา */
       var c = clipOf(it); if(!c){ noIdx.push({ name:it.name, size:it.size, uri:it.uri, album:it.album, mtime:it.mtime }); return; }
       var ar = U.arcOf(c); if(!ar.arc || !ar.sure){ unsure++; return; }
       var to = nameOfArc(ar.arc); if(to === m[2]){ same++; return; }
