@@ -4,6 +4,7 @@
    แผงอยู่ footage.html ตั้งค่า > ทำดัชนี "ฟังเสียงคลิป (ทดลอง)": ทดลอง 10 คลิป (สุ่ม) ดูบทพูดที่ได้ → ค่อยทำที่เหลือทั้งหมด */
 (function(){
   "use strict";
+  var WV = 3; /* รุ่นวิธีดู+ฟัง: 3 = ตัวประกอบไม่มีชื่อได้ป้ายบทบาท (พ่อค้า ลุง ฯลฯ) + รายละเอียดฉากครบขึ้น · เปลี่ยนเลขนี้ = คลิปรุ่นก่อนนับเป็นยังไม่ทำ */
   var FT = window.FT, U = FT && FT.ui; if(!U || !$("spTrial")) return;
   function $(id){ return document.getElementById(id); }
   var WK = "mw_speech_v1", watchOn = (MWStore.get(WK, null) || { watch:true }).watch !== false, MAXIMG = 24, DENSE = 60, ecoOn = !!(MWStore.get(WK, null) || {}).eco, DSTEP = 1.5, SR = 16000, CH_SEC = 180, MAXB = 700 * 1048576, TRIAL = 10, FAIL_STOP = 3, GUESS = 0.004, GUESSW = 0.03, mbP = null, run = false, stopF = false;
@@ -46,7 +47,7 @@
   }
   function cleanSegs(arr, off, max){
     return (Array.isArray(arr) ? arr : []).map(function(g){ var s = Number(g && g.s), e = Number(g && g.e), t = String(g && g.t || "").trim();
-      if(!t || !isFinite(s)) return null; if(!isFinite(e) || e < s) e = s + 1; return { s:Math.max(0, +(s + off).toFixed(1)), e:Math.min(max, +(e + off).toFixed(1)), t:t.slice(0, 300), who:(Array.isArray(g && g.who) ? g.who.join(", ") : String(g && g.who || "")).replace(/\s*(,|;|&| and )\s*/gi, ", ").trim().slice(0, 60), sure:!(g && g.sure === false) }; }).filter(Boolean);
+      if(!t || !isFinite(s)) return null; if(!isFinite(e) || e < s) e = s + 1; return { s:Math.max(0, +(s + off).toFixed(1)), e:Math.min(max, +(e + off).toFixed(1)), t:t.slice(0, 300), who:(Array.isArray(g && g.who) ? g.who.join(", ") : String(g && g.who || "")).replace(/\s*(,|;|&| and )\s*/gi, ", ").trim().slice(0, 80), sure:!(g && g.sure === false) }; }).filter(Boolean);
   }
 
   async function denseFrames(blob, t0, t1){ /* ภาพจากวิดีโอทุก ~1.5 วิ (กว้าง 384) ตลอดท่อน ≤ DENSE รูป → [{ s:วินาทีนับจากต้นท่อน, img }] · เปิดภาพไม่ได้ = [] (ใช้ภาพฉากที่เก็บไว้แทน) */
@@ -71,7 +72,7 @@
     var src = await U.srcUrl(c); if(!src) throw new Error("ไม่เจอไฟล์ของคลิปนี้ในมือถือ (ลองสแกนใหม่)");
     try{
       var blob = await blobOf(src.url), p = await pcm(blob);
-      var sp = { at:Date.now(), model:FT.cfg.model, segs:[], sum:"", cost:0, sec:Math.round(p.sec * 10) / 10, watch:watchOn, wv:watchOn ? 2 : 0 };
+      var sp = { at:Date.now(), model:FT.cfg.model, segs:[], sum:"", cost:0, sec:Math.round(p.sec * 10) / 10, watch:watchOn, wv:watchOn ? WV : 0 };
       if(!p.sec || rms(p.data) < 0.003){ blob = null; sp.silent = true; c.speech = sp; await FT.store.put(c); return sp; } /* ไม่มีเสียง/เงียบ = ไม่เสียเงิน */
       var sums = [], arcs = {};
       for(var a = 0; a < p.data.length; a += CH_SEC * SR){
@@ -81,7 +82,7 @@
         var r = await FT.transcribe(await wavB64(p.data, a, b), (b - a) / SR, "", frames, scenes, watchOn ? U.ARCS : null);
         var ar = String(r.json.arc || "").trim(); if(ar && U.ARCS.indexOf(ar) >= 0) arcs[ar] = (arcs[ar] || 0) + (b - a); /* ภาคที่ AI ตอบ · นับตามความยาวท่อน (คลิปยาวหลายท่อน) */
         sp.cost += r.cost || 0; sp.segs = sp.segs.concat(cleanSegs(r.json.segments, a / SR, p.sec)); if(r.json.summary_th) sums.push(String(r.json.summary_th).trim());
-        (Array.isArray(r.json.scenes) ? r.json.scenes : Array.isArray(r.json.looks) ? r.json.looks : []).forEach(function(l){ var i = Number(l && l.i) - 1, t = String(l && l.t || "").trim(); if(t && i >= 0 && i < c.scenes.length){ sp.looks = sp.looks || {}; sp.looks[i] = t.slice(0, 120); } });
+        (Array.isArray(r.json.scenes) ? r.json.scenes : Array.isArray(r.json.looks) ? r.json.looks : []).forEach(function(l){ var i = Number(l && l.i) - 1, t = String(l && l.t || "").trim(); if(t && i >= 0 && i < c.scenes.length){ sp.looks = sp.looks || {}; sp.looks[i] = t.slice(0, 200); } });
       }
       var ak = Object.keys(arcs); if(ak.length === 1) sp.arc = ak[0]; /* หลายท่อนตอบคนละภาค = ไม่ใช้ */
       blob = null; sp.sum = sums.join(" ").slice(0, 300); c.speech = sp; await FT.store.put(c); return sp;
@@ -90,11 +91,11 @@
 
   /* ---------- แผง ---------- */
   function clips(){ return U.lib().filter(function(c){ return c.status === "done" && !c.hide; }); }
-  function done1(c){ return c.speech && (!watchOn || c.speech.wv === 2); } /* โหมดดูพร้อมฟัง: คลิปที่ฟังเสียงล้วนมาก่อนถือว่ายังไม่ได้ทำ (ทำซ้ำให้ได้ชื่อคนพูด) */
+  function done1(c){ return c.speech && (!watchOn || c.speech.wv === WV); } /* โหมดดูพร้อมฟัง: คลิปที่ฟังเสียงล้วนมาก่อนถือว่ายังไม่ได้ทำ (ทำซ้ำให้ได้ชื่อคนพูด) */
   function unsureArc(c){ return !U.arcOf(c).sure; }
   function pending(){ /* v8.59 คลิปที่ภาคยังไม่แน่ใจมาก่อน (เสียงช่วยบอกภาค → จัดอัลบั้มได้มากขึ้นเร็วที่สุด) */
     var l = clips().filter(function(c){ return !done1(c) && U.hasSrc(c); }), u = l.filter(unsureArc); return u.concat(l.filter(function(c){ return u.indexOf(c) < 0; })); }
-  function stats(){ var d = clips().filter(function(c){ return c.speech; }), paid = d.filter(function(c){ return !c.speech.silent && (c.speech.wv === 2) === watchOn; }), cost = paid.reduce(function(s, c){ return s + (c.speech.cost || 0); }, 0);
+  function stats(){ var d = clips().filter(function(c){ return c.speech; }), paid = d.filter(function(c){ return !c.speech.silent && (c.speech.wv === WV) === watchOn; }), cost = paid.reduce(function(s, c){ return s + (c.speech.cost || 0); }, 0);
     return { done:d.filter(done1).length, paid:paid.length, avg:paid.length ? cost / paid.length : 0, cost:cost, withText:d.filter(function(c){ return c.speech.segs.length; }).length }; }
   function timeline(c){ /* บทพูดกับคำบรรยายฉาก (ใครทำอะไรที่ไหนยังไง) เรียงตามเวลาในแผ่นเดียว */
     var s = c.speech, rows = (s.segs || []).map(function(g){ return { t:g.s, k:1, g:g }; });
