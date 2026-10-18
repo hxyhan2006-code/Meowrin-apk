@@ -443,6 +443,30 @@ try {
   const sorted = cr.every((r, i) => i === 0 || cr[i - 1].c >= r.c || cr[i - 1].n === 'ไม่ระบุตัวละคร');
   await sq.click('#pkDone'); await sq.waitForTimeout(200);
   check('ชีตตัวละคร/ภาค: ตัวเลขนับตามที่เลือกอยู่ เรียงมากไปน้อย ตัวที่ 0 ฉากอยู่ล่างสุดและจาง', cr.length > 1 && sorted && cr.filter((r) => r.c === 0).every((r) => r.dim), JSON.stringify(cr));
+  // v8.48 ชีตภาค: ทุกภาคในรายชื่อรวมภาคพิเศษ (Movies/TV Specials/Filler) · เรียงตามเนื้อเรื่อง/จำนวน · ซ่อนภาคที่ 0
+  await sq.click('#chips [data-open=r]'); await sq.waitForTimeout(200);
+  const rowsOf = () => sq.evaluate(() => [...document.querySelectorAll('#pkList .alrow b')].map((b) => b.textContent));
+  const apA = await rowsOf(); await sq.click('#pkBar [data-b=order]'); await sq.waitForTimeout(100); const apB = await rowsOf();
+  await sq.click('#pkBar [data-b=hide0]'); await sq.waitForTimeout(100); const apC = await rowsOf(); await sq.click('#pkBar [data-b=hide0]'); await sq.waitForTimeout(100);
+  const apBar = await sq.evaluate(() => [...document.querySelectorAll('#pkBar button')].map((b) => b.textContent + (b.classList.contains('on') ? '*' : '')).join('|'));
+  await sq.click('#pkDone'); await sq.waitForTimeout(200);
+  check('ชีตภาค: มีภาคพิเศษ Movies/TV Specials/Filler ครบแม้ 0 ฉาก · เรียงตามเนื้อเรื่อง (Alabasta ก่อน Skypiea ก่อน Movies) · ซ่อนภาคที่ 0 เหลือเฉพาะที่มีฉาก', ['Movies', 'TV Specials', 'Filler', 'Romance Dawn'].every((n) => apA.includes(n)) && apB.indexOf('Alabasta') < apB.indexOf('Skypiea') && apB.indexOf('Skypiea') < apB.indexOf('Movies') && apC.length < apA.length && !apC.includes('Movies') && /เรียงตามเนื้อเรื่อง\*/.test(apBar), JSON.stringify([apA.length, apB.slice(0, 14), apC, apBar]));
+  // v8.48 หัวแถวปุ่ม จัดอัลบั้มใหม่/สแกนใหม่ ไม่แตกบรรทัดในแถบตัวละคร/ภาค (ข้อความสั้นลง + ปุ่ม nowrap)
+  const hd = {}; await sq.click('#chips [data-clr]'); await sq.waitForTimeout(300); /* ล้างตัวกรอง = กลับตารางอัลบั้ม */
+  for (const m of ['char', 'arc', 'phone']) { await sq.click(`#alSeg [data-m=${m}]`); await sq.waitForTimeout(250); hd[m] = await sq.evaluate(() => { document.getElementById('orgBtn').hidden = false; document.getElementById('alScan').hidden = false; return [...document.querySelectorAll('.alhead .btn')].filter((b) => b.offsetParent).map((b) => Math.round(b.getBoundingClientRect().height)); }); }
+  check('หัวแถวอัลบั้ม: ปุ่ม จัดอัลบั้มใหม่/สแกนใหม่ บรรทัดเดียว (สูงไม่เกิน 44px) ทั้งโหมดตัวละคร/ภาค/ในมือถือ', Object.values(hd).every((a) => a.length >= 2 && a.every((h) => h <= 44)), JSON.stringify(hd));
+  // v8.48 ตัวเล่น: กรอแล้วเด้งไป 0:00 (ไฟล์ _capacitor_file_ ตอบ Range ไม่ครบ) → โหลดเป็น Blob แล้วกรอไปที่เดิม
+  const sk = await sq.evaluate(async () => {
+    const v = new EventTarget(); v.currentSrc = 'https://localhost/_capacitor_file_/a.mp4'; v.currentTime = 0; v.paused = false; v.duration = 100; v.play = () => Promise.resolve();
+    Object.defineProperty(v, 'src', { set(u) { v._set = u; setTimeout(() => v.dispatchEvent(new Event('loadedmetadata')), 5); }, get() { return v._set; } });
+    const f0 = window.fetch; window.fetch = async () => ({ headers: { get: () => null }, blob: async () => new Blob(['x']) });
+    const msgs = []; MWLocal.seekable(v, (m) => msgs.push(m));
+    v.currentTime = 30; v.dispatchEvent(new Event('seeking')); v.currentTime = 0; v.dispatchEvent(new Event('seeked'));
+    await new Promise((r) => setTimeout(r, 150)); window.fetch = f0;
+    const out = { src: String(v._set).slice(0, 5), t: v.currentTime, blob: !!v._blob, msgs };
+    MWLocal.release(v); out.freed = !v._blob; return out;
+  });
+  check('ตัวเล่น: กรอไป 30 วิแล้วเด้งกลับ 0 = โหลดเป็น Blob แล้วกรอไป 30 วิให้ · ปิดตัวเล่นคืนหน่วยความจำ', sk.src === 'blob:' && sk.t === 30 && sk.blob && sk.freed && sk.msgs.length === 2, JSON.stringify(sk));
   await sq.close();
   // เก็บคลิปไว้ในแอพ (library.js): ก๊อปจาก Gallery/owner → Documents/Meowrin/library/<อัลบั้ม>/ ผ่านชื่อ .part แล้วเปลี่ยนชื่อ · ข้ามที่มีแล้ว · สแกนแล้วเล่นจากสำเนา · ต้นฉบับไม่ถูกลบ
   const lb = await context.newPage(); const lbE = []; lb.on('pageerror', (e) => lbE.push(e.message));

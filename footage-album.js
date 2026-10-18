@@ -109,8 +109,8 @@
   function renderHome(){
     build();
     var native = window.MWLocal && MWLocal.native && MWLocal.native(), n = allE.filter(function(e){ return e.album !== MISSING; }).length, doneN = allE.filter(done).length;
-    var base = mode === "phone" ? (albums.length ? albums.filter(function(x){ return x.name !== MISSING; }).length + " อัลบั้ม · " + n + " คลิป" : "") /* ไม่นับอัลบั้ม "ไม่เจอในมือถือ" (ไม่ใช่อัลบั้มจริง และคลิปในนั้นไม่รวมใน n) */ : mode === "char" ? albums.length + " ตัวละคร (เจอตั้งแต่ 3 คลิป) · จากคลิปที่ AI ดูแล้ว " + doneN
-      : albums.filter(function(x){ return x.name !== UNSURE; }).length + " ภาค" + (albums.some(function(x){ return x.name === UNSURE; }) ? " · ยังไม่แน่ใจ " + albums.find(function(x){ return x.name === UNSURE; }).items.length + " คลิป (เลือกแล้วย้ายเองได้)" : "");
+    var base = mode === "phone" ? (albums.length ? albums.filter(function(x){ return x.name !== MISSING; }).length + " อัลบั้ม · " + n + " คลิป" : "") /* ไม่นับอัลบั้ม "ไม่เจอในมือถือ" (ไม่ใช่อัลบั้มจริง และคลิปในนั้นไม่รวมใน n) */ : mode === "char" ? albums.length + " ตัวละคร · AI ดูแล้ว " + doneN + " คลิป" /* ข้อความสั้น: หัวแถวมีปุ่ม 2 ปุ่ม ข้อความยาวจะบีบปุ่มจนแตกบรรทัด */
+      : albums.filter(function(x){ return x.name !== UNSURE; }).length + " ภาค" + (albums.some(function(x){ return x.name === UNSURE; }) ? " · ยังไม่แน่ใจ " + albums.find(function(x){ return x.name === UNSURE; }).items.length + " คลิป" : "");
     $("alSub").textContent = base + (scanning() ? (base ? " · " : "") + "กำลังสแกนหาคลิปใหม่..." : "");
     $("alScan").hidden = !native; $("orgBtn").hidden = !native; /* จัดอัลบั้มใหม่ (footage-organize.js) ใช้ได้เฉพาะในแอพ */
     $("alMsg").textContent = albums.length ? "" : mode !== "phone" ? "ยังไม่มีคลิปที่ AI ดูแล้ว · กด ให้ AI ทำที่เหลือ ด้านบน" : native ? "ยังไม่เจอคลิป · กด สแกนใหม่ (ครั้งแรกจะมีหน้าต่างขออนุญาตดูรูปและวิดีโอ ให้กดอนุญาต)" : "ใช้ปุ่มเลือกไฟล์ในแท็บ อัปโหลด เพื่อทำดัชนี แล้วคลิปจะขึ้นที่นี่";
@@ -223,9 +223,10 @@
     if(!url && e.c){ try{ var s = await U.srcUrl(e.c); if(s){ url = s.url; playDone = s.done; } }catch(err){} }
     if(!url){ $("alpMsg").textContent = "ไม่เจอไฟล์ของคลิปนี้ในมือถือ (ลองสแกนใหม่)"; return; }
     v.onerror = function(){ $("alpMsg").textContent = "เล่นไฟล์นี้ไม่ได้"; };
+    if(window.MWLocal) MWLocal.seekable(v, function(m){ $("alpMsg").textContent = m; }); /* กรอแล้วเด้งไป 0:00 = โหลดเป็น Blob ให้กรอได้ */
     v.src = url; v.play().catch(function(){});
   }
-  function stopPlayer(){ var v = $("alVid"); try{ v.pause(); }catch(e){} if(playDone){ playDone(); playDone = null; } v.removeAttribute("src"); v.load(); $("alPlay").hidden = true; }
+  function stopPlayer(){ var v = $("alVid"); try{ v.pause(); }catch(e){} if(window.MWLocal) MWLocal.release(v); if(playDone){ playDone(); playDone = null; } v.removeAttribute("src"); v.load(); $("alPlay").hidden = true; }
   window.addEventListener("popstate", function(){ /* ปุ่มย้อนของมือถือ/ของหน้า: ปิดชั้นบนสุดก่อน */
     if(view === "player"){ stopPlayer(); view = curAlbum ? "album" : "home"; }
     else if(view === "album") closeAlbum();

@@ -14,6 +14,25 @@
     if(location.hostname === "localhost") return cap().convertFileSrc(uri);
     return "https://localhost/_capacitor_file_" + uri.replace(/^file:\/\//, "").split("/").map(encodeURIComponent).join("/");
   }
+  /* v8.48 กรอแล้วเด้งไป 0:00: ตัวช่วยไฟล์ของแอพ (_capacitor_file_) ตอบ Range ไม่ครบในบางเครื่อง → กรอ/เริ่มกลางคลิปไม่ได้
+     ตรวจเจอ (กรอไปเกิน 1 วิแล้วกลับมาที่ต้นคลิป) = โหลดไฟล์ทั้งก้อนเป็น Blob (กรอได้เสมอ) แล้วกรอไปที่เดิมให้ · ไฟล์ใหญ่เกิน BLOBMAX ไม่โหลด (กันเต็มแรม) */
+  var BLOBMAX = 700 * 1048576;
+  function release(v){ if(v._blob){ try{ URL.revokeObjectURL(v._blob); }catch(e){} v._blob = null; } v._fixing = false; }
+  function seekable(v, onMsg){
+    if(v._sk) return; v._sk = true; var want = null;
+    v.addEventListener("seeking", function(){ if(!v._fixing) want = v.currentTime; });
+    v.addEventListener("seeked", function(){
+      var w = want; want = null; if(v._fixing || w == null || w < 1 || v.currentTime > 0.6 || v._blob) return;
+      var url = v.currentSrc; if(url.indexOf("/_capacitor_file_") < 0) return;
+      v._fixing = true; var play = !v.paused; if(onMsg) onMsg("กรอไม่ได้ กำลังโหลดคลิปเข้าเครื่องให้กรอได้...");
+      fetch(url).then(function(r){ var n = +r.headers.get("content-length") || 0; if(n > BLOBMAX) throw new Error("big"); return r.blob(); }).then(function(b){
+        if(!v._fixing) return; if(b.size > BLOBMAX) throw new Error("big");
+        release(v); v._fixing = true; v._blob = URL.createObjectURL(b);
+        v.addEventListener("loadedmetadata", function f(){ v.removeEventListener("loadedmetadata", f); v.currentTime = Math.min(w, Math.max(0, v.duration - 0.1)); if(play) v.play().catch(function(){}); if(onMsg) onMsg(""); v._fixing = false; });
+        v.src = v._blob;
+      }).catch(function(err){ v._fixing = false; if(onMsg) onMsg(err && err.message === "big" ? "คลิปนี้ใหญ่เกินจะกรอในแอพได้ (เปิดในแอพแกลเลอรีแทน)" : "กรอไม่ได้ (โหลดคลิปไม่สำเร็จ)"); });
+    });
+  }
   function uriOf(c){ return c && map[key(c.name, c.size)] || null; } /* ที่อยู่ไฟล์ (file://) ให้สตูดิโอเก็บลงโปรเจกต์ */
   function urlOf(c){ var u = c && map[key(c.name, c.size)]; return u ? fileUrl(u) : null; } /* ที่อยู่ที่ <video> เล่นได้ หรือ null */
   async function scan(onStep){
@@ -53,7 +72,7 @@
     try{ await scan(function(i, n){ render("กำลังสแกนอัลบั้ม " + i + "/" + n + "..."); }); busy = false; render(); ping(); }
     catch(e){ busy = false; ping(); render("สแกนไม่ได้: " + (e && (e.message || e.errorMessage) || e) + " · ถ้าเคยกดไม่อนุญาต ให้เปิดสิทธิ์ที่ ตั้งค่ามือถือ > แอป > Meowrin > สิทธิ์ แล้วลองใหม่", true); }
   }
-  window.MWLocal = { LIBROOT:LIBROOT, plug:plug, native:native, scan:scan, list:function(){ return all; }, scanning:function(){ return busy; }, urlOf:urlOf, uriOf:uriOf, fileUrl:fileUrl, count:function(){ return st.files; }, libInfo:function(){ return { files:st.lib || 0, bad:st.libBad || [] }; } };
+  window.MWLocal = { LIBROOT:LIBROOT, plug:plug, native:native, scan:scan, list:function(){ return all; }, scanning:function(){ return busy; }, urlOf:urlOf, uriOf:uriOf, seekable:seekable, release:release, fileUrl:fileUrl, count:function(){ return st.files; }, libInfo:function(){ return { files:st.lib || 0, bad:st.libBad || [] }; } };
   if($("locScan")){
     $("locScan").addEventListener("click", run);
     $("locFold").addEventListener("toggle", function(){ if(this.open) render(); }); /* ดัชนีโหลดทีหลัง ตัวเลขจับคู่อัปเดตตอนเปิดแผง */

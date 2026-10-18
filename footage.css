@@ -193,11 +193,14 @@ html:has(.asheet:not([hidden])),html:has(.big:not([hidden])){overflow:hidden}
 .asheet,.abox{overscroll-behavior:contain}
 .big{overscroll-behavior:contain}
 .pkhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px}.pkhead h3{margin:0}
+#pkBar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}#pkBar[hidden]{display:none}
+#pkBar button{min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line-strong);background:var(--field);color:var(--muted);font:inherit;font-size:13.5px}
+#pkBar button.on{background:var(--accent-soft);border-color:rgba(57,217,138,.55);color:var(--accent)}
 #pkInfo{font-size:14px;color:var(--accent)}#pkInfo.zero{color:var(--warn,#f59e0b)}
 
 /* ---------- แท็บ อัลบั้ม (footage-album.js) ---------- */
 .alhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 12px}
-.alhead>div{min-width:0}.alhead b{display:block;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.alhead small{color:var(--muted);font-size:12.5px}
+.alhead>div{min-width:0;flex:1 1 0}.alhead .btn{flex:none;white-space:nowrap}.alhead b{display:block;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.alhead small{color:var(--muted);font-size:12.5px}
 .algrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .alt{display:flex;flex-direction:column;gap:5px;padding:0;border:0;background:none;color:var(--text);font:inherit;text-align:left;min-width:0}
 .alt b{font-size:13.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.alt small{color:var(--muted);font-size:12px;margin-top:-3px}

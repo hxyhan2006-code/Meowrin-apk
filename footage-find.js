@@ -111,8 +111,8 @@
   function sizeOf(n){ return n >= 5 ? "5" : n >= 3 ? "3" : String(n); }
   /* ---------- ภาค (arc) ---------- */
   var UNSURE = "ยังไม่แน่ใจ";
-  var ARCS = ["Romance Dawn", "Orange Town", "Syrup Village", "Baratie", "Arlong Park", "Loguetown", "Reverse Mountain", "Whisky Peak", "Little Garden", "Drum Island", "Alabasta", "Jaya", "Skypiea", "Long Ring Long Land", "Water 7", "Enies Lobby", "Thriller Bark", "Sabaody Archipelago", "Amazon Lily", "Impel Down", "Marineford", "Return to Sabaody", "Fish-Man Island", "Punk Hazard", "Dressrosa", "Zou", "Whole Cake Island", "Wano Country", "Egghead"];
-  var ARC_RX = [[/return to sabaody|post.?war/, "Return to Sabaody"], [/romance dawn|shells town|alvida/, "Romance Dawn"], [/orange town|buggy/, "Orange Town"], [/syrup|kuro|captain kuro/, "Syrup Village"], [/baratie|don krieg/, "Baratie"], [/arlong|cocoyasi/, "Arlong Park"], [/logue ?town/, "Loguetown"], [/reverse mountain|laboon/, "Reverse Mountain"], [/whisk?e?y ?peak|baroque works intro/, "Whisky Peak"], [/little garden/, "Little Garden"], [/drum/, "Drum Island"], [/alabasta|arabasta/, "Alabasta"], [/jaya/, "Jaya"], [/skypiea|sky island/, "Skypiea"], [/long ring|davy back/, "Long Ring Long Land"], [/water ?(7|seven)|galley.?la/, "Water 7"], [/enies|buster call|cp9/, "Enies Lobby"], [/thriller/, "Thriller Bark"], [/sabaody|human auction/, "Sabaody Archipelago"], [/amazon lily/, "Amazon Lily"], [/impel/, "Impel Down"], [/marine ?ford|summit war|paramount/, "Marineford"], [/fish.?man|hody/, "Fish-Man Island"], [/punk hazard/, "Punk Hazard"], [/dress ?rosa|colosseum/, "Dressrosa"], [/\bzou\b/, "Zou"], [/whole cake|big mom/, "Whole Cake Island"], [/wano|onigashima/, "Wano Country"], [/egghead|vegapunk/, "Egghead"]];
+  var ARCS = ["Romance Dawn", "Orange Town", "Syrup Village", "Baratie", "Arlong Park", "Loguetown", "Reverse Mountain", "Whisky Peak", "Little Garden", "Drum Island", "Alabasta", "Jaya", "Skypiea", "Long Ring Long Land", "Water 7", "Enies Lobby", "Thriller Bark", "Sabaody Archipelago", "Amazon Lily", "Impel Down", "Marineford", "Return to Sabaody", "Fish-Man Island", "Punk Hazard", "Dressrosa", "Zou", "Whole Cake Island", "Wano Country", "Egghead", "Movies", "TV Specials", "Filler"]; /* สามอันท้าย = ภาคพิเศษนอกเนื้อเรื่องหลัก (มูฟวี่/สเปเชียล/ฉากที่อนิเมะเติมเอง) */
+  var ARC_RX = [[/movie|film|stampede|strong world|one piece (gold|red|z)\b|heart of gold|dead end adventure|baron omatsuri|karakuri castle|sacred sword|episode of (alabasta|merry|chopper|nami|luffy|sabo|east blue|skypiea|sky island)/, "Movies"], [/tv special|special|3d2y|glorious island|nebulandia|dream soccer|fan letter/, "TV Specials"], [/filler|g-?8|ocean.?s dream|z.?s ambition|warship island|ice hunter|spa island/, "Filler"], [/return to sabaody|post.?war/, "Return to Sabaody"], [/romance dawn|shells town|alvida/, "Romance Dawn"], [/orange town|buggy/, "Orange Town"], [/syrup|kuro|captain kuro/, "Syrup Village"], [/baratie|don krieg/, "Baratie"], [/arlong|cocoyasi/, "Arlong Park"], [/logue ?town/, "Loguetown"], [/reverse mountain|laboon/, "Reverse Mountain"], [/whisk?e?y ?peak|baroque works intro/, "Whisky Peak"], [/little garden/, "Little Garden"], [/drum/, "Drum Island"], [/alabasta|arabasta/, "Alabasta"], [/jaya/, "Jaya"], [/skypiea|sky island/, "Skypiea"], [/long ring|davy back/, "Long Ring Long Land"], [/water ?(7|seven)|galley.?la/, "Water 7"], [/enies|buster call|cp9/, "Enies Lobby"], [/thriller/, "Thriller Bark"], [/sabaody|human auction/, "Sabaody Archipelago"], [/amazon lily/, "Amazon Lily"], [/impel/, "Impel Down"], [/marine ?ford|summit war|paramount/, "Marineford"], [/fish.?man|hody/, "Fish-Man Island"], [/punk hazard/, "Punk Hazard"], [/dress ?rosa|colosseum/, "Dressrosa"], [/\bzou\b/, "Zou"], [/whole cake|big mom/, "Whole Cake Island"], [/wano|onigashima/, "Wano Country"], [/egghead|vegapunk/, "Egghead"]];
   function normArc(raw){
     var s = String(raw || "").trim().replace(/\s+arc$/i, ""), low = s.toLowerCase(); if(!low || /^(unknown|none|n\/a|na|-|unsure|unclear)$/.test(low)) return "";
     for(var i = 0; i < ARC_RX.length; i++) if(ARC_RX[i][0].test(low)) return ARC_RX[i][1];
@@ -181,11 +181,15 @@
       onClear:function(){ sel = []; chipMax = 40; search(); } });
   }
   function pickArcs(){ /* เลือกภาคได้หลายภาค · รวมกับตัวละครได้ (ลูฟี่ + Skypiea) · "ยังไม่แน่ใจ" = คลิปที่ AI ยังบอกภาคไม่ได้ */
+    var PK = "mw_arcpick_v1", pv = MWStore.get(PK, null) || {}, byOrder = pv.sort === "order", hide0 = !!pv.hide0; /* จำตัวเลือกเรียง/ซ่อน 0 ไว้ใช้รอบหน้า */
+    function savePv(){ MWStore.set(PK, { sort:byOrder ? "order" : "n", hide0:hide0 }); }
     FT.pick.open({ title:"เลือกภาค", placeholder:"พิมพ์ชื่อภาค เช่น Skypiea", icon:"folder", multi:true, count:matchCount,
-      items:function(q){ var cx = ctxCounts(true), ks = Object.keys(dat.ac);
-        ks.forEach(function(k){ if(arcSel.indexOf(k) >= 0 && !(k in cx.arcs)) cx.arcs[k] = 0; });
+      barFn:function(){ return [{ k:"n", label:"เรียงตามจำนวนฉาก", on:!byOrder }, { k:"order", label:"เรียงตามเนื้อเรื่อง", on:byOrder }, { k:"hide0", label:hide0 ? "ซ่อนภาคที่ 0 ฉาก" : "โชว์ภาคที่ 0 ฉาก", on:hide0 }]; },
+      onBar:function(k){ if(k === "hide0") hide0 = !hide0; else byOrder = k === "order"; savePv(); },
+      items:function(q){ var cx = ctxCounts(true), ks = ARCS.concat(Object.keys(dat.ac), arcSel).filter(function(k, i, a){ return a.indexOf(k) === i; }); /* ทุกภาคในรายชื่อ รวมภาคพิเศษ (แม้ยังไม่มีคลิป) */
         return ks.filter(function(k){ return !q || k.toLowerCase().indexOf(q) >= 0; }).map(function(k){ var on = arcSel.indexOf(k) >= 0, c = cx.arcs[k] || 0; return { k:k, name:k, sub:c + " ฉาก", on:on, dim:!on && !c, n:c }; })
-          .sort(function(a, b){ return b.n - a.n || arcRank(a.k) - arcRank(b.k) || a.k.localeCompare(b.k); }); }, /* มากไปน้อย · ภาคที่ไม่มีตัวละครที่เลือก (0 ฉาก) อยู่ล่างสุดสีจาง */
+          .filter(function(r){ return r.on || r.n || !hide0; })
+          .sort(function(a, b){ return byOrder ? arcRank(a.k) - arcRank(b.k) || a.k.localeCompare(b.k) : b.n - a.n || arcRank(a.k) - arcRank(b.k) || a.k.localeCompare(b.k); }); }, /* ภาคที่ไม่มีฉากตามที่เลือกอยู่ (0) สีจาง · ซ่อนได้ด้วยปุ่ม */
       onPick:function(k){ var i = arcSel.indexOf(k); if(i >= 0) arcSel.splice(i, 1); else arcSel.push(k); chipMax = 40; search(); },
       onClear:function(){ arcSel = []; chipMax = 40; search(); } });
   }
@@ -304,13 +308,14 @@
   }
   function renderPlayBtn(){ var has = bigCur && hasSrc(bigCur.c); $("playBtn").innerHTML = MWIcon("play") + (has ? "ดูฉากนี้" : "ดูฉากนี้ (เลือกไฟล์)"); $("loopSc").parentNode.hidden = !(bigCur && bigCur.sc); }
   var playDone = null;
-  function stopPlay(){ var v = $("bigVid"); v.pause(); if(playDone){ playDone(); playDone = null; } if(v.src){ v.removeAttribute("src"); v.load(); } v.hidden = true; $("bigImg").hidden = false; v.ontimeupdate = v.onloadedmetadata = null; }
+  function stopPlay(){ var v = $("bigVid"); v.pause(); if(window.MWLocal) MWLocal.release(v); if(playDone){ playDone(); playDone = null; } if(v.src){ v.removeAttribute("src"); v.load(); } v.hidden = true; $("bigImg").hidden = false; v.ontimeupdate = v.onloadedmetadata = null; }
   async function playScene(){
     if(!bigCur || !hasSrc(bigCur.c)){ $("playFiles").click(); return; } /* ไม่มีในเครื่องและไม่อยู่ในคลัง → ให้เลือกไฟล์ (ต้องเรียกตอนแตะ ก่อน await) */
     var cur = bigCur, v = $("bigVid"), s = cur.sc ? cur.sc.s : 0, e = cur.sc ? cur.sc.e : Infinity;
     stopPlay(); $("playMsg").textContent = "กำลังเปิด...";
     var src; try{ src = await srcUrl(cur.c); }catch(err){ $("playMsg").textContent = err.message; return; }
     if(bigCur !== cur){ src.done(); return; } /* ปิด/เปลี่ยนฉากไประหว่างรอ */
+    if(window.MWLocal) MWLocal.seekable(v, function(m){ $("playMsg").textContent = m; }); /* เริ่มที่ฉากกลางคลิป/กรอแล้วเด้งไป 0:00 = โหลดเป็น Blob ให้กรอได้ */
     playDone = src.done; v.src = src.url; v.hidden = false; $("bigImg").hidden = true; $("playMsg").textContent = "";
     v.onloadedmetadata = function(){ v.currentTime = Math.min(s, Math.max(0, v.duration - 0.1)); v.play().catch(function(){ $("playMsg").textContent = "กดปุ่มเล่นที่ตัวเล่นเพื่อเริ่ม"; }); };
     v.ontimeupdate = function(){ if(v.currentTime >= e - 0.05){ if($("loopSc").checked && bigCur.sc) v.currentTime = s; else v.pause(); } }; /* ฉากนี้เท่านั้น ไม่เล่นเลยไปฉากอื่น */
