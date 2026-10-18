@@ -463,6 +463,16 @@ try {
   await sp.locator('#spList .spwho').nth(1).click(); await sp.waitForSelector('#pkSheet:not([hidden])', { timeout: 5000 }); await sp.fill('#pkQ', 'zoro'); await sp.waitForTimeout(150); await sp.locator('#pkList button', { hasText: 'Zoro' }).first().click(); await sp.waitForTimeout(400);
   const ew2 = await sp.evaluate(async () => { const a = FT.ui.lib().find((c) => c.id === 'sp1'); const before = a.speech.segs.map((g) => g.who); window.__tr = []; await FT.speech.doClip(a); return { before, after: a.speech.segs.map((g) => [g.who, g.fixed === true]) }; });
   check('แก้ชื่อคนพูด: เลือกตัวหลัก Zoro จากรายการ · ทำเสียงซ้ำแล้วชื่อที่แก้เองไม่ถูกทับ (ได้ชื่อเดิมกลับมา ติดล็อก)', ew2.before[1] === 'Zoro' && ew2.after[0][0] === 'พ่อค้า' && ew2.after[0][1] && ew2.after[1][0] === 'Zoro' && ew2.after[1][1], JSON.stringify(ew2));
+  // v8.62 คนพูดช่วยบอกตัวละครของฉาก (ตัวหลักที่ AI แน่ใจ) · แก้ชื่อคนพูดจากการ์ดโดยตรง
+  const spk = await sp.evaluate(() => { const U = FT.ui, mk = (sure, fixed) => ({ id: 'spk' + Math.random(), name: 'x', scenes: [{ s: 0, e: 2, ai: { characters: ['Luffy'], fixed } }], speech: { segs: [{ s: 0.5, e: 1.5, t: 'ฮึ่ม', who: 'Zoro', sure }] } });
+    const ch = (c) => { U.syncSpeakers(c); return U.chars(c.scenes[0]).slice(); }; return { z: ch(mk(true, false)), unsure: ch(mk(false, false)), fixed: ch(mk(true, true)) }; });
+  check('คนพูดช่วยบอกตัวละคร: Zoro พูดอย่างแน่ใจ = ฉากนั้นมี Zoro เพิ่ม (นอกจาก Luffy) · ไม่แน่ใจ = ไม่เพิ่ม · ฉากที่ Han แก้ตัวละครเอง (fixed) = ไม่เพิ่ม', spk.z.includes('zoro') && spk.z.includes('luffy') && !spk.unsure.includes('zoro') && !spk.fixed.includes('zoro'), JSON.stringify(spk));
+  const cd = await sp.evaluate(() => { const U = FT.ui, a = U.lib().find((c) => c.id === 'sp1'); const host = document.createElement('div'); host.id = 'cardHost'; host.innerHTML = U.card(a, a.scenes[0]); document.querySelector('main').appendChild(host); return host.querySelectorAll('.spwho').length; });
+  await sp.evaluate(() => { document.getElementById('cardHost').scrollIntoView(); }); await sp.locator('#cardHost .spwho').first().click(); await sp.waitForSelector('#pkSheet:not([hidden])', { timeout: 5000 });
+  await sp.fill('#pkQ', 'ลุงเกาะ'); await sp.waitForTimeout(150); await sp.locator('#pkList button', { hasText: 'ใช้ "ลุงเกาะ"' }).first().click(); await sp.waitForTimeout(400);
+  const cd2 = await sp.evaluate(() => ({ txt: document.querySelector('#cardHost .sps').textContent, who: FT.ui.lib().find((c) => c.id === 'sp1').speech.segs[0].who, big: !document.getElementById('big').hidden }));
+  check('แก้ชื่อคนพูดจากการ์ด: แตะชื่อบนการ์ด → ชีตเลือก → พิมพ์บทบาทเอง → กล่องบทพูดบนการ์ดเปลี่ยนทันที + บันทึกลงคลิป · ไม่เปิดรูปใหญ่', cd === 2 && /ลุงเกาะ/.test(cd2.txt) && cd2.who === 'ลุงเกาะ' && !cd2.big && !spErr.length, JSON.stringify([cd, cd2, spErr]));
+  await sp.evaluate(() => document.getElementById('cardHost').remove());
   // ภาพถี่จากวิดีโอจริง (webm สร้างในเบราว์เซอร์) → JPEG กว้าง 384 ตามเวลา
   const df = await sp.evaluate(async () => {
     const cv = document.createElement('canvas'); cv.width = 320; cv.height = 180; const x = cv.getContext('2d'), st = cv.captureStream(15), rec = new MediaRecorder(st, { mimeType: 'video/webm;codecs=vp8' }), ch = [];
