@@ -333,6 +333,20 @@
     try{ j = parseJSON(r.text); }catch(err){ err.cost = r.cost; throw err; }
     r.json = j; return r;
   }
+  /* ---------- ฟังเสียงคลิป (footage-speech.js) · ส่งเสียงโมโน 16 kHz (wav base64 ≤ ~3 นาที) ให้โมเดลที่รับเสียงได้ (Gemini) ถอดบทพูดพร้อมเวลา ---------- */
+  async function transcribe(b64, dur, hint){
+    var prompt = [
+      "This is the audio track of a short One Piece anime clip. The dialogue is almost always a THAI dub (sometimes Japanese or English). Clip audio length: " + Math.round(dur) + "s." + (hint ? " Context from the editor (may be wrong): " + hint : ""),
+      "Transcribe ONLY the spoken words (dialogue, narration, shouted attack names) in the language spoken, Thai in Thai script. Ignore music, sound effects and silence. Do not invent words: if a part is unclear or there is no speech, leave it out.",
+      "Group the speech into short segments (one sentence or breath each). s and e are seconds from the START OF THIS AUDIO (e.g. 3.4). Add \"who\" only when the speaker is clearly named in the speech or obvious, else leave it empty.",
+      "Return ONLY JSON, no markdown: {\"segments\":[{\"s\":0.0,\"e\":2.1,\"t\":\"text\",\"who\":\"\"}],\"summary_th\":\"one short Thai sentence about what is being said (empty if no speech)\"}"
+    ].join("\n");
+    var body = { model:cfg.model, usage:{ include:true }, messages:[{ role:"user", content:[{ type:"text", text:prompt }, { type:"input_audio", input_audio:{ data:b64, format:"wav" } }] }] };
+    if(/^google\//.test(cfg.model)) body.reasoning = { effort:"low" };
+    var r = await post(body), j;
+    try{ j = parseJSON(r.text); }catch(err){ err.cost = r.cost; err.raw = r.text; throw err; }
+    r.json = j; return r;
+  }
   async function askExpand(question){
     var r = await askText([
       "You help a Thai One Piece video editor search his own footage library (anime clips, scenes described in Thai/English). Turn his question into search terms.",
@@ -369,5 +383,5 @@
     r.json = j; return r;
   }
 
-  window.FT = { classifyArcs:classifyArcs, cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize, askExpand:askExpand, askPick:askPick };
+  window.FT = { classifyArcs:classifyArcs, cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize, askExpand:askExpand, transcribe:transcribe, askPick:askPick };
 })();

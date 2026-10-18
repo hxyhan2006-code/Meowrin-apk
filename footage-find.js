@@ -73,11 +73,15 @@
     if(w.length >= 3){ var sk = skel(w); if(sk.length >= 3) for(k = 0; k < hn.length; k++) if(skel(hn[k]).indexOf(sk) >= 0) return k; }
     return -1;
   }
+  function speechOf(c, sc){ /* บทพูดที่ทับช่วงของฉากนี้ (footage-speech.js เก็บที่ c.speech.segs) · เผื่อขอบ 0.3 วิ เพราะเวลาจากเสียงกับเวลาฉากคลาดได้ */
+    var sp = c && c.speech; if(!sp || !sp.segs || !sp.segs.length) return "";
+    return sp.segs.filter(function(g){ return g.e >= sc.s - 0.3 && g.s <= sc.e + 0.3; }).map(function(g){ return g.t; }).join(" ");
+  }
   function hay(c, sc){
     var a = sc.ai || {};
     return [ (a.characters || []).concat(a.characters_th || []).join(" "),
              (a.tags_en || []).concat(a.tags_th || [], [a.action, a.emotion, a.mood], a.objects || []).join(" "),
-             [a.summary_th, a.location, a.arc, c && c.arcFixed ? c.arc : "", a.event, a.text].concat((a.fr || []).map(function(f){ return f.d; })).join(" ") ].map(nzc); /* mood/arc/event มีเฉพาะดัชนีรุ่นละเอียด */ /* ระดับฉากเท่านั้น: ไม่รวมสรุปทั้งคลิป (ไม่งั้นทุกฉากในคลิปที่มีลูฟี่ตรงหมด) และไม่รวมชื่ออัลบั้ม */
+             [a.summary_th, a.location, a.arc, c && c.arcFixed ? c.arc : "", a.event, a.text, speechOf(c, sc)].concat((a.fr || []).map(function(f){ return f.d; })).join(" ") ].map(nzc); /* mood/arc/event มีเฉพาะดัชนีรุ่นละเอียด */ /* ระดับฉากเท่านั้น: ไม่รวมสรุปทั้งคลิป (ไม่งั้นทุกฉากในคลิปที่มีลูฟี่ตรงหมด) และไม่รวมชื่ออัลบั้ม */
   }
   /* "ลูฟี่ตกใจ" ต้องหมายถึงลูฟี่เป็นคนตกใจ ไม่ใช่แค่มีลูฟี่อยู่ในฉากแล้วคนอื่นตกใจ → ดูว่าชื่อตัวละครตามด้วยคำอารมณ์ติดกันในสรุปของฉาก (ไม่เกิน NEAR ตัวอักษร) */
   var NEAR = 24;
@@ -383,7 +387,7 @@
       a.characters = (a.characters || []).concat(nx ? nx.key.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }) : k); a.characters_th = (a.characters_th || []).concat(nx ? nx.th : k); n++; });
     if(n){ a.rc = 1; chipCache.delete(sc); } return n;
   }
-  Object.assign(U, { addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
+  Object.assign(U, { speechOf:speechOf, addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
                      openFiles:function(docs){ $(docs ? "pickDocs" : "playFiles").click(); } });
   search();
 })();

@@ -427,6 +427,27 @@ try {
   await og.click('#orgPerm'); await og.waitForTimeout(300);
   check('จัดอัลบั้มใหม่: ไม่มีสิทธิ์เข้าถึงไฟล์ทั้งหมด = ไม่มีปุ่มย้าย มีปุ่มขอสิทธิ์ที่เปิดหน้าตั้งค่า', (await og.evaluate(() => ({ req: window.__req, move: !!document.getElementById('orgTrial') }))).req === 1 && !(await og.evaluate(() => !!document.getElementById('orgTrial'))) && !ogErr.length, ogErr.join());
   await og.close();
+  // v8.52 ฟังเสียงคลิป (footage-speech.js): ถอดเสียงจริงจากไฟล์ wav จำลอง (สเตอริโอ 24 kHz → โมโน 16 kHz) · เงียบ = ไม่เรียก AI · บทพูดเข้าฉากที่ทับเวลา · แผงโชว์บทพูด
+  const sp = await context.newPage(); const spErr = []; sp.on('pageerror', (e) => spErr.push(e.message));
+  await sp.goto(base + '/footage.html'); await sp.waitForFunction(() => window.FT && FT.speech && document.getElementById('spTrial'), null, { timeout: 20000 }); await sp.waitForTimeout(400);
+  await sp.evaluate(() => {
+    const wav = (sec, amp) => { const sr = 24000, n = sr * sec, b = new DataView(new ArrayBuffer(44 + n * 4)); const S = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+      S(0, 'RIFF'); b.setUint32(4, 36 + n * 4, true); S(8, 'WAVE'); S(12, 'fmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 2, true); b.setUint32(24, sr, true); b.setUint32(28, sr * 4, true); b.setUint16(32, 4, true); b.setUint16(34, 16, true); S(36, 'data'); b.setUint32(40, n * 4, true);
+      for (let i = 0; i < n; i++) { const v = Math.round(Math.sin(i * 2 * Math.PI * 440 / sr) * amp * 32767); b.setInt16(44 + i * 4, v, true); b.setInt16(46 + i * 4, v, true); } return new Blob([b], { type: 'audio/wav' }); };
+    const urls = { 'v1.wav': URL.createObjectURL(wav(3, 0.3)), 'v2.wav': URL.createObjectURL(wav(2, 0)) };
+    const mk = (id, name) => ({ id, name, size: 5, album: 'luffy', duration: 3, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 0, e: 2, thumb: '', ai: { characters: ['Luffy'] } }, { s: 2, e: 3, thumb: '', ai: { characters: ['Luffy'] } }] });
+    FT.ui.lib().push(mk('sp1', 'v1.wav'), mk('sp2', 'v2.wav')); window.__tr = [];
+    FT.ui.hasSrc = (c) => /^sp[12]$/.test(c.id); FT.ui.srcUrl = async (c) => ({ url: urls[c.name], done() {} });
+    FT.transcribe = async (b64, dur) => { window.__tr.push({ head: atob(b64.slice(0, 16)).slice(0, 4), bytes: Math.round(atob(b64).length), dur }); return { cost: 0.002, json: { segments: [{ s: 0.5, e: 1.5, t: 'ทดสอบ บทพูด', who: 'ลูฟี่' }, { s: 9, e: 99, t: '' }], summary_th: 'สรุปทดสอบ' } }; };
+    FT.ui.search && FT.ui.search(); document.dispatchEvent(new CustomEvent('ft:lib'));
+  });
+  await sp.click('nav button[data-p="set"]'); await sp.evaluate(() => { document.getElementById('p-idx').open = true; }); await sp.waitForTimeout(200);
+  await sp.click('#spTrial'); await sp.waitForTimeout(300); await sp.getByRole('button', { name: 'เริ่ม', exact: true }).click();
+  await sp.waitForFunction(() => /ทดลอง: ฟังเสร็จ 2/.test(document.getElementById('spMsg').textContent), null, { timeout: 20000 });
+  const sp1 = await sp.evaluate(() => { const [a, b] = FT.ui.lib().filter((c) => /^sp[12]$/.test(c.id)); return { tr: window.__tr, a: a.speech, b: b.speech, s0: FT.ui.speechOf(a, a.scenes[0]), s1: FT.ui.speechOf(a, a.scenes[1]), hay: FT.ui.hay(a, a.scenes[0]).join('|').includes('ทดสอบ'), list: document.getElementById('spList').textContent, info: document.getElementById('spInfo').textContent, over: document.documentElement.scrollWidth > innerWidth + 1 }; });
+  check('ฟังเสียงคลิป: ส่ง wav โมโน 16 kHz (3 วิ ≈ 96 KB + หัว 44) ให้ AI 1 ครั้ง (คลิปเงียบไม่เรียก AI) · บทพูดเก็บที่คลิปพร้อมเวลา (ตัดบรรทัดว่างทิ้ง) · เงียบ = silent', sp1.tr.length === 1 && sp1.tr[0].head === 'RIFF' && Math.abs(sp1.tr[0].bytes - (44 + 3 * 16000 * 2)) < 400 && sp1.a.segs.length === 1 && sp1.a.segs[0].t === 'ทดสอบ บทพูด' && sp1.a.segs[0].who === 'ลูฟี่' && sp1.a.sum === 'สรุปทดสอบ' && sp1.b.silent === true && sp1.b.segs.length === 0, JSON.stringify([sp1.tr, sp1.a, sp1.b]));
+  check('ฟังเสียงคลิป: บทพูดเข้าเฉพาะฉากที่เวลาทับ (ฉาก 0-2 มี · ฉาก 2-3 ไม่มี) · ค้นหา hay รวมบทพูด · แผงโชว์บทพูดและตัวเลข · หน้าไม่ล้น', /ทดสอบ/.test(sp1.s0) && sp1.s1 === '' && sp1.hay && /ทดสอบ บทพูด/.test(sp1.list) && /ฟังเสียงแล้ว 2\/\d+ คลิป/.test(sp1.info) && !sp1.over && !spErr.length, JSON.stringify([sp1.s0, sp1.s1, sp1.info, spErr]));
+  await sp.close();
   // ให้ AI ดูภาคของคลิปที่ยังไม่แน่ใจ (โหมดภาค): ถามราคาก่อน · AI ตอบภาค = เข้าอัลบั้มภาคนั้น (arcAi) · ตอบว่าง = ยังไม่แน่ใจและไม่ลองซ้ำ
   await sq.evaluate(() => { const c = FT.ui.lib().find((x) => x.name === 'sk.mp4'); c.scenes[0].thumb = 'data:image/jpeg;base64,/9j/4AAQ'; FT.classifyArcs = async (items, arcs) => { window.__arcCalls = (window.__arcCalls || 0) + 1; return { cost: 0.01, map: { 1: 'Alabasta' } }; }; MWStore.set('mw_openrouter_key_v1', 'k'); });
   await sq.click('#alSeg [data-m=arc]'); await sq.waitForTimeout(300);

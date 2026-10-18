@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
 <title>ฟุตเทจ · Meowrin factory</title>
-<link rel="icon" type="image/png" href="icon-192.png?v=8.51">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.51">
-<link rel="stylesheet" href="fonts.css?v=8.51"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
-<link rel="stylesheet" href="footage.css?v=8.51">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.52">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.52">
+<link rel="stylesheet" href="fonts.css?v=8.52"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
+<link rel="stylesheet" href="footage.css?v=8.52">
 </head>
 <body>
 <header>
@@ -125,6 +125,16 @@
       <p class="hint" id="rcInfo"></p>
       <button class="btn" id="rcBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>ตรวจตัวละครซ้ำ</button>
     </div>
+    <div class="panel" id="spPanel">
+      <h2><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg>ฟังเสียงคลิป (ทดลอง)</h2>
+      <p class="hint tip" style="margin-top:0">ปกติ AI ดูแค่ภาพ ปุ่มนี้ให้ Gemini ฟังเสียงพากย์ในคลิปแล้วถอดบทพูดพร้อมเวลา เก็บไว้กับแต่ละคลิป → ค้นหา "ฉากที่พูดว่า…" และถาม AI แม่นขึ้น · ทดลองสุ่ม 10 คลิปก่อน ดูบทพูดที่ได้ว่าถูกไหม ถ้าดีค่อยทำที่เหลือ · คลิปเสียงเงียบไม่เสียเงิน</p>
+      <p class="hint" id="spInfo"></p>
+      <button class="btn" id="spTrial" style="width:100%;margin-top:8px" disabled>ทดลองฟังเสียง 10 คลิป</button>
+      <button class="btn ghost" id="spAll" style="width:100%;margin-top:8px" hidden></button>
+      <button class="btn ghost" id="spStop" style="width:100%;margin-top:8px" hidden>พัก</button>
+      <p class="hint" id="spMsg"></p>
+      <div id="spList"></div>
+    </div>
     <div class="panel">
       <h2>ต้นทุนและเวลา</h2>
       <div class="stats" id="stats"></div>
@@ -237,6 +247,6 @@
 <video id="vid" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:2px;height:2px"></video>
 
 <div class="asheet" id="pkSheet" hidden><div class="abox" role="dialog"><div class="pkhead"><h3 id="pkTitle"></h3><span id="pkInfo"></span></div><input id="pkQ" type="search" autocomplete="off"><div id="pkBar" hidden></div><div id="pkList"></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="pkClear" type="button">ล้างที่เลือก</button><button class="btn" id="pkDone" type="button">เสร็จ</button></div></div></div>
-<script src="store.js?v=8.51" data-boot="icons.js?v=8.51 dialog.js?v=8.51 native.js?v=8.51 history.js?v=8.51 history-sheet.js?v=8.51 budget.js?v=8.51 footage-core.js?v=8.51 footage-pick.js?v=8.51 footage.js?v=8.51 local.js?v=8.51 library.js?v=8.51 footage-find.js?v=8.51 footage-ask.js?v=8.51 footage-album.js?v=8.51 footage-organize.js?v=8.51 footage-dup.js?v=8.51 footage-audit.js?v=8.51 mp4fix.js?v=8.51 footage-stitch.js?v=8.51 voicestore.js?v=8.51 studio-model.js?v=8.51 footage-plan.js?v=8.51 backup.js?v=8.51"></script>
+<script src="store.js?v=8.52" data-boot="icons.js?v=8.52 dialog.js?v=8.52 native.js?v=8.52 history.js?v=8.52 history-sheet.js?v=8.52 budget.js?v=8.52 footage-core.js?v=8.52 footage-pick.js?v=8.52 footage.js?v=8.52 local.js?v=8.52 library.js?v=8.52 footage-find.js?v=8.52 footage-ask.js?v=8.52 footage-album.js?v=8.52 footage-organize.js?v=8.52 footage-dup.js?v=8.52 footage-speech.js?v=8.52 footage-audit.js?v=8.52 mp4fix.js?v=8.52 footage-stitch.js?v=8.52 voicestore.js?v=8.52 studio-model.js?v=8.52 footage-plan.js?v=8.52 backup.js?v=8.52"></script>
 </body>
 </html>

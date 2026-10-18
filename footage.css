@@ -251,3 +251,11 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 .orgbtns{display:flex;gap:8px;margin-top:8px}.orgbtns .btn{flex:1}
 #orgBox{padding:12px;border:1px solid var(--line-strong);border-radius:12px;margin-bottom:10px}
 #orgBox[hidden]{display:none}
+
+/* ฟังเสียงคลิป (footage-speech.js) */
+#spPanel .spc{margin:8px 0;border:1px solid var(--line-strong);border-radius:12px;background:var(--field)}
+#spPanel .spc summary{display:flex;flex-direction:column;gap:2px;padding:10px 12px;cursor:pointer;list-style:none}#spPanel .spc summary::-webkit-details-marker{display:none}
+#spPanel .spc summary b{font-weight:500;overflow-wrap:anywhere;font-size:14px}#spPanel .spc summary small{color:var(--muted);font-size:12.5px}
+#spPanel .spc[open]>*:not(summary){margin-left:12px;margin-right:12px}#spPanel .spc[open]{padding-bottom:10px}
+#spPanel .splines div{padding:4px 0;font-size:14px;line-height:1.5;overflow-wrap:anywhere;border-top:1px solid var(--line)}#spPanel .splines div:first-child{border-top:0}
+#spPanel .splines i{font-style:normal;color:var(--accent);font-size:12.5px;margin-right:8px}#spPanel .splines b{font-weight:500;margin-right:4px}

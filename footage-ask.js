@@ -26,8 +26,8 @@
     return top;
   }
   function describe(x, n){
-    var a = x.sc.ai || {}, tags = (a.tags_th || []).slice(0, 6).join(","), extra = [a.event, a.mood, tags].filter(Boolean).join(" · ");
-    return { n:n, clip:String(x.c.name || "").replace(/\.[a-z0-9]+$/i, ""), at:U.tm(x.sc.s), who:U.chars(x.sc).map(U.enName).join(","), sum:(a.summary_th || "(ไม่มีคำอธิบาย)") + (extra ? " [" + extra + "]" : "") };
+    var a = x.sc.ai || {}, tags = (a.tags_th || []).slice(0, 6).join(","), extra = [a.event, a.mood, tags].filter(Boolean).join(" · "), sp = U.speechOf ? U.speechOf(x.c, x.sc) : ""; /* บทพูดของฉาก (ถ้าเคยให้ AI ฟังเสียง) */
+    return { n:n, clip:String(x.c.name || "").replace(/\.[a-z0-9]+$/i, ""), at:U.tm(x.sc.s), who:U.chars(x.sc).map(U.enName).join(","), sum:(a.summary_th || "(ไม่มีคำอธิบาย)") + (extra ? " [" + extra + "]" : "") + (sp ? " · พูดว่า: \"" + sp.slice(0, 140) + "\"" : "") };
   }
   function out(html){ $("askOut").innerHTML = html; $("askOut").hidden = !html; }
   function say(t){ out('<div class="askans">' + U.esc(t) + "</div>"); }
