@@ -28,13 +28,15 @@
   }
 
   async function run(list, onStep){ /* ย้ายทีละไฟล์ · พลาดติดกัน FAIL_STOP ครั้งหยุด · คืน { done:[], fail, last } */
-    var M = mover(), done = [], fail = 0, bad = 0, last = "";
+    var M = mover(), done = [], fail = 0, skip = 0, bad = 0, last = "";
     for(var i = 0; i < list.length; i++){
       if(onStep) onStep(i, list.length);
       try{ await M.move({ from:list[i].from, to:list[i].to }); done.push(list[i]); bad = 0; }
-      catch(e){ fail++; bad++; last = (e && (e.message || e.errorMessage)) || String(e); if(bad >= FAIL_STOP) break; }
+      catch(e){ last = (e && (e.message || e.errorMessage)) || String(e);
+        if(/target exists|source missing/.test(last)){ skip++; continue; } /* ปลายทางมีชื่อนี้แล้ว/ต้นทางหายไปแล้ว = ข้ามคลิปนั้น ไม่นับว่าระบบพัง (ไม่ให้ไปหยุดทั้งชุด) */
+        fail++; bad++; if(bad >= FAIL_STOP) break; }
     }
-    return { done:done, fail:fail, last:last };
+    return { done:done, fail:fail, skip:skip, last:last };
   }
   async function afterMove(done){ /* ป้ายอัลบั้มในดัชนี = ชื่อใหม่ · สแกนมือถือใหม่ให้หน้าอัลบั้มวาดตามของจริง */
     var puts = []; done.forEach(function(x){ var c = U.lib().find(function(z){ return z.id === x.clipId; }); if(c && c.album !== x.toAlbum){ c.album = x.toAlbum; puts.push(FT.store.put(c)); } });
@@ -69,15 +71,16 @@
     if(busy || !list.length) return; busy = true;
     var r = await run(list, function(i, n){ say("กำลังย้าย " + (i + 1) + "/" + n + "..."); });
     journal(r.done); await afterMove(r.done);
-    await render(); say(label + ": ย้ายแล้ว " + r.done.length + " คลิป" + (r.fail ? " · พลาด " + r.fail + (r.last ? " (" + r.last + ")" : "") : "") + (r.done.length ? " · กด เลิกทำ ถ้าไม่ถูกใจ" : ""), r.fail ? "err" : "ok");
+    await render(); say(label + ": ย้ายแล้ว " + r.done.length + " คลิป" + (r.skip ? " · ข้าม " + r.skip + " (ชื่อซ้ำที่ปลายทาง/ไฟล์หาย)" : "") + (r.fail ? " · พลาด " + r.fail + (r.last ? " (" + r.last + ")" : "") : "") + (r.done.length ? " · กด เลิกทำ ถ้าไม่ถูกใจ" : ""), r.fail ? "err" : "ok");
     busy = false;
   }
   async function undo(){
     if(busy) return; var j = load(), b = j.batches[0]; if(!b) return; busy = true;
-    var M = mover(), back = [], fail = 0;
+    var M = mover(), back = [], fail = 0, left = [];
     for(var i = b.items.length - 1; i >= 0; i--){ var x = b.items[i]; say("กำลังย้ายกลับ " + (b.items.length - i) + "/" + b.items.length + "...");
-      try{ await M.move({ from:x.to, to:x.from }); back.push({ clipId:x.clipId, toAlbum:x.album }); }catch(e){ fail++; } }
-    j.batches.shift(); MWStore.set(KEY, j); await afterMove(back);
+      try{ await M.move({ from:x.to, to:x.from }); back.push({ clipId:x.clipId, toAlbum:x.album }); }catch(e){ fail++; left.unshift(x); } }
+    if(left.length) b.items = left; else j.batches.shift(); /* ที่ย้ายกลับไม่สำเร็จเก็บไว้ในชุดเดิม กดเลิกทำซ้ำได้ */
+    MWStore.set(KEY, j); await afterMove(back);
     await render(); say("เลิกทำแล้ว: ย้ายกลับ " + back.length + " คลิป" + (fail ? " · พลาด " + fail + " (ไฟล์ถูกย้าย/ลบไปแล้ว?)" : ""), fail ? "err" : "ok"); busy = false;
   }
 
@@ -93,5 +96,6 @@
     else if(id === "orgUndo") undo();
   });
   document.addEventListener("ft:lib", function(){ if(!$("orgBox").hidden && !busy) render(); });
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden && !$("orgBox").hidden && !busy) render(); }); /* กลับจากหน้าตั้งค่าสิทธิ์ = ตรวจสิทธิ์ใหม่ให้เอง */
   FT.organize = { buildPlan:buildPlan, nameOfArc:nameOfArc };
 })();

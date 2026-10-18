@@ -131,15 +131,14 @@ jobs:
                   boolean ok = src.renameTo(dst);
                   if (!ok) {
                       try {
-                          FileInputStream in = new FileInputStream(src);
-                          FileOutputStream out = new FileOutputStream(dst);
-                          byte[] buf = new byte[1 << 20];
-                          int n;
-                          while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-                          in.close();
-                          out.close();
+                          try (FileInputStream in = new FileInputStream(src); FileOutputStream out = new FileOutputStream(dst)) {
+                              byte[] buf = new byte[1 << 20];
+                              int n;
+                              while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                              out.getFD().sync();
+                          }
                           if (dst.length() != src.length()) { dst.delete(); call.reject("copy size mismatch"); return; }
-                          if (!src.delete()) { call.reject("copied but cannot delete source"); return; }
+                          if (!src.delete()) { dst.delete(); call.reject("cannot delete source"); return; }
                       } catch (Exception e) {
                           dst.delete();
                           call.reject("move failed: " + e);

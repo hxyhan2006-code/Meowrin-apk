@@ -392,7 +392,7 @@ try {
   // จัดอัลบั้มใหม่ (footage-organize.js): แผนจากภาคที่ AI รู้แน่ → ย้ายไฟล์จริงด้วย MediaScan.move · ไม่แตะคลิปที่ไม่แน่ใจภาค/สำเนาในแอพ/ที่อยู่ถูกแล้ว/ชื่อซ้ำ · ย้ายทดลอง · เลิกทำย้ายกลับ · ไม่มีสิทธิ์ = ปุ่มขอสิทธิ์
   const og = await context.newPage(); const ogErr = []; og.on('pageerror', (e) => ogErr.push(e.message));
   await og.addInitScript(() => { window.__mv = []; window.__perm = { granted: true }; window.__req = 0; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true,
-    Plugins: { Filesystem: {}, Media: { getAlbums: async () => ({ albums: [] }) }, MediaScan: { hasAccess: async () => window.__perm, requestAccess: async () => { window.__req++; }, move: async (o) => { window.__mv.push([o.from, o.to]); } } } }; });
+    Plugins: { Filesystem: {}, Media: { getAlbums: async () => ({ albums: [] }) }, MediaScan: { hasAccess: async () => window.__perm, requestAccess: async () => { window.__req++; }, move: async (o) => { const er = window.__mvErr && window.__mvErr(o); if (er) throw new Error(er); window.__mv.push([o.from, o.to]); } } } }; });
   await og.goto(base + '/footage.html'); await og.waitForFunction(() => window.FT && FT.organize && document.getElementById('orgBtn'), null, { timeout: 20000 }); await og.waitForTimeout(500);
   await og.evaluate(() => {
     const D = '/storage/emulated/0/Pictures/Gallery/owner/', mk = (id, name, size, arc) => ({ id, name, size, album: 'luffy', duration: 9, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 0, e: 3, thumb: '', ai: arc ? { arc, characters: ['Luffy'] } : { characters: ['Luffy'] } }] });
@@ -414,6 +414,15 @@ try {
   await og.evaluate(() => { window.__mv = []; }); await og.click('#orgUndo'); await og.waitForFunction(() => window.__mv.length === 2 && /เลิกทำแล้ว/.test(document.getElementById('orgMsg').textContent), null, { timeout: 8000 });
   const og3 = await og.evaluate(() => ({ mv: window.__mv, j: MWStore.get('mw_org_v1', null).batches.length, alb: FT.ui.lib().find((c) => c.id === 'o1').album }));
   check('จัดอัลบั้มใหม่: เลิกทำ = ย้ายกลับที่เดิมทุกไฟล์ · ลบบันทึก · ป้ายอัลบั้มกลับเดิม', og3.mv.length === 2 && og3.mv.every((m) => /\/owner\/luffy\//.test(m[1])) && og3.j === 0 && og3.alb === 'luffy', JSON.stringify(og3));
+  // v8.51 ปลายทางชื่อซ้ำ = ข้าม (ไม่นับว่าพัง ไม่หยุดทั้งชุด ไม่จดบันทึก) · เลิกทำที่ย้ายกลับไม่ครบ = เก็บที่ค้างไว้ในชุดเดิม
+  await og.evaluate(() => { window.__mvErr = () => 'target exists: /x'; }); await og.click('#orgTrial'); await og.waitForFunction(() => /ย้ายแล้ว 0 คลิป/.test(document.getElementById('orgMsg').textContent), null, { timeout: 8000 });
+  const og4 = await og.evaluate(() => ({ msg: document.getElementById('orgMsg').textContent, cls: document.getElementById('orgMsg').className, b: MWStore.get('mw_org_v1', null).batches.length }));
+  check('จัดอัลบั้มใหม่: ปลายทางมีชื่อซ้ำ = ข้าม 2 คลิป ไม่ขึ้นพลาด ไม่จดบันทึก', /ข้าม 2/.test(og4.msg) && !/พลาด/.test(og4.msg) && !/err/.test(og4.cls) && og4.b === 0, JSON.stringify(og4));
+  await og.evaluate(() => { window.__mvErr = null; window.__mv = []; }); await og.click('#orgTrial'); await og.waitForFunction(() => window.__mv.length === 2 && /ย้ายแล้ว 2 คลิป/.test(document.getElementById('orgMsg').textContent), null, { timeout: 8000 });
+  await og.evaluate(() => { window.__mvErr = (o) => /a\.mp4/.test(o.from) ? 'boom' : null; }); await og.click('#orgUndo'); await og.waitForFunction(() => /เลิกทำแล้ว/.test(document.getElementById('orgMsg').textContent), null, { timeout: 8000 });
+  const og5 = await og.evaluate(() => ({ msg: document.getElementById('orgMsg').textContent, b: MWStore.get('mw_org_v1', null).batches.map((x) => x.items.length) }));
+  await og.evaluate(() => { window.__mvErr = null; }); await og.click('#orgUndo'); await og.waitForFunction(() => MWStore.get('mw_org_v1', null).batches.length === 0, null, { timeout: 8000 });
+  check('จัดอัลบั้มใหม่: เลิกทำย้ายกลับได้ 1 จาก 2 = ชุดเดิมเหลือ 1 คลิปที่ค้าง · กดเลิกทำซ้ำจนหมด', /ย้ายกลับ 1 คลิป/.test(og5.msg) && /พลาด 1/.test(og5.msg) && og5.b.length === 1 && og5.b[0] === 1, JSON.stringify(og5));
   await og.evaluate(() => { window.__perm = { granted: false }; }); await og.click('#orgBtn'); await og.click('#orgBtn'); await og.waitForFunction(() => document.getElementById('orgPerm'), null, { timeout: 8000 });
   await og.click('#orgPerm'); await og.waitForTimeout(300);
   check('จัดอัลบั้มใหม่: ไม่มีสิทธิ์เข้าถึงไฟล์ทั้งหมด = ไม่มีปุ่มย้าย มีปุ่มขอสิทธิ์ที่เปิดหน้าตั้งค่า', (await og.evaluate(() => ({ req: window.__req, move: !!document.getElementById('orgTrial') }))).req === 1 && !(await og.evaluate(() => !!document.getElementById('orgTrial'))) && !ogErr.length, ogErr.join());
