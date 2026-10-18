@@ -452,6 +452,26 @@ try {
   await sq.click('#pkDone'); await sq.waitForTimeout(200);
   check('ชีตภาค: มีภาคพิเศษ Movies/TV Specials/Filler ครบแม้ 0 ฉาก · เรียงตามเนื้อเรื่อง (Alabasta ก่อน Skypiea ก่อน Movies) · ซ่อนภาคที่ 0 เหลือเฉพาะที่มีฉาก', ['Movies', 'TV Specials', 'Filler', 'Romance Dawn'].every((n) => apA.includes(n)) && apB.indexOf('Alabasta') < apB.indexOf('Skypiea') && apB.indexOf('Skypiea') < apB.indexOf('Movies') && apC.length < apA.length && !apC.includes('Movies') && /เรียงตามเนื้อเรื่อง\*/.test(apBar), JSON.stringify([apA.length, apB.slice(0, 14), apC, apBar]));
   // v8.48 หัวแถวปุ่ม จัดอัลบั้มใหม่/สแกนใหม่ ไม่แตกบรรทัดในแถบตัวละคร/ภาค (ข้อความสั้นลง + ปุ่ม nowrap)
+  // v8.49 หมวดฉาก: จัดจากคำที่ AI เขียน (ฟรี) · เรือเมอร์รี่/ทะเล/ภายใน · ไม่มีตัวละคร · ใช้ร่วมกับตัวกรองอื่น
+  await sq.click('#chips [data-clr]'); await sq.waitForTimeout(300);
+  await sq.evaluate(() => { FT.ui.lib().push({ id: 'ct1', name: 'ct1.mp4', size: 11, album: 'luffy', duration: 30, status: 'done', lastModified: 3, cover: '', scenes: [
+    { s: 0, e: 4, thumb: '', ai: { characters: [], location: 'Going Merry deck', summary_th: 'เรือเมอร์รี่แล่นกลางทะเลสีฟ้า' } },
+    { s: 4, e: 9, thumb: '', ai: { characters: [], summary_th: 'ทางเดินภายในอาคารว่างเปล่า' } },
+    { s: 9, e: 14, thumb: '', ai: { characters: ['Luffy'], summary_th: 'ลูฟี่ยิ้มกว้างบนเรือซันนี่' } },
+    { s: 14, e: 20, thumb: '', ai: { characters: [], summary_th: 'ใบหน้าตัวละครใกล้ชิด' } }] }); FT.ui.search(); });
+  await sq.click('#chips [data-open=t]'); await sq.waitForTimeout(200);
+  const ctRows = await sq.evaluate(() => [...document.querySelectorAll('#pkList .alrow')].map((r) => r.textContent.replace(/\s+/g, ' ').trim()));
+  await sq.locator('#pkList .alrow', { hasText: 'เรือเมอร์รี่' }).click(); await sq.waitForTimeout(200);
+  const ctInfo = await sq.evaluate(() => document.getElementById('pkInfo').textContent); /* เรือเมอร์รี่ = 1 ฉาก */
+  await sq.locator('#pkList .alrow', { hasText: 'เรือเมอร์รี่' }).click(); await sq.locator('#pkList .alrow', { hasText: 'ภายใน' }).click(); await sq.click('#pkBar [data-b=noChar]'); await sq.waitForTimeout(200);
+  const ctInfo2 = await sq.evaluate(() => document.getElementById('pkInfo').textContent); /* ภายใน + ไม่มีตัวละคร = 1 ฉาก */
+  await sq.locator('#pkList .alrow', { hasText: 'ภายใน' }).click(); await sq.locator('#pkList .alrow', { hasText: 'จัดหมวดไม่ได้' }).click(); await sq.waitForTimeout(200);
+  const ctInfo3 = await sq.evaluate(() => document.getElementById('pkInfo').textContent); /* อื่นๆ + ไม่มีตัวละคร: ฉากไม่มีตัวละครที่จัดหมวดไม่ได้ */
+  await sq.locator('#pkList .alrow', { hasText: 'จัดหมวดไม่ได้' }).click(); await sq.locator('#pkList .alrow', { hasText: 'เรืออื่น' }).click(); await sq.click('#pkBar [data-b=noChar]'); await sq.waitForTimeout(200);
+  const ctInfo4 = await sq.evaluate(() => document.getElementById('pkInfo').textContent); /* เรืออื่นๆ = เรือซันนี่ไม่ซ้ำ → 0 (ซันนี่มีหมวดของตัวเอง) */
+  await sq.locator('#pkList .alrow', { hasText: 'เรืออื่น' }).click(); await sq.locator('#pkList .alrow', { hasText: 'เรือซันนี่' }).click(); await sq.click('#pkDone'); await sq.waitForTimeout(300);
+  const ctRes = await sq.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length, chip: [...document.querySelectorAll('#chips .chip')].some((c) => /เรือซันนี่/.test(c.textContent)) }));
+  check('หมวดฉาก: ปุ่ม "ฉาก" ในแผงค้นหา · มีหมวดเรือเมอร์รี่/ทะเล/ภายใน/อื่นๆ · เรือเมอร์รี่=1 ฉาก · ภายใน+ไม่มีตัวละคร=1 · เรือซันนี่ (ฉากที่มีตัวละคร) = 1 ใบ · ป้ายบนปุ่ม', ['เรือเมอร์รี่', 'เรือซันนี่', 'ทะเล', 'ภายใน / ห้อง'].every((n) => ctRows.some((r) => r.includes(n))) && /1 ฉาก/.test(ctInfo) && /1 ฉาก/.test(ctInfo2) && /ฉาก/.test(ctInfo3) && /0 ฉาก/.test(ctInfo4) && ctRes.cards === 1 && ctRes.chip, JSON.stringify([ctRows.slice(0, 5), ctInfo, ctInfo2, ctInfo3, ctInfo4, ctRes]));
   const hd = {}; await sq.click('#chips [data-clr]'); await sq.waitForTimeout(300); /* ล้างตัวกรอง = กลับตารางอัลบั้ม */
   for (const m of ['char', 'arc', 'phone']) { await sq.click(`#alSeg [data-m=${m}]`); await sq.waitForTimeout(250); hd[m] = await sq.evaluate(() => { document.getElementById('orgBtn').hidden = false; document.getElementById('alScan').hidden = false; return [...document.querySelectorAll('.alhead .btn')].filter((b) => b.offsetParent).map((b) => Math.round(b.getBoundingClientRect().height)); }); }
   check('หัวแถวอัลบั้ม: ปุ่ม จัดอัลบั้มใหม่/สแกนใหม่ บรรทัดเดียว (สูงไม่เกิน 44px) ทั้งโหมดตัวละคร/ภาค/ในมือถือ', Object.values(hd).every((a) => a.length >= 2 && a.every((h) => h <= 44)), JSON.stringify(hd));

@@ -127,15 +127,36 @@
     var top = Object.keys(t).sort(function(x, y){ return t[y] - t[x]; })[0];
     return { arc:top, sure:t[top] / n >= 0.6 && n >= Math.max(1, Math.ceil((c.scenes || []).length * 0.25)) };
   }
-  var arcSel = []; /* ภาคที่เลือกกรอง (หลายภาค = ภาคไหนก็ได้) */
+  /* ---------- หมวดฉาก (v8.49): เรือ/ทะเล/ท้องฟ้า/ป่า/หิมะ-ภูเขา/เมือง/ภายใน/เอฟเฟกต์/ข้อความ · จัดจากคำที่ AI เขียนไว้แล้ว (location, tags, คำอธิบาย) ด้วยกฎคำในเครื่อง ฟรี ไม่เรียก AI
+     ฉากหนึ่งอยู่ได้หลายหมวด · จับไม่ได้เลย = "other" (อื่นๆ) · ไม่ได้บอกว่า "ไม่มีตัวละคร" — อันนั้นเป็นสวิตช์แยก (catNoChar) */
+  var CATS = [["merry", "เรือเมอร์รี่", /going merry|\bmerry\b|เมอร์รี/], ["sunny", "เรือซันนี่", /thousand sunny|\bsunny\b|ซันนี่/],
+    ["ship", "เรืออื่น ๆ", /\bships?\b|\bboat|warship|galleon|vessel|เรือ/], ["sea", "ทะเล", /\bsea\b|ocean|wave|seawater|ทะเล|มหาสมุทร|(?<!กระแทก)คลื่น|ผิวน้ำ/],
+    ["sky", "ท้องฟ้า", /\bsky\b|cloud|sunset|sunrise|moon|stars?\b|ท้องฟ้า|เมฆ|พระอาทิตย์|พระจันทร์|ดวงดาว|ยามเย็น|รุ่งอรุณ/],
+    ["nature", "ป่า / ธรรมชาติ", /forest|jungle|\btrees?\b|grass|field|meadow|garden|river|lake|waterfall|ป่า|ต้นไม้|หญ้า|ทุ่ง|สวน|แม่น้ำ|ทะเลสาบ|น้ำตก|ธรรมชาติ/],
+    ["snow", "หิมะ / ภูเขา / ทะเลทราย", /snow|\bice\b|blizzard|mountain|cliff|desert|volcano|canyon|หิมะ|น้ำแข็ง|ภูเขา|หน้าผา|ทะเลทราย|ทราย|ภูเขาไฟ|หุบเขา/],
+    ["town", "เมือง / อาคาร", /\bcity\b|\btown\b|village|building|castle|\bport\b|harbou?r|street|ruins|tower|bridge|palace|fortress|เมือง|หมู่บ้าน|อาคาร|ปราสาท|ท่าเรือ|ถนน|ซากปรัก|หอคอย|สะพาน|วังหลวง|ป้อม|ตึก/],
+    ["inside", "ภายใน / ห้อง", /\broom\b|hall|corridor|hallway|interior|\bcell\b|kitchen|stairs|dungeon|ห้อง|ทางเดิน|ภายใน|โถง|บันได|ครัว|ห้องขัง|คุกใต้ดิน/],
+    ["fx", "ระเบิด / เอฟเฟกต์", /explosion|blast|smoke|flame|energy|beam|shockwave|dust|impact|ระเบิด|เปลวไฟ|ควัน|ฝุ่น|แสงวาบ|พลังงาน|คลื่นกระแทก|เอฟเฟกต์/],
+    ["text", "ข้อความ / หน้าจอ", /to be continued|title card|logo|credits|caption|ข้อความ|ตัวอักษร|โลโก้|เครดิต|ชื่อตอน|หน้าจอแสดง/]];
+  var catNames = { other:"อื่น ๆ (จัดหมวดไม่ได้)" }; CATS.forEach(function(r){ catNames[r[0]] = r[1]; });
+  var catCache = new WeakMap();
+  function catsOf(sc){
+    var a = sc && sc.ai; if(!a) return ["other"]; var hit = catCache.get(a); if(hit) return hit;
+    var t = [a.location, (a.tags_en || []).join(" "), (a.tags_th || []).join(" "), a.summary_th, (a.objects || []).join(" "), a.event, a.action, a.text].join(" ").toLowerCase(), out = [];
+    CATS.forEach(function(r){ if(r[2].test(t)) out.push(r[0]); });
+    if(out.indexOf("ship") >= 0 && (out.indexOf("merry") >= 0 || out.indexOf("sunny") >= 0)) out.splice(out.indexOf("ship"), 1); /* เรือที่รู้ชื่อแล้วไม่ซ้ำใน "เรืออื่น ๆ" */
+    if(!out.length) out.push("other"); catCache.set(a, out); return out;
+  }
+  var arcSel = [], catSel = [], catNoChar = false; /* arcSel = ภาคที่เลือกกรอง (หลายภาค = ภาคไหนก็ได้) · catSel = หมวดฉาก (หลายหมวด = หมวดไหนก็ได้) */
   function passSc(sc, c){ /* ฉากนี้ผ่านตัวกรองชิปที่เลือกไหม · ภาคใช้ภาคของทั้งคลิป (ที่ผู้ใช้ตั้งเองชนะ) */
     if(arcSel.length){ var r = arcOf(c); if(arcSel.indexOf(r.sure ? r.arc : UNSURE) < 0) return false; }
-    var cs = sceneChars(sc);
+    if(catSel.length){ var cc = catsOf(sc); if(!catSel.some(function(k){ return cc.indexOf(k) >= 0; })) return false; }
+    var cs = sceneChars(sc); if(catNoChar && cs.length) return false;
     if(sel.length && !sel.every(function(k){ return k === "?" ? !cs.length : cs.indexOf(k) >= 0; })) return false;
     if(only && sel.length && sel.indexOf("?") < 0 && cs.length !== sel.length) return false;
     return !sizeSel || (cs.length && sizeOf(cs.length) === sizeSel);
   }
-  function filtering(){ return sel.length > 0 || !!sizeSel || arcSel.length > 0; }
+  function filtering(){ return sel.length > 0 || !!sizeSel || arcSel.length > 0 || catSel.length > 0 || catNoChar; }
   var dat = null; /* ข้อมูลล่าสุดของตัวกรอง (renderChips คำนวณใหม่ทุกครั้งที่ค้นหา · ชีตอ่านจากนี่) */
   function enName(k){ return /^[\x20-\x7e]+$/.test(k) ? k.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }) : (labelOf[k] || k); } /* ชื่อ canon อังกฤษ */
   var SIZES = [["", "ทุกจำนวนคน"], ["1", "เดี่ยว"], ["2", "คู่"], ["3", "กลุ่ม 3-4"], ["5", "หมู่ 5+"]];
@@ -150,21 +171,24 @@
     $("chips").innerHTML = btn("c", "user", !sel.length ? "ตัวละคร" : sel.map(function(k){ return k === "?" ? "ไม่ระบุตัวละคร" : enName(k); }).join(", "), sel.length)
       + btn("r", "folder", !arcSel.length ? "ภาค" : arcSel.join(", "), arcSel.length)
       + btn("z", "sliders", sizeSel ? SIZES.find(function(x){ return x[0] === sizeSel; })[1] : "จำนวนคน", sizeSel)
-      + (sel.length || sizeSel || arcSel.length ? '<button class="chip" data-clr="1">ล้างทั้งหมด</button>' : "");
+      + btn("t", "cloud", catSel.length ? catSel.map(function(k){ return catNames[k]; }).join(", ") : catNoChar ? "ฉากไม่มีตัวละคร" : "ฉาก", catSel.length || catNoChar)
+      + (sel.length || sizeSel || arcSel.length || catSel.length || catNoChar ? '<button class="chip" data-clr="1">ล้างทั้งหมด</button>' : "");
     $("onlyRow").hidden = !sel.length || sel.indexOf("?") >= 0; $("onlySel").checked = only;
   }
   function matchCount(){ /* จำนวนฉากที่ผ่านตัวกรองอัลบั้ม/ตัวละคร/จำนวนคนตอนนี้ (ยังไม่นับคำค้นในช่องค้นหา) */
     var n = 0; U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return; c.scenes.forEach(function(sc){ if(passSc(sc, c)) n++; }); }); return n;
   }
-  function ctxCounts(skipArc){ /* นับฉากตามที่เลือกอยู่ตอนนี้ (ชีตตัวละครนับในภาคที่เลือก · ชีตภาคนับเฉพาะตัวละครที่เลือก) → { chars:{key:n}, arcs:{arc:n}, all:n } */
-    var chars = {}, arcs = {}, all = 0;
+  function ctxCounts(skipArc, skipCat){ /* นับฉากตามที่เลือกอยู่ตอนนี้ (ชีตตัวละครนับในภาคที่เลือก · ชีตภาคนับเฉพาะตัวละครที่เลือก · ชีตหมวดฉากไม่นับหมวดที่เลือกเอง) → { chars:{key:n}, arcs:{arc:n}, cats:{cat:n}, all:n } */
+    var chars = {}, arcs = {}, cats = {}, all = 0;
     U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return; var ar = arcOf(c), ak = ar.sure ? ar.arc : UNSURE;
       if(!skipArc && arcSel.length && arcSel.indexOf(ak) < 0) return;
-      c.scenes.forEach(function(sc){ var cs = sceneChars(sc);
+      c.scenes.forEach(function(sc){ var cs = sceneChars(sc), cc = catsOf(sc);
         if(sel.length && !sel.every(function(k){ return k === "?" ? !cs.length : cs.indexOf(k) >= 0; })) return;
         if(sizeSel && !(cs.length && sizeOf(cs.length) === sizeSel)) return;
-        all++; arcs[ak] = (arcs[ak] || 0) + 1; cs.forEach(function(k){ chars[k] = (chars[k] || 0) + 1; }); }); });
-    return { chars:chars, arcs:arcs, all:all };
+        if(catNoChar && cs.length) return;
+        if(!skipCat && catSel.length && !catSel.some(function(k){ return cc.indexOf(k) >= 0; })) return;
+        all++; arcs[ak] = (arcs[ak] || 0) + 1; cs.forEach(function(k){ chars[k] = (chars[k] || 0) + 1; }); cc.forEach(function(k){ cats[k] = (cats[k] || 0) + 1; }); }); });
+    return { chars:chars, arcs:arcs, cats:cats, all:all };
   }
   function pickChars(){ /* เลือกหลายคนได้ = ฉากต้องมีทุกคนที่เลือก · "ไม่ระบุตัวละคร" เลือกร่วมกับตัวอื่นไม่ได้ */
     FT.pick.open({ title:"เลือกตัวละคร", placeholder:"พิมพ์ชื่อเพื่อหา เช่น Zoro หรือ โซโร", icon:"user", multi:true, count:matchCount,
@@ -198,10 +222,20 @@
       items:function(){ return SIZES.map(function(x){ return { k:x[0], name:x[1], sub:x[0] ? dat.sz[x[0]] + " ฉาก" : "", icon:x[0] === "1" ? "user" : "users", on:sizeSel === x[0] }; }); },
       onPick:function(k){ sizeSel = k === sizeSel ? "" : k; chipMax = 40; search(); } });
   }
+  function pickCats(){ /* หมวดฉาก (เรือ/ทะเล/ป่า ฯลฯ) เลือกหลายหมวด · สวิตช์ "เฉพาะฉากที่ไม่มีตัวละคร" · นับตามตัวกรองอื่นที่เลือกอยู่ */
+    FT.pick.open({ title:"หมวดฉาก", search:false, icon:"cloud", multi:true, count:matchCount,
+      barFn:function(){ return [{ k:"noChar", label:"เฉพาะฉากที่ไม่มีตัวละคร", on:catNoChar }]; },
+      onBar:function(){ catNoChar = !catNoChar; chipMax = 40; search(); },
+      items:function(){ var cx = ctxCounts(false, true), keys = CATS.map(function(r){ return r[0]; });
+        return keys.map(function(k){ var on = catSel.indexOf(k) >= 0, c = cx.cats[k] || 0; return { k:k, name:catNames[k], sub:c + " ฉาก", on:on, dim:!on && !c, n:c }; })
+          .sort(function(a, b){ return b.n - a.n; }).concat([{ k:"other", name:catNames.other, sub:(cx.cats.other || 0) + " ฉาก", on:catSel.indexOf("other") >= 0, dim:!cx.cats.other && catSel.indexOf("other") < 0 }]); }, /* มากไปน้อย · อื่น ๆ ล่างสุด */
+      onPick:function(k){ var i = catSel.indexOf(k); if(i >= 0) catSel.splice(i, 1); else catSel.push(k); chipMax = 40; search(); },
+      onClear:function(){ catSel = []; catNoChar = false; chipMax = 40; search(); } });
+  }
   $("chips").addEventListener("click", function(e){
-    if(e.target.closest("[data-clr]")){ arcSel = []; sizeSel = ""; sel = []; chipMax = 40; search(); return; }
+    if(e.target.closest("[data-clr]")){ arcSel = []; sizeSel = ""; sel = []; catSel = []; catNoChar = false; chipMax = 40; search(); return; }
     var b = e.target.closest("[data-open]"); if(!b) return;
-    ({ c:pickChars, r:pickArcs, z:pickSize })[b.dataset.open]();
+    ({ c:pickChars, r:pickArcs, z:pickSize, t:pickCats })[b.dataset.open]();
   });
   $("onlySel").addEventListener("change", function(){ only = this.checked; chipMax = 40; search(); });
   var sT = 0, shown = [], lastQ = "", showPartial = false, chipMax = 40; /* shown = รายการที่โชว์อยู่ (ให้ปุ่มดูรูปใหญ่อ้างถึง) */
