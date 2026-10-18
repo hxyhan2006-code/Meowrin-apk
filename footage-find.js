@@ -73,9 +73,12 @@
     if(w.length >= 3){ var sk = skel(w); if(sk.length >= 3) for(k = 0; k < hn.length; k++) if(skel(hn[k]).indexOf(sk) >= 0) return k; }
     return -1;
   }
-  function speechOf(c, sc){ /* บทพูดที่ทับช่วงของฉากนี้ (footage-speech.js เก็บที่ c.speech.segs) · เผื่อขอบ 0.3 วิ เพราะเวลาจากเสียงกับเวลาฉากคลาดได้ */
-    var sp = c && c.speech; if(!sp || !sp.segs || !sp.segs.length) return "";
-    return sp.segs.filter(function(g){ return g.e >= sc.s - 0.3 && g.s <= sc.e + 0.3; }).map(function(g){ return g.t; }).join(" ");
+  function speechOf(c, sc){ /* บทพูด+ชื่อคนพูด (ไทย/อังกฤษ)+สีหน้าท่าทางของฉากนี้ (footage-speech.js เก็บที่ c.speech) · เวลาเผื่อขอบ 0.3 วิ เพราะเวลาจากเสียงกับเวลาฉากคลาดได้ */
+    var sp = c && c.speech; if(!sp || !((sp.segs && sp.segs.length) || sp.looks)) return "";
+    var t = (sp.segs || []).filter(function(g){ return g.e >= sc.s - 0.3 && g.s <= sc.e + 0.3; }).map(function(g){
+      var low = String(g.who || "").toLowerCase(), nx = low ? NAMEX.find(function(x){ return x.en.test(low); }) : null;
+      return (g.who ? g.who + " " + (nx ? nx.ths.join(" ") + " " : "") : "") + g.t; }).join(" ");
+    var lk = sp.looks && sp.looks[c.scenes.indexOf(sc)]; return lk ? t + " " + lk : t;
   }
   function hay(c, sc){
     var a = sc.ai || {};
