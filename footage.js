@@ -429,7 +429,7 @@
             },
             runQueue:function(){ return run(); }, stopQueue:function(){ paused = true; renderQueue(); },
             queueInfo:function(){ var work = queue.filter(function(q){ return q.status !== "skip"; }), fin = work.filter(function(q){ return q.status === "done" || q.status === "error"; }).length;
-              return { running:running, paused:paused, total:work.length, fin:fin, wait:work.filter(function(q){ return q.status === "wait"; }).length, errs:work.filter(function(q){ return q.status === "error"; }).length, cost:runCost, avg:avgCost() }; } };
+              return { running:running, paused:paused, total:work.length, fin:fin, wait:work.filter(function(q){ return q.status === "wait"; }).length, errs:work.filter(function(q){ return q.status === "error"; }).length, errList:work.filter(function(q){ return q.status === "error"; }).map(function(q){ return { name:q.info && q.info.name || q.id, err:q.err || "" }; }), cost:runCost, avg:avgCost() }; } };
   /* ---------- เปลี่ยนชื่ออัลบั้ม (แท็บตั้งค่า) · ชีตเลือกอัลบั้มของแอพเอง ไม่ใช้ select ของเบราว์เซอร์ ---------- */
   var renFrom = "";
   function albumCounts(){ var n = {}; lib.forEach(function(c){ if(c.album) n[c.album] = (n[c.album] || 0) + 1; }); return n; }

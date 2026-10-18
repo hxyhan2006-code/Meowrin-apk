@@ -143,10 +143,13 @@
     var rem = items.filter(function(e){ return e.uri && !done(e); }); if(!rem.length) return;
     if(!FT.orKey()){ await MWDialog.alert("ยังไม่มี OpenRouter key ในแอพ ไปใส่ที่ ตั้งค่า > คีย์ API ก่อน"); return; }
     var avg = U.queueInfo().avg;
-    var ok = await MWDialog.confirm("ให้ AI ทำดัชนี " + rem.length + " คลิป?\n\nประมาณ " + U.money(rem.length * avg) + " (ประมาณการจากค่าเฉลี่ยของคลิปที่เคยทำ " + U.money(avg) + " ต่อคลิป ราคาจริงอาจต่างไป)\n\nต้องเปิดแอพค้างไว้จนเสร็จ พักและทำต่อได้ ไม่ทำคลิปเดิมซ้ำ", { ok:"เริ่ม" });
+    var names = rem.slice(0, 6).map(function(e){ return "• " + e.name; }).join("\n") + (rem.length > 6 ? "\n• ...อีก " + (rem.length - 6) + " คลิป" : ""); /* เห็นว่าเหลือคลิปไหน (ค้างเพราะเคยพลาดหรือยังไม่เคยทำ) */
+    var ok = await MWDialog.confirm("ให้ AI ทำดัชนี " + rem.length + " คลิป?\n\n" + names + "\n\nประมาณ " + U.money(rem.length * avg) + " (ประมาณการจากค่าเฉลี่ยของคลิปที่เคยทำ " + U.money(avg) + " ต่อคลิป ราคาจริงอาจต่างไป)\n\nต้องเปิดแอพค้างไว้จนเสร็จ พักและทำต่อได้ ไม่ทำคลิปเดิมซ้ำ", { ok:"เริ่ม" });
     if(!ok) return;
     U.indexLocal(rem.map(function(e){ return { name:e.name, size:e.size, uri:e.uri, album:e.album, mtime:e.mtime }; }));
-    U.runQueue(); strips();
+    var p = U.runQueue(); strips(); await p; strips();
+    var el = U.queueInfo().errList; /* คลิปที่ทำไม่สำเร็จ: บอกชื่อกับเหตุผลตรงๆ (ไม่งั้นค้างเหลืออยู่โดยไม่รู้สาเหตุ) */
+    if(el && el.length) await MWDialog.alert("ทำไม่สำเร็จ " + el.length + " คลิป:\n\n" + el.slice(0, 5).map(function(x){ return "• " + x.name + "\n  " + (x.err || "ไม่ทราบสาเหตุ"); }).join("\n") + (el.length > 5 ? "\n...อีก " + (el.length - 5) + " คลิป" : "") + "\n\nคลิปที่พลาดจะยังค้างในรายการ ลองกดอีกครั้ง ถ้ายังพลาดซ้ำ ส่งข้อความด้านบนมาให้ผมดู");
   }
   function onStrip(items){ return function(e){ var b = e.target.closest("[data-act]"); if(!b) return; if(b.dataset.act === "stop") U.stopQueue(); else runFor(items()); }; }
   $("alAi").addEventListener("click", onStrip(allItems));

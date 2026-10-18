@@ -309,10 +309,14 @@ try {
   await al.getByRole('button', { name: /ตกลง|ปิด|OK/ }).first().click().catch(() => {}); await al.waitForTimeout(200);
   await al.evaluate(() => MWStore.set('mw_openrouter_key_v1', 'test-key'));
   await al.click('#alAi [data-act=run]'); await al.waitForTimeout(400);
-  const dlg = await al.evaluate(() => document.body.textContent.includes('ให้ AI ทำดัชนี 2 คลิป') && document.body.textContent.includes('ประมาณ'));
+  const dlg = await al.evaluate(() => document.body.textContent.includes('ให้ AI ทำดัชนี 2 คลิป') && document.body.textContent.includes('ประมาณ') && /• \w+\.mp4/.test(document.body.textContent));
   await al.getByRole('button', { name: 'เริ่ม', exact: true }).click(); await al.waitForTimeout(1500);
   const qi = await al.evaluate(() => ({ q: FT.ui.queueInfo(), runMsg: document.getElementById('queue') ? document.querySelectorAll('#queue li').length : -1 }));
   check('อัลบั้ม: กด ให้ AI ทำที่เหลือ → ไม่มีคีย์เตือนก่อน → มีคีย์ถามราคาประมาณ → ต่อคิว 2 คลิป (เฉพาะที่ยังไม่ทำ) เริ่มทำ', nokey && dlg && qi.q.total === 2 && qi.runMsg === 2, JSON.stringify({ nokey, dlg, qi }));
+  await al.waitForFunction(() => document.body.textContent.includes('ทำไม่สำเร็จ'), null, { timeout: 20000 }).catch(() => {});
+  const idxFail = await al.evaluate(() => ({ txt: document.body.textContent.includes('ทำไม่สำเร็จ'), names: /• \w+\.mp4/.test(document.body.textContent) }));
+  check('อัลบั้ม: ทำดัชนีพลาด → ขึ้นกล่องบอกชื่อคลิปที่พลาด + เหตุผล (ไม่ค้างเงียบๆ) · กล่องยืนยันก่อนเริ่มโชว์ชื่อคลิปที่จะทำ', idxFail.txt && idxFail.names, JSON.stringify(idxFail));
+  await al.getByRole('button', { name: /ตกลง|ปิด|OK/ }).first().click().catch(() => {}); await al.waitForTimeout(200);
   await al.click('#alGrid .album'); await al.waitForTimeout(200);
   const a2 = await al.evaluate(() => ({ view: !document.getElementById('alView').hidden, home: document.getElementById('alHome').hidden, clips: document.querySelectorAll('#alvGrid .clip').length, t: document.getElementById('alvTitle').textContent }));
   check('แท็บอัลบั้ม: แตะอัลบั้มเข้าไปเห็นคลิปในอัลบั้ม', a2.view && a2.home && a2.clips === 2 && a2.t === 'luffy', JSON.stringify(a2));
