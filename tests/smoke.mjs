@@ -449,8 +449,10 @@ try {
   const apA = await rowsOf(); await sq.click('#pkBar [data-b=order]'); await sq.waitForTimeout(100); const apB = await rowsOf();
   await sq.click('#pkBar [data-b=hide0]'); await sq.waitForTimeout(100); const apC = await rowsOf(); await sq.click('#pkBar [data-b=hide0]'); await sq.waitForTimeout(100);
   const apBar = await sq.evaluate(() => [...document.querySelectorAll('#pkBar button')].map((b) => b.textContent + (b.classList.contains('on') ? '*' : '')).join('|'));
+  const pkFit = await sq.evaluate(() => { const r = document.getElementById('pkDone').getBoundingClientRect(), b = document.getElementById('pkBar').getBoundingClientRect(); return { bottom: Math.round(r.bottom), h: innerHeight, barH: Math.round(b.height) }; });
+  check('ชีตเลือก (มีแถบตัวเลือก): ปุ่ม เสร็จ ไม่ตกขอบจอ (เหลือที่ว่างใต้ปุ่ม ≥ 12px) · แถบตัวเลือกบรรทัดเดียว', pkFit.bottom <= pkFit.h - 12 && pkFit.barH <= 40, JSON.stringify(pkFit));
   await sq.click('#pkDone'); await sq.waitForTimeout(200);
-  check('ชีตภาค: มีภาคพิเศษ Movies/TV Specials/Filler ครบแม้ 0 ฉาก · เรียงตามเนื้อเรื่อง (Alabasta ก่อน Skypiea ก่อน Movies) · ซ่อนภาคที่ 0 เหลือเฉพาะที่มีฉาก', ['Movies', 'TV Specials', 'Filler', 'Romance Dawn'].every((n) => apA.includes(n)) && apB.indexOf('Alabasta') < apB.indexOf('Skypiea') && apB.indexOf('Skypiea') < apB.indexOf('Movies') && apC.length < apA.length && !apC.includes('Movies') && /เรียงตามเนื้อเรื่อง\*/.test(apBar), JSON.stringify([apA.length, apB.slice(0, 14), apC, apBar]));
+  check('ชีตภาค: มีภาคพิเศษ Movies/TV Specials/Filler ครบแม้ 0 ฉาก · เรียงตามเนื้อเรื่อง (Alabasta ก่อน Skypiea ก่อน Movies) · ซ่อนภาคที่ 0 เหลือเฉพาะที่มีฉาก', ['Movies', 'TV Specials', 'Filler', 'Romance Dawn'].every((n) => apA.includes(n)) && apB.indexOf('Alabasta') < apB.indexOf('Skypiea') && apB.indexOf('Skypiea') < apB.indexOf('Movies') && apC.length < apA.length && !apC.includes('Movies') && /ตามเนื้อเรื่อง\*/.test(apBar), JSON.stringify([apA.length, apB.slice(0, 14), apC, apBar]));
   // v8.48 หัวแถวปุ่ม จัดอัลบั้มใหม่/สแกนใหม่ ไม่แตกบรรทัดในแถบตัวละคร/ภาค (ข้อความสั้นลง + ปุ่ม nowrap)
   // v8.49 หมวดฉาก: จัดจากคำที่ AI เขียน (ฟรี) · เรือเมอร์รี่/ทะเล/ภายใน · ไม่มีตัวละคร · ใช้ร่วมกับตัวกรองอื่น
   await sq.click('#chips [data-clr]'); await sq.waitForTimeout(300);

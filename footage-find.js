@@ -208,7 +208,7 @@
     var PK = "mw_arcpick_v1", pv = MWStore.get(PK, null) || {}, byOrder = pv.sort === "order", hide0 = !!pv.hide0; /* จำตัวเลือกเรียง/ซ่อน 0 ไว้ใช้รอบหน้า */
     function savePv(){ MWStore.set(PK, { sort:byOrder ? "order" : "n", hide0:hide0 }); }
     FT.pick.open({ title:"เลือกภาค", placeholder:"พิมพ์ชื่อภาค เช่น Skypiea", icon:"folder", multi:true, count:matchCount,
-      barFn:function(){ return [{ k:"n", label:"เรียงตามจำนวนฉาก", on:!byOrder }, { k:"order", label:"เรียงตามเนื้อเรื่อง", on:byOrder }, { k:"hide0", label:hide0 ? "ซ่อนภาคที่ 0 ฉาก" : "โชว์ภาคที่ 0 ฉาก", on:hide0 }]; },
+      barFn:function(){ return [{ k:"n", label:"ตามจำนวนฉาก", on:!byOrder }, { k:"order", label:"ตามเนื้อเรื่อง", on:byOrder }, { k:"hide0", label:"ซ่อน 0 ฉาก", on:hide0 }]; },
       onBar:function(k){ if(k === "hide0") hide0 = !hide0; else byOrder = k === "order"; savePv(); },
       items:function(q){ var cx = ctxCounts(true), ks = ARCS.concat(Object.keys(dat.ac), arcSel).filter(function(k, i, a){ return a.indexOf(k) === i; }); /* ทุกภาคในรายชื่อ รวมภาคพิเศษ (แม้ยังไม่มีคลิป) */
         return ks.filter(function(k){ return !q || k.toLowerCase().indexOf(q) >= 0; }).map(function(k){ var on = arcSel.indexOf(k) >= 0, c = cx.arcs[k] || 0; return { k:k, name:k, sub:c + " ฉาก", on:on, dim:!on && !c, n:c }; })
