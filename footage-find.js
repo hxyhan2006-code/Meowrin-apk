@@ -130,9 +130,30 @@
     if(c.arcFixed && c.arc) return { arc:c.arc, sure:true };
     if(c.arcAi && c.arcAi.arc) return { arc:c.arcAi.arc, sure:true }; /* AI ดูภาพคลิปแล้วบอกภาค (ปุ่ม ให้ AI ดูภาค) · ว่าง = ลองแล้วไม่แน่ใจ ไปดูป้ายภาคของฉากต่อ */
     var t = {}, n = 0; (c.scenes || []).forEach(function(sc){ var a = normArc(sc.ai && sc.ai.arc); if(a){ t[a] = (t[a] || 0) + 1; n++; } });
-    if(!n) return { arc:"", sure:false };
-    var top = Object.keys(t).sort(function(x, y){ return t[y] - t[x]; })[0];
-    return { arc:top, sure:t[top] / n >= 0.6 && n >= Math.max(1, Math.ceil((c.scenes || []).length * 0.25)) };
+    var top = n ? Object.keys(t).sort(function(x, y){ return t[y] - t[x]; })[0] : "";
+    if(top && t[top] / n >= 0.6 && n >= Math.max(1, Math.ceil((c.scenes || []).length * 0.25))) return { arc:top, sure:true };
+    var sa = speechArc(c); if(sa && (sa.ai || sa.n >= 2 || sa.arc === top)) return { arc:sa.arc, sure:true, by:"speech" }; /* v8.59 ป้ายฉากไม่พอ → ใช้เสียง: AI ที่ดู+ฟังทั้งคลิปบอกภาค หรือบทพูดเอ่ยชื่อสถานที่ภาคเดียว ≥2 ครั้ง (หรือ 1 ครั้งที่ตรงกับป้ายฉาก) */
+    return { arc:top, sure:false };
+  }
+  /* ภาคจากเสียง (v8.59) · c.speech.arc = AI ที่ดู+ฟังตอบมาเอง (เลือกจาก ARCS) · ไม่มี = นับชื่อสถานที่ของภาคที่ถูกเอ่ยในบทพูด (ฟรี ไม่เรียก AI)
+     เอ่ยหลายภาคปนกัน = ไม่ใช้ (เช่น คุยถึงอลาบาสต้าตอนอยู่ดรัม) · ชื่อตัวละครไม่นับ เพราะโผล่ข้ามภาค */
+  var SP_ARC = [[/อ[ลร]าบาส[ตด]้?า|alabasta|arabasta/, "Alabasta"], [/วอเตอร์ ?(เซเว่น|เซเวน|7)|water ?(7|seven)/, "Water 7"], [/เอนิเอส|เอเนียส|enies ?lobby|บัสเตอร์คอล|buster call/, "Enies Lobby"],
+    [/สกาย[เพป]ีย|เกาะลอยฟ้า|skypiea/, "Skypiea"], [/[ทธ]ริลเลอร์ ?บาร์?ค|thriller ?bark/, "Thriller Bark"], [/[ชซ]าบ[อโ]?[นด]ดี้|ซาบาโอดี้|sabaody/, "Sabaody Archipelago"], [/อเมซอน ?ลิล|amazon ?lily/, "Amazon Lily"],
+    [/อิมเพล ?ดาวน์|impel ?down/, "Impel Down"], [/มารีน ?ฟอร์ด|marine ?ford/, "Marineford"], [/เกาะมนุษย์เงือก|ฟิชแมน|fish.?man island/, "Fish-Man Island"], [/พั[งง]ค์ ?ฮา[ซส]าร์ด|punk hazard/, "Punk Hazard"],
+    [/เดรส ?โร[ซส]่?า|dressrosa/, "Dressrosa"], [/โฮล ?เค้ก|whole cake|โทตแลนด์|totto land/, "Whole Cake Island"], [/วาโนะ|โอนิงะชิมะ|wano|onigashima/, "Wano Country"], [/เอ[้็]?กเฮด|egg ?head/, "Egghead"],
+    [/เกาะดรัม|อาณาจักรดรัม|drum (island|kingdom)/, "Drum Island"], [/(อาร์?ลอง|อารอน) ?ปาร์ค|arlong park|โคโคยาชิ|cocoyasi/, "Arlong Park"], [/บาราติเอ|baratie/, "Baratie"], [/ล็อก ?ทาวน์|โล๊?ก ?ทาวน์|loguetown/, "Loguetown"],
+    [/ลิตเติ้ล ?การ์เด้น|little garden/, "Little Garden"], [/วิสกี้ ?พีค|whisk?e?y ?peak/, "Whisky Peak"], [/จาย่า|jaya|โมค ?ทาวน์|mock town/, "Jaya"], [/ลองริงลองแลนด์|long ring long land|เดวี่ ?แบ็ค|davy back/, "Long Ring Long Land"], [/ไซรัป|syrup village/, "Syrup Village"]];
+  var spArcCache = new WeakMap();
+  function speechArc(c){
+    var sp = c.speech; if(!sp) return null; var hit = spArcCache.get(sp); if(hit !== undefined) return hit;
+    var r = null;
+    if(sp.arc && ARCS.indexOf(sp.arc) >= 0) r = { arc:sp.arc, ai:true, n:1 };
+    else {
+      var txt = ((sp.segs || []).map(function(g){ return g.t; }).join(" ") + " " + (sp.sum || "")).toLowerCase(), cnt = {};
+      SP_ARC.forEach(function(x){ var m = txt.match(new RegExp(x[0].source, "g")); if(m) cnt[x[1]] = (cnt[x[1]] || 0) + m.length; });
+      var ks = Object.keys(cnt); if(ks.length === 1) r = { arc:ks[0], ai:false, n:cnt[ks[0]] };
+    }
+    spArcCache.set(sp, r); return r;
   }
   /* ---------- หมวดฉาก (v8.49): เรือ/ทะเล/ท้องฟ้า/ป่า/หิมะ-ภูเขา/เมือง/ภายใน/เอฟเฟกต์/ข้อความ · จัดจากคำที่ AI เขียนไว้แล้ว (location, tags, คำอธิบาย) ด้วยกฎคำในเครื่อง ฟรี ไม่เรียก AI
      ฉากหนึ่งอยู่ได้หลายหมวด · จับไม่ได้เลย = "other" (อื่นๆ) · ไม่ได้บอกว่า "ไม่มีตัวละคร" — อันนั้นเป็นสวิตช์แยก (catNoChar) */
@@ -390,7 +411,7 @@
       a.characters = (a.characters || []).concat(nx ? nx.key.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }) : k); a.characters_th = (a.characters_th || []).concat(nx ? nx.th : k); n++; });
     if(n){ a.rc = 1; chipCache.delete(sc); } return n;
   }
-  Object.assign(U, { speechOf:speechOf, addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
+  Object.assign(U, { speechOf:speechOf, addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, speechArc:speechArc, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
                      openFiles:function(docs){ $(docs ? "pickDocs" : "playFiles").click(); } });
   search();
 })();

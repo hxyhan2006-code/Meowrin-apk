@@ -73,15 +73,17 @@
       var blob = await blobOf(src.url), p = await pcm(blob);
       var sp = { at:Date.now(), model:FT.cfg.model, segs:[], sum:"", cost:0, sec:Math.round(p.sec * 10) / 10, watch:watchOn, wv:watchOn ? 2 : 0 };
       if(!p.sec || rms(p.data) < 0.003){ blob = null; sp.silent = true; c.speech = sp; await FT.store.put(c); return sp; } /* ไม่มีเสียง/เงียบ = ไม่เสียเงิน */
-      var sums = [];
+      var sums = [], arcs = {};
       for(var a = 0; a < p.data.length; a += CH_SEC * SR){
         var b = Math.min(p.data.length, a + CH_SEC * SR); if(b - a < SR) continue; /* เศษสั้นกว่า 1 วิ ข้าม */
         var frames = null, scenes = null;
         if(watchOn){ scenes = sceneList(c, a / SR, b / SR); frames = await denseFrames(blob, a / SR, b / SR); if(!frames.length) frames = framesOf(c, a / SR, b / SR); } /* ภาพถี่จากวิดีโอก่อน · ไม่ได้ = ภาพฉากในดัชนี */
-        var r = await FT.transcribe(await wavB64(p.data, a, b), (b - a) / SR, "", frames, scenes);
+        var r = await FT.transcribe(await wavB64(p.data, a, b), (b - a) / SR, "", frames, scenes, watchOn ? U.ARCS : null);
+        var ar = String(r.json.arc || "").trim(); if(ar && U.ARCS.indexOf(ar) >= 0) arcs[ar] = (arcs[ar] || 0) + (b - a); /* ภาคที่ AI ตอบ · นับตามความยาวท่อน (คลิปยาวหลายท่อน) */
         sp.cost += r.cost || 0; sp.segs = sp.segs.concat(cleanSegs(r.json.segments, a / SR, p.sec)); if(r.json.summary_th) sums.push(String(r.json.summary_th).trim());
         (Array.isArray(r.json.scenes) ? r.json.scenes : Array.isArray(r.json.looks) ? r.json.looks : []).forEach(function(l){ var i = Number(l && l.i) - 1, t = String(l && l.t || "").trim(); if(t && i >= 0 && i < c.scenes.length){ sp.looks = sp.looks || {}; sp.looks[i] = t.slice(0, 120); } });
       }
+      var ak = Object.keys(arcs); if(ak.length === 1) sp.arc = ak[0]; /* หลายท่อนตอบคนละภาค = ไม่ใช้ */
       blob = null; sp.sum = sums.join(" ").slice(0, 300); c.speech = sp; await FT.store.put(c); return sp;
     } finally { src.done(); }
   }
@@ -89,7 +91,9 @@
   /* ---------- แผง ---------- */
   function clips(){ return U.lib().filter(function(c){ return c.status === "done" && !c.hide; }); }
   function done1(c){ return c.speech && (!watchOn || c.speech.wv === 2); } /* โหมดดูพร้อมฟัง: คลิปที่ฟังเสียงล้วนมาก่อนถือว่ายังไม่ได้ทำ (ทำซ้ำให้ได้ชื่อคนพูด) */
-  function pending(){ return clips().filter(function(c){ return !done1(c) && U.hasSrc(c); }); }
+  function unsureArc(c){ return !U.arcOf(c).sure; }
+  function pending(){ /* v8.59 คลิปที่ภาคยังไม่แน่ใจมาก่อน (เสียงช่วยบอกภาค → จัดอัลบั้มได้มากขึ้นเร็วที่สุด) */
+    var l = clips().filter(function(c){ return !done1(c) && U.hasSrc(c); }), u = l.filter(unsureArc); return u.concat(l.filter(function(c){ return u.indexOf(c) < 0; })); }
   function stats(){ var d = clips().filter(function(c){ return c.speech; }), paid = d.filter(function(c){ return !c.speech.silent && (c.speech.wv === 2) === watchOn; }), cost = paid.reduce(function(s, c){ return s + (c.speech.cost || 0); }, 0);
     return { done:d.filter(done1).length, paid:paid.length, avg:paid.length ? cost / paid.length : 0, cost:cost, withText:d.filter(function(c){ return c.speech.segs.length; }).length }; }
   function timeline(c){ /* บทพูดกับคำบรรยายฉาก (ใครทำอะไรที่ไหนยังไง) เรียงตามเวลาในแผ่นเดียว */
@@ -99,9 +103,11 @@
     return rows.map(function(r){ if(!r.g) return "<div class=\"splook\"><i>" + tm(r.t) + "</i>" + U.esc(r.d) + "</div>"; var g = r.g;
       return "<button type=\"button\" class=\"spln\" data-id=\"" + U.esc(c.id) + "\" data-t=\"" + g.s + "\"><i>" + tm(g.s) + "</i>" + (g.who ? "<b" + (g.sure === false ? " class=\"un\"" : "") + ">" + U.esc(g.who) + (g.sure === false ? "?" : "") + "</b> " : "") + U.esc(g.t) + "</button>"; }).join("");
   }
+  var lastMsg = ["", ""];
   function render(msg, cls){
     var st = stats(), pend = pending(), all = clips().length, est = st.avg || (watchOn ? GUESSW : GUESS);
-    $("spWatch").checked = watchOn; $("spEco").checked = ecoOn; $("spEco").parentNode.hidden = !watchOn; $("spInfo").textContent = (watchOn ? "ดู+ฟัง" : "ฟังเสียง") + "แล้ว " + st.done + "/" + all + " คลิป" + (st.done ? " · มีบทพูด " + st.withText : "") + (st.paid ? " · เฉลี่ย " + U.money(st.avg) + "/คลิป" : "") + (pend.length ? " · ยังไม่ได้ฟัง " + pend.length : "");
+    $("spWatch").checked = watchOn; $("spEco").checked = ecoOn; $("spEco").parentNode.hidden = !watchOn; $("spInfo").textContent = (watchOn ? "ดู+ฟัง" : "ฟังเสียง") + "แล้ว " + st.done + "/" + all + " คลิป" + (st.done ? " · มีบทพูด " + st.withText : "") + (st.paid ? " · เฉลี่ย " + U.money(st.avg) + "/คลิป" : "") + (pend.length ? " · ยังไม่ได้ฟัง " + pend.length : ""); var bySp = clips().filter(function(c){ return c.speech && U.arcOf(c).by === "speech"; }).length; if(bySp) $("spInfo").textContent += " · รู้ภาคจากเสียง " + bySp + " คลิป";
+    if(msg === undefined){ msg = lastMsg[0]; cls = lastMsg[1]; } else lastMsg = [msg, cls]; /* วาดใหม่เพราะคลังเปลี่ยน (ft:lib) = คงข้อความเดิม */
     var m = $("spMsg"); m.textContent = msg || ""; m.className = "hint" + (cls ? " " + cls : "");
     $("spTrial").disabled = run || !pend.length; $("spTrial").textContent = "ทดลอง" + (watchOn ? "ดู+ฟัง " : "ฟังเสียง ") + Math.min(TRIAL, pend.length) + " คลิป";
     $("spAll").hidden = !(st.paid >= 5 && pend.length); $("spAll").disabled = run; $("spAll").textContent = (watchOn ? "ดู+ฟัง" : "ฟังเสียง") + "ที่เหลือทั้งหมด (" + pend.length + ") · ประมาณ " + U.money(pend.length * est);
@@ -119,7 +125,7 @@
       try{ await doClip(list[i]); done++; bad = 0; }
       catch(e){ fail++; bad++; last = (e && e.message) || String(e); if((e && e.budget) || bad >= FAIL_STOP) break; }
     }
-    run = false; var used = stats().cost - cost0;
+    run = false; var used = stats().cost - cost0; if(done && U.refresh) U.refresh(); /* ภาคจากเสียง → อัลบั้ม/จัดอัลบั้มใหม่ วาดใหม่ */
     render(label + ": ฟังเสร็จ " + done + " คลิป" + (fail ? " · พลาด " + fail + (last ? " (" + last + ")" : "") : "") + " · ใช้ " + U.money(used) + (stopF ? " · พักไว้" : ""), fail ? "err" : "ok");
   }
   $("spTrial").addEventListener("click", async function(){
@@ -129,8 +135,8 @@
     runList(pick, "ทดลอง");
   });
   $("spAll").addEventListener("click", async function(){
-    var pend = pending(); if(!pend.length) return;
-    if(!await MWDialog.confirm("ให้ AI ฟังเสียงที่เหลือ " + pend.length + " คลิป?\n\nประมาณ " + U.money(pend.length * (stats().avg || (watchOn ? GUESSW : GUESS))) + " (จากค่าเฉลี่ยที่ฟังไปแล้ว " + U.money(stats().avg) + " ต่อคลิป ราคาจริงอาจต่างไป)\n\nต้องเปิดแอพค้างไว้ พักและทำต่อได้ ไม่ฟังคลิปเดิมซ้ำ", { ok:"เริ่ม" })) return;
+    var pend = pending(); if(!pend.length) return; var nu = pend.filter(unsureArc).length;
+    if(!await MWDialog.confirm("ให้ AI ฟังเสียงที่เหลือ " + pend.length + " คลิป?" + (nu ? "\n\nเริ่มจากคลิปที่ยังไม่แน่ใจภาค " + nu + " คลิปก่อน (เสียงช่วยบอกภาค จัดอัลบั้มได้มากขึ้น)" : "") + "\n\nประมาณ " + U.money(pend.length * (stats().avg || (watchOn ? GUESSW : GUESS))) + " (จากค่าเฉลี่ยที่ฟังไปแล้ว " + U.money(stats().avg) + " ต่อคลิป ราคาจริงอาจต่างไป)\n\nต้องเปิดแอพค้างไว้ พักและทำต่อได้ ไม่ฟังคลิปเดิมซ้ำ", { ok:"เริ่ม" })) return;
     runList(pend, "ฟังเสียง");
   });
   $("spList").addEventListener("click", function(e){ /* กดบรรทัดบทพูด/ปุ่มเล่น = เปิดตัวเล่นเต็มจอของคลิปนั้นที่เวลานั้น (เทียบกับเสียงจริง) */
