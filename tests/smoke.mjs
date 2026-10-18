@@ -387,8 +387,28 @@ try {
   check('ถาม AI: AI บอกไม่มีฉากไหนตรง → ไม่โชว์การ์ดหลอก บอกตรงๆ', (await ak.evaluate(() => document.querySelectorAll('#results .card').length)) === 0 && /ไม่มีฉากไหนตรง/.test(await ak.evaluate(() => document.getElementById('results').textContent)));
   await ak.evaluate(() => { window.__mode = 'none'; window.__bodies = []; }); await ak.fill('#q', 'ฉากกินเค้ก'); await ak.click('#askBtn'); await ak.waitForFunction(() => /ไม่เจอฉากที่ตรงในคลังเลย/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
   check('ถาม AI: ค้นในคลังไม่เจอผู้สมัครเลย = บอกว่าไม่เจอ และไม่เรียก AI ขั้นเลือก (ไม่เสียเงินเพิ่ม)', (await ak.evaluate(() => window.__bodies.length)) === 1 && !akErr.length, akErr.join());
+  check('ถาม AI: ตอบ "ไม่เจอเลย" แล้วปุ่ม ถาม AI กดใหม่ได้ (เดิมค้างกดไม่ได้จนโหลดหน้าใหม่)', !(await ak.evaluate(() => document.getElementById('askBtn').disabled)));
   await ak.fill('#q', ''); await ak.waitForTimeout(300);
   check('ถาม AI: ล้างคำค้น = ล้างคำตอบ', await ak.evaluate(() => document.getElementById('askOut').hidden));
+  // v8.63 ค้นหาแบบเข้าใจความหมาย (footage-embed.js): ทำเวกเตอร์ (จำลอง embed: คำพ้องความหมายลงมิติเดียวกัน) → ถาม AI เจอฉากที่ไม่มีคำตรงกันเลย · ทำเฉพาะฉากที่ข้อความเปลี่ยน · ลบดัชนี = ถอยไปค้นด้วยคำ
+  await ak.evaluate(() => {
+    const mk = (id, name, sum) => ({ id, name, size: 5, album: 'x', duration: 20, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 1, e: 6, thumb: '', ai: { characters: [], characters_th: [], summary_th: sum } }] });
+    FT.ui.lib().push(mk('e1', 'nami_sad.mp4', 'นามิน้ำตาคลอเศร้า'), mk('e2', 'luffy_fun.mp4', 'ลูฟี่หัวเราะเสียงดัง')); window.__embCalls = []; window.__embQ = [];
+    const dim = (w) => /ร้องไห้|น้ำตา|เสียใจ|เศร้า/.test(w) ? 0 : /หัวเราะ|ยิ้ม|ตลก/.test(w) ? 1 : 2 + (w.length % 20);
+    FT.embed = async (texts) => { window.__embCalls.push(texts.length); texts.forEach((t) => window.__embQ.push(t)); return { vecs: texts.map((t) => { const v = new Float32Array(32); (t.match(/ร้องไห้|น้ำตา|เสียใจ|เศร้า|หัวเราะ|ยิ้ม|ตลก|[ก-๙a-z_]+/g) || []).forEach((w) => { v[dim(w)] += 1; }); return v; }), tokens: texts.length * 100, cost: 0.0001 }; };
+    const prev = window.fetch; window.fetch = async (u, o) => { if (window.__mode !== 'sem' || !/openrouter/.test(String(u))) return prev(u, o); const t = JSON.parse(o.body).messages[0].content; window.__bodies.push(t);
+      const out = /search terms/.test(t) ? { chars: [], keys: ['เสียใจ'], arc: '' } : { answer: 'เจอ 1 ฉากความหมายใกล้', picks: [{ n: 1, why: 'น้ำตา' }], none: false };
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(out) } }], usage: { cost: 0.002 } }) }; };
+  });
+  const em1 = await ak.evaluate(async () => { const r = await FT.sem.build(); const st = await FT.sem.stat(); const again = await FT.sem.build(); return { r: { done: r.done, fail: r.fail }, st, again: again.done, calls: window.__embCalls.length, info: document.getElementById('emInfo').textContent }; });
+  check('ดัชนีความหมาย: ทำเวกเตอร์ให้ฉากที่มีข้อความ (ทุกฉากในคลัง) · ทำซ้ำ = ไม่เรียกซ้ำ (0 ฉาก) · แผงโชว์จำนวน', em1.r.fail === 0 && em1.r.done === em1.st.have && em1.st.have >= 2 && em1.again === 0 && /ทำดัชนีความหมายแล้ว \d+\/\d+/.test(em1.info), JSON.stringify(em1));
+  await ak.evaluate(() => { window.__mode = 'sem'; window.__bodies = []; }); await ak.fill('#q', 'ใครเสียใจ'); await ak.click('#askBtn'); await ak.waitForFunction(() => /ความหมายใกล้/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
+  const em2 = await ak.evaluate(() => ({ pick: window.__bodies[1] || '', note: document.getElementById('askOut').textContent, cards: document.querySelectorAll('#results .card').length }));
+  check('ถาม AI + ความหมาย: คำถาม "ใครเสียใจ" ไม่มีคำตรงในคำอธิบาย แต่เจอฉาก nami_sad (น้ำตาคลอ) ผ่านเวกเตอร์ · ไม่เอาฉากหัวเราะ · บอกว่ารวมที่ค้นตามความหมายกี่ฉาก', /nami_sad/.test(em2.pick) && !/luffy_fun/.test(em2.pick) && /ค้นตามความหมาย \d+ ฉาก/.test(em2.note) && em2.cards === 1, JSON.stringify(em2));
+  const em3 = await ak.evaluate(async () => { const c = FT.ui.lib().find((x) => x.id === 'e1'); c.scenes[0].ai.summary_th = 'นามิยิ้มตลก'; const t = await FT.sem.todo(); await FT.sem.clear(); const t2 = await FT.sem.todo(); window.__bodies = []; return { changed: t.length, afterClear: t2.length, ready: await FT.sem.ready() }; });
+  check('ดัชนีความหมาย: ข้อความฉากเปลี่ยน = ทำใหม่เฉพาะฉากนั้น (1 ฉาก) · ลบดัชนี = ทำใหม่ทั้งหมด และ ready=false', em3.changed === 1 && em3.afterClear >= 2 && em3.ready === false, JSON.stringify(em3));
+  await ak.evaluate(() => { window.__bodies = []; }); await ak.click('#askBtn'); await ak.waitForFunction(() => /ความหมายใกล้|ไม่เจอฉากที่ตรง/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
+  check('ถาม AI: ยังไม่มีดัชนีความหมาย = ค้นด้วยคำอย่างเดียว ไม่พัง (ไม่มี error)', !akErr.length, akErr.join());
   // จัดอัลบั้มใหม่ (footage-organize.js): แผนจากภาคที่ AI รู้แน่ → ย้ายไฟล์จริงด้วย MediaScan.move · ไม่แตะคลิปที่ไม่แน่ใจภาค/สำเนาในแอพ/ที่อยู่ถูกแล้ว/ชื่อซ้ำ · ย้ายทดลอง · เลิกทำย้ายกลับ · ไม่มีสิทธิ์ = ปุ่มขอสิทธิ์
   const og = await context.newPage(); const ogErr = []; og.on('pageerror', (e) => ogErr.push(e.message));
   await og.addInitScript(() => { window.__mv = []; window.__perm = { granted: true }; window.__req = 0; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true,

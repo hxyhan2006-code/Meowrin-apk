@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
 <title>ฟุตเทจ · Meowrin factory</title>
-<link rel="icon" type="image/png" href="icon-192.png?v=8.62">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.62">
-<link rel="stylesheet" href="fonts.css?v=8.62"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
-<link rel="stylesheet" href="footage.css?v=8.62">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.63">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.63">
+<link rel="stylesheet" href="fonts.css?v=8.63"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
+<link rel="stylesheet" href="footage.css?v=8.63">
 </head>
 <body>
 <header>
@@ -94,7 +94,7 @@
     <div id="gdFootQuickMsg"></div>
 
     <div id="p-idx">
-    <div class="sech">ให้ AI ทำงานกับคลิป · ทำตามลำดับ 1 → 4</div>
+    <div class="sech">ให้ AI ทำงานกับคลิป · ทำตามลำดับ 1 → 5</div>
     <details class="panel fold step"><summary><span class="stn">1</span><span class="st">เพิ่มคลิปเข้าดัชนี<small>AI ดูภาพ → ได้ตัวละคร สถานที่ อารมณ์ของทุกฉาก</small></span></summary><div class="fbody">
       <button class="btn" id="filesDocsBtn" type="button" style="width:100%"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg>เลือกจากแอพไฟล์ (เลือกทั้งโฟลเดอร์ได้)</button>
       <label for="albumName">อัลบั้มของคลิปที่เลือก</label>
@@ -135,6 +135,16 @@
       <p class="hint tip" style="margin-top:0">ถ้าฉากที่มีตัวละคร (เช่น แชงคูส อุซป) ค้นไม่เจอ ให้ AI ดูรูปที่เก็บไว้อีกรอบ แบบถามเจาะจงว่ามีใครในรายชื่อ 38 ตัวละครบ้าง (บอกลักษณะเด่นของแต่ละตัวให้ด้วย) แล้วเติมเฉพาะที่ขาด · ถูกกว่าและเร็วกว่าอัปเกรดดัชนีละเอียด ไม่ต้องเปิดไฟล์วิดีโอ</p>
       <p class="hint" id="rcInfo"></p>
       <button class="btn" id="rcBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>ตรวจตัวละครซ้ำ</button>
+    </div></details>
+    <details class="panel fold step" id="emPanel"><summary><span class="stn">5</span><span class="st">ค้นหาแบบเข้าใจความหมาย<small>ถามภาษาธรรมดาแล้วเจอฉากแม้ไม่ใช้คำเดียวกัน · ทำครั้งเดียว ไม่กี่เซ็นต์</small></span></summary><div class="fbody">
+      <p class="hint tip" style="margin-top:0">แปลงคำอธิบายฉาก/บทพูด/คำบรรยายที่มีอยู่แล้วเป็น "เวกเตอร์ความหมาย" ครั้งเดียว (ไม่ต้องดูวิดีโอใหม่) แล้วปุ่ม ถาม AI จะหาฉากที่ความหมายใกล้กับคำถามด้วย ควรทำหลังฟังเสียงครบ (ฟังเสียงเพิ่มทีหลัง = ทำซ้ำเฉพาะฉากที่ข้อความเปลี่ยน) · ถ้าโมเดลนี้ใช้ไม่ได้ผ่าน OpenRouter จะขึ้นข้อความผิดพลาด ค้นหาด้วยคำยังใช้ได้ปกติ</p>
+      <p class="hint" id="emInfo"></p>
+      <label for="emModel" style="margin-top:8px">โมเดลทำเวกเตอร์ (OpenRouter)</label>
+      <input id="emModel" type="text" autocomplete="off" spellcheck="false" placeholder="openai/text-embedding-3-small">
+      <button class="btn" id="emRun" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>ทำดัชนีความหมาย</button>
+      <button class="btn ghost" id="emStop" style="width:100%;margin-top:8px" hidden>พัก</button>
+      <p class="hint" id="emMsg"></p>
+      <button class="btn ghost small" id="emClear" style="width:100%;margin-top:8px" disabled>ลบดัชนีความหมาย</button>
     </div></details>
     </div>
 
@@ -245,6 +255,6 @@
 <video id="vid" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:2px;height:2px"></video>
 
 <div class="asheet" id="pkSheet" hidden><div class="abox" role="dialog"><div class="pkhead"><h3 id="pkTitle"></h3><span id="pkInfo"></span></div><input id="pkQ" type="search" autocomplete="off"><div id="pkBar" hidden></div><div id="pkList"></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="pkClear" type="button">ล้างที่เลือก</button><button class="btn" id="pkDone" type="button">เสร็จ</button></div></div></div>
-<script src="store.js?v=8.62" data-boot="icons.js?v=8.62 dialog.js?v=8.62 native.js?v=8.62 history.js?v=8.62 history-sheet.js?v=8.62 budget.js?v=8.62 footage-core.js?v=8.62 footage-pick.js?v=8.62 footage.js?v=8.62 local.js?v=8.62 library.js?v=8.62 footage-find.js?v=8.62 footage-ask.js?v=8.62 footage-album.js?v=8.62 footage-organize.js?v=8.62 footage-dup.js?v=8.62 footage-speech.js?v=8.62 footage-audit.js?v=8.62 mp4fix.js?v=8.62 footage-stitch.js?v=8.62 voicestore.js?v=8.62 studio-model.js?v=8.62 footage-plan.js?v=8.62 backup.js?v=8.62"></script>
+<script src="store.js?v=8.63" data-boot="icons.js?v=8.63 dialog.js?v=8.63 native.js?v=8.63 history.js?v=8.63 history-sheet.js?v=8.63 budget.js?v=8.63 footage-core.js?v=8.63 footage-pick.js?v=8.63 footage.js?v=8.63 local.js?v=8.63 library.js?v=8.63 footage-find.js?v=8.63 footage-ask.js?v=8.63 footage-album.js?v=8.63 footage-organize.js?v=8.63 footage-embed.js?v=8.63 footage-dup.js?v=8.63 footage-speech.js?v=8.63 footage-audit.js?v=8.63 mp4fix.js?v=8.63 footage-stitch.js?v=8.63 voicestore.js?v=8.63 studio-model.js?v=8.63 footage-plan.js?v=8.63 backup.js?v=8.63"></script>
 </body>
 </html>

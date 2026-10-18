@@ -359,6 +359,16 @@
     try{ j = parseJSON(r.text); }catch(err){ err.cost = r.cost; err.raw = r.text; throw err; }
     r.json = j; return r;
   }
+  /* ---------- ค้นหาแบบเข้าใจความหมาย (footage-embed.js) · OpenRouter /embeddings · ข้อความล้วน ราคาถูกมาก ---------- */
+  async function embed(texts, model){ /* → { vecs:[Float32Array], tokens, cost } · ล้มเหลว = โยน error (ผู้เรียกถอยไปค้นด้วยคำ) */
+    var key = orKey(); if(!key) throw new Error("ยังไม่ได้ใส่ OpenRouter key"); MWBudget.check();
+    var res = await fetch("https://openrouter.ai/api/v1/embeddings", { method:"POST", headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + key }, body:JSON.stringify({ model:model, input:texts }) });
+    var j = await res.json().catch(function(){ return {}; }), er = j.error;
+    if(!res.ok || er || !Array.isArray(j.data)) throw new Error((er && er.message) || ("embeddings " + res.status + " (โมเดลนี้อาจใช้ทำดัชนีความหมายไม่ได้ผ่าน OpenRouter)"));
+    var vecs = j.data.slice().sort(function(a, b){ return a.index - b.index; }).map(function(d){ return Float32Array.from(d.embedding); }), u = j.usage || {}, tokens = u.total_tokens || u.prompt_tokens || 0;
+    var cost = typeof u.cost === "number" ? u.cost : tokens * 0.02 / 1e6; /* ไม่บอกราคา = ประมาณตามโมเดลเล็ก $0.02/ล้านโทเคน */
+    MWBudget.add(cost); return { vecs:vecs, tokens:tokens, cost:cost };
+  }
   async function askExpand(question){
     var r = await askText([
       "You help a Thai One Piece video editor search his own footage library (anime clips, scenes described in Thai/English). Turn his question into search terms.",
@@ -395,5 +405,5 @@
     r.json = j; return r;
   }
 
-  window.FT = { classifyArcs:classifyArcs, cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize, askExpand:askExpand, transcribe:transcribe, askPick:askPick };
+  window.FT = { embed:embed, classifyArcs:classifyArcs, cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize, askExpand:askExpand, transcribe:transcribe, askPick:askPick };
 })();
