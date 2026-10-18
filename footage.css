@@ -273,3 +273,11 @@ details.fold>summary>span.stn{flex:none;margin-top:1px}
 details.fold.step>summary>span.st{flex:1;min-width:0;font:500 16px/1.3 Mitr,sans-serif}
 details.fold.step>summary .st small{display:block;margin-top:3px;font-family:"IBM Plex Sans Thai",sans-serif;font-weight:400;font-size:13px;line-height:1.4;color:var(--muted)}
 #spPanel label.chk{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:14px}
+
+/* v8.61 บทพูด/คำบรรยายในการ์ดฉาก + แตะชื่อคนพูดเพื่อแก้ */
+.card .sps{margin:6px 0;padding:6px 8px;border-left:2px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;font-size:13px;line-height:1.45;color:var(--text)}
+.card .sps p{margin:2px 0;overflow-wrap:anywhere}.card .sps p.lk{color:var(--muted)}.card .sps b{font-weight:500}.card .sps b.un{opacity:.55;font-weight:400}
+#spPanel .splines .spln{cursor:pointer}
+#spPanel .spwho{display:inline;margin:0 4px 0 0;padding:1px 8px;border:1px solid var(--line-strong);border-radius:999px;background:var(--field);color:var(--text);font:inherit;font-size:13px;font-weight:500}
+#spPanel .spwho.un{opacity:.6;font-weight:400}#spPanel .spwho.fx{border-color:var(--accent);color:var(--accent)}
+#bigTxt{white-space:pre-line}

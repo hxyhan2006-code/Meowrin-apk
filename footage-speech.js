@@ -68,6 +68,11 @@
     if(l.length > MAXIMG){ var step = l.length / MAXIMG; l = Array.from({ length:MAXIMG }, function(_, k){ return l[Math.floor(k * step)]; }); }
     return l;
   }
+  function carryFixed(old, sp){ /* ชื่อคนพูดที่ผู้ใช้แก้เอง (fixed) รอดตอนทำเสียงซ้ำ: บรรทัดใหม่ที่เวลาทับบรรทัดเดิมเกินครึ่ง ได้ชื่อเดิม */
+    ((old && old.segs) || []).filter(function(g){ return g.fixed; }).forEach(function(g){ var best = null, bo = 0;
+      sp.segs.forEach(function(n){ var o = Math.min(n.e, g.e) - Math.max(n.s, g.s); if(o > bo && o >= 0.5 * Math.min(n.e - n.s, g.e - g.s)){ bo = o; best = n; } });
+      if(best){ best.who = g.who; best.sure = true; best.fixed = true; } });
+  }
   async function doClip(c){ /* ถอดบทพูดของคลิปเดียว · เก็บที่ c.speech · โยน error ถ้าพลาด */
     var src = await U.srcUrl(c); if(!src) throw new Error("ไม่เจอไฟล์ของคลิปนี้ในมือถือ (ลองสแกนใหม่)");
     try{
@@ -85,7 +90,7 @@
         (Array.isArray(r.json.scenes) ? r.json.scenes : Array.isArray(r.json.looks) ? r.json.looks : []).forEach(function(l){ var i = Number(l && l.i) - 1, t = String(l && l.t || "").trim(); if(t && i >= 0 && i < c.scenes.length){ sp.looks = sp.looks || {}; sp.looks[i] = t.slice(0, 200); } });
       }
       var ak = Object.keys(arcs); if(ak.length === 1) sp.arc = ak[0]; /* หลายท่อนตอบคนละภาค = ไม่ใช้ */
-      blob = null; sp.sum = sums.join(" ").slice(0, 300); c.speech = sp; await FT.store.put(c); return sp;
+      carryFixed(c.speech, sp); blob = null; sp.sum = sums.join(" ").slice(0, 300); c.speech = sp; await FT.store.put(c); return sp;
     } finally { src.done(); }
   }
 
@@ -102,7 +107,7 @@
     Object.keys(s.looks || {}).forEach(function(i){ var sc = c.scenes[i]; if(sc) rows.push({ t:sc.s, k:0, d:s.looks[i] }); });
     rows.sort(function(a, b){ return a.t - b.t || a.k - b.k; });
     return rows.map(function(r){ if(!r.g) return "<div class=\"splook\"><i>" + tm(r.t) + "</i>" + U.esc(r.d) + "</div>"; var g = r.g;
-      return "<button type=\"button\" class=\"spln\" data-id=\"" + U.esc(c.id) + "\" data-t=\"" + g.s + "\"><i>" + tm(g.s) + "</i>" + (g.who ? "<b" + (g.sure === false ? " class=\"un\"" : "") + ">" + U.esc(g.who) + (g.sure === false ? "?" : "") + "</b> " : "") + U.esc(g.t) + "</button>"; }).join("");
+      return "<div class=\"spln\" data-id=\"" + U.esc(c.id) + "\" data-t=\"" + g.s + "\"><i>" + tm(g.s) + "</i><button type=\"button\" class=\"spwho" + (g.sure === false ? " un" : "") + (g.fixed ? " fx" : "") + "\" data-seg=\"" + s.segs.indexOf(g) + "\" data-id=\"" + U.esc(c.id) + "\">" + U.esc(g.who || "ใคร?") + (g.sure === false ? "?" : "") + "</button> " + U.esc(g.t) + "</div>"; }).join("");
   }
   var lastMsg = ["", ""];
   function render(msg, cls){
@@ -141,6 +146,7 @@
     runList(pend, "ฟังเสียง");
   });
   $("spList").addEventListener("click", function(e){ /* กดบรรทัดบทพูด/ปุ่มเล่น = เปิดตัวเล่นเต็มจอของคลิปนั้นที่เวลานั้น (เทียบกับเสียงจริง) */
+    var w = e.target.closest(".spwho"); if(w && U.editWho){ var cw = U.lib().find(function(x){ return x.id === w.dataset.id; }); if(cw) U.editWho(cw, +w.dataset.seg, function(){ render(); }); return; } /* แตะชื่อ = แก้คนพูด */
     var b = e.target.closest("[data-id]"); if(!b || !U.playAt) return; var c = U.lib().find(function(x){ return x.id === b.dataset.id; }); if(c) U.playAt(c, Math.max(0, parseFloat(b.dataset.t) - 0.3));
   });
   $("spWatch").addEventListener("change", function(){ watchOn = this.checked; MWStore.set(WK, { watch:watchOn, eco:ecoOn }); render(); });

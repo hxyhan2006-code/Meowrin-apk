@@ -80,6 +80,22 @@
       return (g.who ? g.who + " " + th + " " : "") + g.t; }).join(" ");
     var lk = sp.looks && sp.looks[c.scenes.indexOf(sc)]; return lk ? t + " " + lk : t;
   }
+  function speechLines(c, sc){ /* v8.61 บทพูดของฉาก (แยกเป็นบรรทัด ไว้โชว์ในการ์ด/รูปใหญ่) + คำบรรยายฉาก · lines[].i = ลำดับใน c.speech.segs (ไว้แก้ชื่อคนพูด) */
+    var sp = c && c.speech, r = { lines:[], look:"" }; if(!sp) return r;
+    (sp.segs || []).forEach(function(g, i){ if(g.e >= sc.s - 0.3 && g.s <= sc.e + 0.3) r.lines.push({ i:i, s:g.s, who:g.who || "", t:g.t, sure:g.sure !== false }); });
+    r.look = sp.looks && sp.looks[c.scenes.indexOf(sc)] || ""; return r;
+  }
+  function editWho(c, i, done){ /* v8.61 แตะชื่อคนพูดเพื่อแก้ · ตัวหลักเลือกจากรายการ ตัวประกอบพิมพ์บทบาทเอง · เลือก "ทั้งคลิป" = เปลี่ยนทุกบรรทัดที่ใช้ชื่อเดิม · ล็อก (fixed) ไม่ให้ทำเสียงซ้ำทับ */
+    var segs = c.speech.segs, seg = segs[i], old = seg.who, all = false;
+    FT.pick.open({ title:"ใครเป็นคนพูด", placeholder:"ตัวหลักพิมพ์ชื่อ หรือพิมพ์บทบาท เช่น พ่อค้า ลุง", icon:"user",
+      barFn:function(){ return old ? [{ k:"all", label:"เปลี่ยนทุกบรรทัดของ \"" + old + "\" ในคลิปนี้", on:all }] : []; }, onBar:function(){ all = !all; },
+      items:function(q){ var raw = $("pkQ").value.trim(), l = NAMEX.filter(function(n){ return !q || (n.key + " " + n.th + " " + n.ths.join(" ")).toLowerCase().indexOf(q) >= 0; }).map(function(n){ return { k:"c:" + n.key, name:enName(n.key), sub:n.th }; });
+        if(raw) l.push({ k:"t:" + raw, name:"ใช้ \"" + raw + "\"", desc:"พิมพ์เอง เช่น พ่อค้า ลุง ป้า ทหารเรือ", icon:"user" });
+        if(!q) l.push({ k:"x:", name:"ไม่ทราบ (ล้างชื่อ)" }); return l; }, /* ชื่อที่พิมพ์เอง อยู่ท้ายรายการ (ตัวหลักที่ตรงมาก่อน) */
+      onPick:function(k){ var kind = k.slice(0, 1), v = k.slice(2), name = kind === "c" ? enName(v) : kind === "t" ? v : "";
+        (all && old ? segs.filter(function(g){ return g.who === old; }) : [seg]).forEach(function(g){ g.who = name; g.sure = true; g.fixed = true; });
+        FT.store.put(c).then(function(){ if(done) done(); search(); }); } });
+  }
   function hay(c, sc){
     var a = sc.ai || {};
     return [ (a.characters || []).concat(a.characters_th || []).join(" "),
@@ -319,6 +335,10 @@
     }).join("") + "</div>";
   }
   var SHOT = { close:"ภาพใกล้", medium:"ภาพกลาง", wide:"ภาพไกล" };
+  function spBlock(c, sc){ /* v8.61 บทพูด+คำบรรยายฉากในการ์ด (ไม่ต้องกดเข้าไปดู) */
+    var r = speechLines(c, sc); if(!r.lines.length && !r.look) return "";
+    return '<div class="sps">' + (r.look ? '<p class="lk">' + esc(r.look) + "</p>" : "") + r.lines.slice(0, 4).map(function(l){ return '<p><b' + (l.sure ? "" : ' class="un"') + ">" + esc(l.who || "?") + (l.sure ? "" : "?") + "</b> " + esc(l.t) + "</p>"; }).join("") + (r.lines.length > 4 ? '<p class="hint">+อีก ' + (r.lines.length - 4) + " บรรทัด (เปิดดูฉาก)</p>" : "") + "</div>";
+  }
   function card(c, sc, exact, why){
     var a = sc && sc.ai || {}, who = (sc ? sceneChars(sc) : []).map(enName).join(", "); /* ชื่ออังกฤษ canon เหมือนตัวกรอง */
     var kc = shown.push({ c:c, cover:true }) - 1, k = sc ? shown.push({ c:c, sc:sc }) - 1 : kc; /* แตะปก = ดูปกใหญ่ · แตะรูปฉาก = ดูรูปฉากใหญ่ */
@@ -327,6 +347,7 @@
       + "<b>" + esc(c.album) + "</b>" + (sc ? ' · <span class="when">ฉาก ' + tm(sc.s) + "–" + tm(sc.e) + "</span>" : " · " + c.scenes.length + " ฉาก")
       + "<p>" + (exact ? '<span class="tag ok">' + MWIcon("star") + 'ตรงเป๊ะ</span> ' : "") + (why ? '<span class="tag run">AI: ' + esc(why) + "</span> " : "") + esc(sc ? (a.summary_th || "(AI ไม่ได้อธิบายฉากนี้)") : (c.summary_th || "")) + "</p>"
       + (who ? "<p>" + MWIcon("user") + esc(who) + "</p>" : "")
+      + (sc ? spBlock(c, sc) : "")
       + (sc && (a.shot || a.intensity || a.event || a.multi) ? '<p class="meta">' + MWIcon("film") + esc([SHOT[a.shot], a.intensity ? "แรง " + a.intensity + "/5" : "", a.event || a.arc, (a.issues || []).length ? "ปัญหาภาพ: " + a.issues.map(function(x){ return /screen/.test(x) ? "อัดจากหน้าจอ" : x; }).join(", ") : "", a.multi ? "หลายช็อตปน" : "", a.usable && a.usable <= 2 ? "คุณภาพต่ำ" : ""].filter(Boolean).join(" · ")) + "</p>" : "") /* ป้ายดัชนีรุ่นละเอียด */
       + (sc ? "" : strip(c)) /* โหมดดูทั้งคลิป: แถบรูปทุกฉาก แตะดูรูปใหญ่ + คำอธิบายฉากนั้น */
       + '<p>' + day(c.lastModified) + '</p><div class="fname">' + esc(c.name) + "</div></div></div>";
@@ -335,8 +356,9 @@
     var el = e.target.closest("[data-k]"), h = el && shown[+el.dataset.k], c = h && h.c, sc = h && h.sc;
     if(h && h.cover){ openBig(c, null, c.cover, c.album + " · ปกคลิป (เฟรมแรก) · " + capDur(c.duration)); return; }
     if(!sc) return;
-    openBig(c, sc, sc.img || sc.thumb, c.album + " · " + capDur(c.duration) + " · ฉาก " + tm(sc.s) + "–" + tm(sc.e) + (sc.ai && sc.ai.summary_th ? " · " + sc.ai.summary_th : ""));
+    openBig(c, sc, sc.img || sc.thumb, c.album + " · " + capDur(c.duration) + " · ฉาก " + tm(sc.s) + "–" + tm(sc.e) + (sc.ai && sc.ai.summary_th ? " · " + sc.ai.summary_th : "") + bigSpeech(c, sc));
   });
+  function bigSpeech(c, sc){ var r = speechLines(c, sc); return (r.look ? "\n" + r.look : "") + r.lines.map(function(l){ return "\n" + (l.who ? l.who + ": " : "") + l.t; }).join(""); }
   /* ---------- ดูฉากนี้ (เล่นจากไฟล์จริงในเครื่อง ไม่อัปโหลด) ---------- */
   var pf = {}, bySize = {}, bigCur = null; /* pf = ไฟล์ที่เปิดไว้ในรอบนี้ (ชื่อ|ขนาด → File) หายเมื่อปิดหน้า · bySize = สำรองจับด้วยขนาดอย่างเดียว (แอพไฟล์กับแกลเลอรีอาจตั้งชื่อไม่ตรงกัน) false = ขนาดชนกัน · bigCur = ฉากที่เปิดอยู่ */
   function pfKey(name, size){ return name + "|" + size; }
@@ -411,7 +433,7 @@
       a.characters = (a.characters || []).concat(nx ? nx.key.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }) : k); a.characters_th = (a.characters_th || []).concat(nx ? nx.th : k); n++; });
     if(n){ a.rc = 1; chipCache.delete(sc); } return n;
   }
-  Object.assign(U, { speechOf:speechOf, addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, speechArc:speechArc, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
+  Object.assign(U, { speechOf:speechOf, speechLines:speechLines, editWho:editWho, addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, speechArc:speechArc, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
                      openFiles:function(docs){ $(docs ? "pickDocs" : "playFiles").click(); } });
   search();
 })();
