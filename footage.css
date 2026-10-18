@@ -262,3 +262,9 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 .alplay .alline{margin:0 14px 12px;min-height:2.6em;text-align:center;color:#fff;font-size:15px;line-height:1.4;overflow-wrap:anywhere}
 #spPanel .splook{margin:6px 0;padding:6px 0;border-top:1px dashed var(--line-strong);font-size:13.5px;color:var(--muted)}#spPanel .splook i{font-style:normal;color:var(--accent);font-size:12.5px;margin-right:8px}#spPanel>label.chk{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:14px}
 #spPanel .splines b.un{opacity:.55;font-weight:400}#spPanel .splines .splook{margin:2px 0;padding:6px 8px;border:0;border-left:2px solid var(--accent);background:var(--accent-soft);color:var(--muted);border-radius:0 8px 8px 0}
+
+/* หน้าตั้งค่า: การ์ดงานเรียงขั้น 1-4 (ให้ AI ทำงานกับคลิป) */
+.panel.step h2{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:0 0 6px;font-size:17px}
+.panel.step h2 small{flex:1 0 100%;font-size:13px;font-weight:400;font-family:inherit;color:var(--muted);line-height:1.4}
+.stn{display:inline-grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);border:1px solid rgba(57,217,138,.55);color:var(--accent);font:500 14px Mitr,sans-serif}
+details.sub{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}details.sub>summary{cursor:pointer;color:var(--muted);font-size:14px;padding:6px 0}
