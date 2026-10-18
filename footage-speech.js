@@ -154,6 +154,6 @@
   $("spStop").addEventListener("click", function(){ stopF = true; $("spStop").hidden = true; });
   document.addEventListener("ft:lib", function(){ if(!run) render(); });
   document.addEventListener("ft:files", function(){ if(!run) render(); });
-  FT.speech = { doClip:doClip, stats:stats, denseFrames:denseFrames };
+  FT.speech = { doClip:doClip, stats:stats, denseFrames:denseFrames, blobOf:blobOf, loadMB:loadMB };
   render();
 })();

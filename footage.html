@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
 <title>ฟุตเทจ · Meowrin factory</title>
-<link rel="icon" type="image/png" href="icon-192.png?v=8.63">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.63">
-<link rel="stylesheet" href="fonts.css?v=8.63"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
-<link rel="stylesheet" href="footage.css?v=8.63">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.64">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.64">
+<link rel="stylesheet" href="fonts.css?v=8.64"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
+<link rel="stylesheet" href="footage.css?v=8.64">
 </head>
 <body>
 <header>
@@ -254,7 +254,16 @@
 <input id="pickDocs" type="file" multiple hidden><!-- ไม่ใส่ accept → Android เปิดแอพไฟล์ (เข้าโฟลเดอร์ + เลือกทั้งหมดได้) แทนตัวเลือกรูป -->
 <video id="vid" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:2px;height:2px"></video>
 
+<button class="bskbar" id="bskBar" type="button" hidden><svg class="ic" aria-hidden="true"><use href="#i-star"/></svg><span>ตะกร้าฉาก</span></button>
+<div class="asheet" id="bskSheet" hidden><div class="abox" role="dialog"><div class="pkhead"><h3>ตะกร้าฉาก</h3><span id="bskInfo"></span></div>
+  <div id="bskList"></div>
+  <label class="chk"><input type="checkbox" id="bskPad"> เผื่อหัวท้ายฉากข้างละ 0.5 วินาที</label>
+  <p class="hint" id="bskMsg"></p>
+  <button class="btn" id="bskRun" type="button" style="width:100%" disabled>ตัดเป็นไฟล์ส่งไป CapCut</button>
+  <button class="btn ghost" id="bskStop" type="button" style="width:100%;margin-top:8px" hidden>พัก</button>
+  <div class="row" style="margin-top:8px"><button class="btn ghost" id="bskCopy" type="button">คัดลอกรายการ</button><button class="btn ghost" id="bskClear" type="button">ล้างตะกร้า</button><button class="btn ghost" id="bskDone" type="button">ปิด</button></div>
+</div></div>
 <div class="asheet" id="pkSheet" hidden><div class="abox" role="dialog"><div class="pkhead"><h3 id="pkTitle"></h3><span id="pkInfo"></span></div><input id="pkQ" type="search" autocomplete="off"><div id="pkBar" hidden></div><div id="pkList"></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="pkClear" type="button">ล้างที่เลือก</button><button class="btn" id="pkDone" type="button">เสร็จ</button></div></div></div>
-<script src="store.js?v=8.63" data-boot="icons.js?v=8.63 dialog.js?v=8.63 native.js?v=8.63 history.js?v=8.63 history-sheet.js?v=8.63 budget.js?v=8.63 footage-core.js?v=8.63 footage-pick.js?v=8.63 footage.js?v=8.63 local.js?v=8.63 library.js?v=8.63 footage-find.js?v=8.63 footage-ask.js?v=8.63 footage-album.js?v=8.63 footage-organize.js?v=8.63 footage-embed.js?v=8.63 footage-dup.js?v=8.63 footage-speech.js?v=8.63 footage-audit.js?v=8.63 mp4fix.js?v=8.63 footage-stitch.js?v=8.63 voicestore.js?v=8.63 studio-model.js?v=8.63 footage-plan.js?v=8.63 backup.js?v=8.63"></script>
+<script src="store.js?v=8.64" data-boot="icons.js?v=8.64 dialog.js?v=8.64 native.js?v=8.64 history.js?v=8.64 history-sheet.js?v=8.64 budget.js?v=8.64 footage-core.js?v=8.64 footage-pick.js?v=8.64 footage.js?v=8.64 local.js?v=8.64 library.js?v=8.64 footage-find.js?v=8.64 footage-ask.js?v=8.64 footage-album.js?v=8.64 footage-organize.js?v=8.64 footage-embed.js?v=8.64 footage-dup.js?v=8.64 footage-speech.js?v=8.64 footage-basket.js?v=8.64 footage-audit.js?v=8.64 mp4fix.js?v=8.64 footage-stitch.js?v=8.64 voicestore.js?v=8.64 studio-model.js?v=8.64 footage-plan.js?v=8.64 backup.js?v=8.64"></script>
 </body>
 </html>

@@ -502,6 +502,27 @@ try {
     return { size: blob.size, n: fr.length, head: fr[0] && fr[0].img.slice(0, 23), s0: fr[0] && fr[0].s };
   });
   check('ฟังเสียงคลิป: ดึงภาพถี่จากวิดีโอจริงได้ (JPEG data URL ตามเวลา)', df.n >= 1 && df.head === 'data:image/jpeg;base64,' && df.s0 > 0, JSON.stringify(df));
+  // v8.64 ตะกร้าฉาก: เก็บฉากจากการ์ด → แถบลอย → ตัดเป็นไฟล์ (mediabunny Conversion trim, WebM ในเครื่องทดสอบ) → MWNative.save · ฉากที่ตัดสำเร็จออกจากตะกร้า
+  const bk0 = await sp.evaluate(async () => {
+    const cv = document.createElement('canvas'); cv.width = 320; cv.height = 180; const x = cv.getContext('2d'), st = cv.captureStream(15), rec = new MediaRecorder(st, { mimeType: 'video/webm;codecs=vp8' }), ch = [];
+    rec.ondataavailable = (e) => ch.push(e.data); rec.start(100); let n = 0; const iv = setInterval(() => { x.fillStyle = `hsl(${n * 20 % 360},80%,50%)`; x.fillRect(0, 0, 320, 180); n++; }, 60);
+    await new Promise((r) => setTimeout(r, 3200)); clearInterval(iv); const done = new Promise((r) => { rec.onstop = r; }); rec.stop(); await done;
+    const blob = new Blob(ch, { type: 'video/webm' }), url = URL.createObjectURL(blob), prev = FT.ui.srcUrl;
+    FT.ui.srcUrl = async (c) => c.id === 'bk1' ? { url, done() {} } : prev(c);
+    FT.ui.lib().push({ id: 'bk1', name: 'bk_clip.webm', size: blob.size, album: 'x', duration: 3, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 0.5, e: 1.5, thumb: '', ai: { characters: [], summary_th: 'ฉากทดสอบตะกร้า' } }] });
+    window.__saved = []; MWNative.save = async (b, nm, opt) => { window.__saved.push({ nm, size: b.size, noHist: !!(opt && opt.noHist), blob: b }); return { name: nm, path: 'Documents/Meowrin/' + nm, scanned: true }; }; FT.basket.setFormat('webm');
+    const host = document.createElement('div'); host.id = 'bkHost'; host.innerHTML = FT.ui.card(FT.ui.lib().find((c) => c.id === 'bk1'), FT.ui.lib().find((c) => c.id === 'bk1').scenes[0]); document.querySelector('main').appendChild(host);
+    return { size: blob.size, btn: !!host.querySelector('.bskadd') };
+  });
+  await sp.evaluate(() => document.getElementById('bkHost').scrollIntoView()); await sp.locator('#bkHost .bskadd').click(); await sp.waitForTimeout(200);
+  const bk1 = await sp.evaluate(() => ({ bar: !document.getElementById('bskBar').hidden, txt: document.getElementById('bskBar').textContent, on: document.querySelector('#bkHost .bskadd').classList.contains('on'), big: !document.getElementById('big').hidden, n: FT.basket.list().length }));
+  check('ตะกร้าฉาก: การ์ดมีปุ่ม เก็บฉาก · กดแล้วปุ่มเป็น ในตะกร้า + แถบลอยขึ้นพร้อมจำนวน · ไม่เปิดรูปใหญ่', bk0.btn && bk1.bar && /1 ฉาก/.test(bk1.txt) && bk1.on && !bk1.big && bk1.n === 1, JSON.stringify([bk0, bk1]));
+  await sp.click('#bskBar'); await sp.waitForSelector('#bskSheet:not([hidden])', { timeout: 4000 }); await sp.click('#bskRun');
+  await sp.waitForFunction(() => /ตัดเสร็จ/.test(document.getElementById('bskMsg').textContent), null, { timeout: 30000 });
+  const bk2 = await sp.evaluate(async () => { const sv = window.__saved[0], mb = await FT.speech.loadMB(); let dur = -1, err = ''; try { const inp = new mb.Input({ source: new mb.BlobSource(sv.blob), formats: mb.ALL_FORMATS }); dur = await inp.computeDuration(); } catch (e) { err = e.message; }
+    return { n: window.__saved.length, nm: sv.nm, size: sv.size, noHist: sv.noHist, dur, err, msg: document.getElementById('bskMsg').textContent, left: FT.basket.list().length, over: document.documentElement.scrollWidth > innerWidth + 1 }; });
+  check('ตะกร้าฉาก: ตัดฉาก 0.5–1.5 วิ ของคลิปเป็นไฟล์ใหม่ (ยาวราว 1 วิ) · ชื่อไฟล์มีลำดับ/ชื่อคลิป/เวลา · ไม่จดประวัติงาน · ฉากที่ตัดแล้วออกจากตะกร้า · หน้าไม่ล้น', bk2.n === 1 && /^01_bk_clip_0m01s-0m02s\.webm$/.test(bk2.nm) && bk2.size > 500 && bk2.noHist && bk2.dur > 0.5 && bk2.dur < 1.8 && bk2.left === 0 && /ตัดเสร็จ 1 ไฟล์/.test(bk2.msg) && !bk2.over && !spErr.length, JSON.stringify(bk2));
+  await sp.click('#bskDone'); await sp.evaluate(() => document.getElementById('bkHost').remove());
   await sp.evaluate(() => { document.querySelectorAll('#spList details').forEach((d) => { d.open = true; }); });
   await sp.locator('#spList .spln').first().click(); await sp.waitForFunction(() => !document.getElementById('alPlay').hidden && /^blob:/.test(document.getElementById('alVid').src), null, { timeout: 8000 });
   const sp2 = await sp.evaluate(() => ({ t: document.getElementById('alpT').textContent, line: document.getElementById('alpLine').textContent, btn: document.querySelectorAll('#spList .spplay').length }));

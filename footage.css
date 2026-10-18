@@ -283,3 +283,11 @@ details.fold.step>summary .st small{display:block;margin-top:3px;font-family:"IB
 #bigTxt{white-space:pre-line}
 .card .sps .spwho{display:inline;margin:0 4px 0 0;padding:1px 8px;border:1px solid var(--line-strong);border-radius:999px;background:var(--field);color:var(--text);font:inherit;font-size:12.5px;font-weight:500}
 .card .sps .spwho.un{opacity:.6;font-weight:400}.card .sps{cursor:pointer}
+
+/* v8.64 ตะกร้าฉาก */
+.bskadd{display:inline-flex;align-items:center;gap:6px;margin-top:6px;min-height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line-strong);background:var(--field);color:var(--muted);font:inherit;font-size:13px}
+.bskadd .ic{margin:0;flex:none}.bskadd.on{background:var(--accent-soft);border-color:rgba(57,217,138,.55);color:var(--accent)}.bskadd.on .ic{fill:currentColor}
+.bskbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:40;display:flex;align-items:center;gap:8px;min-height:46px;padding:0 18px;border-radius:999px;border:1px solid rgba(57,217,138,.55);background:var(--surface);color:var(--accent);font:inherit;font-weight:500;box-shadow:0 4px 18px rgba(0,0,0,.5)}.bskbar[hidden]{display:none}.bskbar .ic{margin:0;fill:currentColor}
+#bskSheet .abox{display:flex;flex-direction:column;max-height:84vh;overflow:hidden;padding-bottom:calc(22px + env(safe-area-inset-bottom))}#bskSheet .abox>*{flex:none}#bskSheet #bskList{flex:1 1 auto;min-height:0;max-height:40vh;overflow-y:auto;overscroll-behavior:contain}
+.bskrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}.bskrow:first-child{border-top:0}.bskrow .tx{flex:1;min-width:0}.bskrow b{display:block;font-weight:500;overflow-wrap:anywhere;font-size:14px}.bskrow small{display:block;color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}.bskrow .btn{flex:none;width:40px;padding:0}.bskrow .ic{margin:0}
+#bskSheet .row .btn{flex:1}
