@@ -76,8 +76,8 @@
   function speechOf(c, sc){ /* บทพูด+ชื่อคนพูด (ไทย/อังกฤษ)+สีหน้าท่าทางของฉากนี้ (footage-speech.js เก็บที่ c.speech) · เวลาเผื่อขอบ 0.3 วิ เพราะเวลาจากเสียงกับเวลาฉากคลาดได้ */
     var sp = c && c.speech; if(!sp || !((sp.segs && sp.segs.length) || sp.looks)) return "";
     var t = (sp.segs || []).filter(function(g){ return g.e >= sc.s - 0.3 && g.s <= sc.e + 0.3; }).map(function(g){
-      var low = String(g.who || "").toLowerCase(), nx = low ? NAMEX.find(function(x){ return x.en.test(low); }) : null;
-      return (g.who ? g.who + " " + (nx ? nx.ths.join(" ") + " " : "") : "") + g.t; }).join(" ");
+      var th = String(g.who || "").split(/\s*,\s*/).map(function(w){ var low = w.toLowerCase(), nx = low ? NAMEX.find(function(x){ return x.en.test(low); }) : null; return nx ? nx.ths.join(" ") : ""; }).join(" "); /* พูดพร้อมกันหลายคน: ชื่อคั่น , */
+      return (g.who ? g.who + " " + th + " " : "") + g.t; }).join(" ");
     var lk = sp.looks && sp.looks[c.scenes.indexOf(sc)]; return lk ? t + " " + lk : t;
   }
   function hay(c, sc){

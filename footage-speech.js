@@ -6,7 +6,7 @@
   "use strict";
   var FT = window.FT, U = FT && FT.ui; if(!U || !$("spTrial")) return;
   function $(id){ return document.getElementById(id); }
-  var WK = "mw_speech_v1", watchOn = (MWStore.get(WK, null) || { watch:true }).watch !== false, MAXIMG = 24, DENSE = 60, DSTEP = 1.5, SR = 16000, CH_SEC = 180, MAXB = 700 * 1048576, TRIAL = 10, FAIL_STOP = 3, GUESS = 0.004, GUESSW = 0.012, mbP = null, run = false, stopF = false;
+  var WK = "mw_speech_v1", watchOn = (MWStore.get(WK, null) || { watch:true }).watch !== false, MAXIMG = 24, DENSE = 60, ecoOn = !!(MWStore.get(WK, null) || {}).eco, DSTEP = 1.5, SR = 16000, CH_SEC = 180, MAXB = 700 * 1048576, TRIAL = 10, FAIL_STOP = 3, GUESS = 0.004, GUESSW = 0.03, mbP = null, run = false, stopF = false;
   function loadMB(){ return mbP || (mbP = import("./sub/vendor/mediabunny.min.js")); }
   function tm(s){ s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
 
@@ -46,7 +46,7 @@
   }
   function cleanSegs(arr, off, max){
     return (Array.isArray(arr) ? arr : []).map(function(g){ var s = Number(g && g.s), e = Number(g && g.e), t = String(g && g.t || "").trim();
-      if(!t || !isFinite(s)) return null; if(!isFinite(e) || e < s) e = s + 1; return { s:Math.max(0, +(s + off).toFixed(1)), e:Math.min(max, +(e + off).toFixed(1)), t:t.slice(0, 300), who:String(g && g.who || "").trim().slice(0, 30), sure:!(g && g.sure === false) }; }).filter(Boolean);
+      if(!t || !isFinite(s)) return null; if(!isFinite(e) || e < s) e = s + 1; return { s:Math.max(0, +(s + off).toFixed(1)), e:Math.min(max, +(e + off).toFixed(1)), t:t.slice(0, 300), who:(Array.isArray(g && g.who) ? g.who.join(", ") : String(g && g.who || "")).replace(/\s*(,|;|&| and )\s*/gi, ", ").trim().slice(0, 60), sure:!(g && g.sure === false) }; }).filter(Boolean);
   }
 
   async function denseFrames(blob, t0, t1){ /* ภาพจากวิดีโอทุก ~1.5 วิ (กว้าง 384) ตลอดท่อน ≤ DENSE รูป → [{ s:วินาทีนับจากต้นท่อน, img }] · เปิดภาพไม่ได้ = [] (ใช้ภาพฉากที่เก็บไว้แทน) */
@@ -54,7 +54,7 @@
       var mb = await loadMB(), input = new mb.Input({ source:new mb.BlobSource(blob), formats:mb.ALL_FORMATS });
       try{
         var tr = await input.getPrimaryVideoTrack(); if(!tr || !(await tr.canDecode())) return [];
-        var step = Math.max(DSTEP, (t1 - t0) / DENSE), ts = []; for(var t = t0 + 0.2; t < t1 - 0.05; t += step) ts.push(t);
+        var step = Math.max(ecoOn ? 3 : DSTEP, (t1 - t0) / DENSE), ts = []; for(var t = t0 + 0.2; t < t1 - 0.05; t += step) ts.push(t);
         var sink = new mb.CanvasSink(tr, { width:384 }), out = [], k = 0;
         for await (var w of sink.canvasesAtTimestamps(ts)){ var tt = ts[k++]; if(w && w.canvas) out.push({ s:tt - t0, img:w.canvas.toDataURL("image/jpeg", 0.6) }); }
         return out;
@@ -101,7 +101,7 @@
   }
   function render(msg, cls){
     var st = stats(), pend = pending(), all = clips().length, est = st.avg || (watchOn ? GUESSW : GUESS);
-    $("spWatch").checked = watchOn; $("spInfo").textContent = (watchOn ? "ดู+ฟัง" : "ฟังเสียง") + "แล้ว " + st.done + "/" + all + " คลิป" + (st.done ? " · มีบทพูด " + st.withText : "") + (st.paid ? " · เฉลี่ย " + U.money(st.avg) + "/คลิป" : "") + (pend.length ? " · ยังไม่ได้ฟัง " + pend.length : "");
+    $("spWatch").checked = watchOn; $("spEco").checked = ecoOn; $("spEco").parentNode.hidden = !watchOn; $("spInfo").textContent = (watchOn ? "ดู+ฟัง" : "ฟังเสียง") + "แล้ว " + st.done + "/" + all + " คลิป" + (st.done ? " · มีบทพูด " + st.withText : "") + (st.paid ? " · เฉลี่ย " + U.money(st.avg) + "/คลิป" : "") + (pend.length ? " · ยังไม่ได้ฟัง " + pend.length : "");
     var m = $("spMsg"); m.textContent = msg || ""; m.className = "hint" + (cls ? " " + cls : "");
     $("spTrial").disabled = run || !pend.length; $("spTrial").textContent = "ทดลอง" + (watchOn ? "ดู+ฟัง " : "ฟังเสียง ") + Math.min(TRIAL, pend.length) + " คลิป";
     $("spAll").hidden = !(st.paid >= 5 && pend.length); $("spAll").disabled = run; $("spAll").textContent = (watchOn ? "ดู+ฟัง" : "ฟังเสียง") + "ที่เหลือทั้งหมด (" + pend.length + ") · ประมาณ " + U.money(pend.length * est);
@@ -136,7 +136,8 @@
   $("spList").addEventListener("click", function(e){ /* กดบรรทัดบทพูด/ปุ่มเล่น = เปิดตัวเล่นเต็มจอของคลิปนั้นที่เวลานั้น (เทียบกับเสียงจริง) */
     var b = e.target.closest("[data-id]"); if(!b || !U.playAt) return; var c = U.lib().find(function(x){ return x.id === b.dataset.id; }); if(c) U.playAt(c, Math.max(0, parseFloat(b.dataset.t) - 0.3));
   });
-  $("spWatch").addEventListener("change", function(){ watchOn = this.checked; MWStore.set(WK, { watch:watchOn }); render(); });
+  $("spWatch").addEventListener("change", function(){ watchOn = this.checked; MWStore.set(WK, { watch:watchOn, eco:ecoOn }); render(); });
+  $("spEco").addEventListener("change", function(){ ecoOn = this.checked; MWStore.set(WK, { watch:watchOn, eco:ecoOn }); });
   $("spStop").addEventListener("click", function(){ stopF = true; $("spStop").hidden = true; });
   document.addEventListener("ft:lib", function(){ if(!run) render(); });
   document.addEventListener("ft:files", function(){ if(!run) render(); });
