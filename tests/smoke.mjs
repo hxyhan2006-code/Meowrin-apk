@@ -441,7 +441,7 @@ try {
     FT.transcribe = async (b64, dur, hint, frames, scenes) => { window.__tr.push({ scn: scenes ? scenes.map((x) => x.n).join() : null, head: atob(b64.slice(0, 16)).slice(0, 4), bytes: Math.round(atob(b64).length), dur, frames: frames ? frames.map((f) => f.n + ':' + f.s + '-' + f.e).join() : null }); return { cost: 0.002, json: { segments: [{ s: 0.5, e: 1.5, t: 'ทดสอบ บทพูด', who: 'Luffy' }, { s: 2.1, e: 2.8, t: 'เย้', who: ['Chopper', 'Carrot'], sure: true }, { s: 9, e: 99, t: '' }], scenes: [{ i: 1, t: 'ยิ้มกว้างชูกำปั้น' }, { i: 99, t: 'เกินขอบ' }], summary_th: 'สรุปทดสอบ' } }; };
     FT.ui.search && FT.ui.search(); document.dispatchEvent(new CustomEvent('ft:lib'));
   });
-  await sp.click('nav button[data-p="set"]'); await sp.evaluate(() => { document.getElementById('p-idx').open = true; }); await sp.waitForTimeout(200);
+  await sp.click('nav button[data-p="set"]'); await sp.evaluate(() => { document.getElementById('spPanel').open = true; }); await sp.waitForTimeout(200);
   await sp.click('#spTrial'); await sp.waitForTimeout(300); await sp.getByRole('button', { name: 'เริ่ม', exact: true }).click();
   await sp.waitForFunction(() => /ทดลอง: ฟังเสร็จ 2/.test(document.getElementById('spMsg').textContent), null, { timeout: 20000 });
   const sp1 = await sp.evaluate(() => { const [a, b] = FT.ui.lib().filter((c) => /^sp[12]$/.test(c.id)); return { tr: window.__tr, a: a.speech, b: b.speech, s0: FT.ui.speechOf(a, a.scenes[0]), s1: FT.ui.speechOf(a, a.scenes[1]), hay: FT.ui.hay(a, a.scenes[0]).join('|').includes('ทดสอบ'), list: document.getElementById('spList').textContent, info: document.getElementById('spInfo').textContent, over: document.documentElement.scrollWidth > innerWidth + 1 }; });

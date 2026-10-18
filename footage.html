@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
 <title>ฟุตเทจ · Meowrin factory</title>
-<link rel="icon" type="image/png" href="icon-192.png?v=8.57">
-<link rel="apple-touch-icon" href="icon-192.png?v=8.57">
-<link rel="stylesheet" href="fonts.css?v=8.57"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
-<link rel="stylesheet" href="footage.css?v=8.57">
+<link rel="icon" type="image/png" href="icon-192.png?v=8.58">
+<link rel="apple-touch-icon" href="icon-192.png?v=8.58">
+<link rel="stylesheet" href="fonts.css?v=8.58"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
+<link rel="stylesheet" href="footage.css?v=8.58">
 </head>
 <body>
 <header>
@@ -95,8 +95,7 @@
 
     <div id="p-idx">
     <div class="sech">ให้ AI ทำงานกับคลิป · ทำตามลำดับ 1 → 4</div>
-    <div class="panel step">
-      <h2><span class="stn">1</span>เพิ่มคลิปเข้าดัชนี<small>AI ดูภาพ → ได้ตัวละคร สถานที่ อารมณ์ของทุกฉาก</small></h2>
+    <details class="panel fold step"><summary><span class="stn">1</span><span class="st">เพิ่มคลิปเข้าดัชนี<small>AI ดูภาพ → ได้ตัวละคร สถานที่ อารมณ์ของทุกฉาก</small></span></summary><div class="fbody">
       <button class="btn" id="filesDocsBtn" type="button" style="width:100%"><svg class="ic" aria-hidden="true"><use href="#i-folder"/></svg>เลือกจากแอพไฟล์ (เลือกทั้งโฟลเดอร์ได้)</button>
       <label for="albumName">อัลบั้มของคลิปที่เลือก</label>
       <input id="albumName" type="text" placeholder="พิมพ์ชื่ออัลบั้มที่จะอัปโหลด (ว่าง = ไม่ระบุ)" autocomplete="off" maxlength="40">
@@ -115,9 +114,8 @@
       <details class="sub"><summary>คิวรอบนี้</summary>
       <ul class="q" id="queue"><li class="empty">ยังไม่ได้เลือกไฟล์</li></ul>
       </details>
-    </div>
-    <div class="panel step" id="spPanel">
-      <h2><span class="stn">2</span>ฟังเสียงคลิป<small>บทพูดพร้อมเวลา ใครพูด + ใครทำอะไรที่ไหนยังไง (ทดลอง)</small></h2>
+    </div></details>
+    <details class="panel fold step" id="spPanel"><summary><span class="stn">2</span><span class="st">ฟังเสียงคลิป<small>บทพูดพร้อมเวลา ใครพูด + ใครทำอะไรที่ไหนยังไง (ทดลอง)</small></span></summary><div class="fbody">
       <p class="hint tip" style="margin-top:0">ปกติ AI ดูแค่ภาพ ปุ่มนี้ให้ Gemini ฟังเสียงพากย์ในคลิปแล้วถอดบทพูดพร้อมเวลา เก็บไว้กับแต่ละคลิป → ค้นหา "ฉากที่พูดว่า…" และถาม AI แม่นขึ้น · ทดลองสุ่ม 10 คลิปก่อน ดูบทพูดที่ได้ว่าถูกไหม ถ้าดีค่อยทำที่เหลือ · คลิปเสียงเงียบไม่เสียเงิน</p>
       <label class="chk"><input type="checkbox" id="spWatch" checked> ให้ดูภาพประกอบเสียงด้วย (ระบุว่าใครพูด + สีหน้าท่าทาง)</label><label class="chk"><input type="checkbox" id="spEco"> ประหยัด: ภาพทุก 3 วิ แทน 1.5 วิ (ถูกลงประมาณครึ่ง แต่ระบุคนพูดแม่นน้อยลง)</label><p class="hint" id="spInfo"></p>
       <button class="btn" id="spTrial" style="width:100%;margin-top:8px" disabled>ทดลองฟังเสียง 10 คลิป</button>
@@ -125,21 +123,19 @@
       <button class="btn ghost" id="spStop" style="width:100%;margin-top:8px" hidden>พัก</button>
       <p class="hint" id="spMsg"></p>
       <div id="spList"></div>
-    </div>
-    <div class="panel step">
-      <h2><span class="stn">3</span>อัปเกรดดัชนีให้ละเอียดขึ้น<small>คลิปเก่า · ตรวจขั้นเทพ</small></h2>
+    </div></details>
+    <details class="panel fold step"><summary><span class="stn">3</span><span class="st">อัปเกรดดัชนีให้ละเอียดขึ้น<small>คลิปเก่า · ตรวจขั้นเทพ</small></span></summary><div class="fbody">
       <p class="hint tip" style="margin-top:0">AI ดูเฟรมต้น/กลาง/ท้ายของทุกฉาก + ติดป้ายระยะภาพ (ใกล้/กลาง/ไกล) ความแรงของฉาก อารมณ์ เหตุการณ์ในเรื่อง และภาพมีลายน้ำ/ซับ/เบลอไหม → ค้นหาและผู้กำกับเลือกฉากแม่นขึ้น · คลิปใหม่ทำแบบนี้ให้เองแล้ว · คลิปเก่าอัปเกรดได้จากคลังโดยไม่ต้องเลือกไฟล์ (อ่านเฉพาะช่วงที่ใช้ ไม่โหลดทั้งไฟล์)</p>
       <p class="hint" id="deepInfo"></p>
       <button class="btn" id="deepBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>อัปเกรดคลิปเก่า</button>
       <p class="hint" id="godInfo" style="margin-top:12px"></p>
       <button class="btn" id="godBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg>ตรวจขั้นเทพ</button>
-    </div>
-    <div class="panel step">
-      <h2><span class="stn">4</span>ตรวจตัวละครซ้ำ<small>เติมตัวละครที่ AI มองข้าม ไม่ต้องเปิดไฟล์วิดีโอ</small></h2>
+    </div></details>
+    <details class="panel fold step"><summary><span class="stn">4</span><span class="st">ตรวจตัวละครซ้ำ<small>เติมตัวละครที่ AI มองข้าม ไม่ต้องเปิดไฟล์วิดีโอ</small></span></summary><div class="fbody">
       <p class="hint tip" style="margin-top:0">ถ้าฉากที่มีตัวละคร (เช่น แชงคูส อุซป) ค้นไม่เจอ ให้ AI ดูรูปที่เก็บไว้อีกรอบ แบบถามเจาะจงว่ามีใครในรายชื่อ 38 ตัวละครบ้าง (บอกลักษณะเด่นของแต่ละตัวให้ด้วย) แล้วเติมเฉพาะที่ขาด · ถูกกว่าและเร็วกว่าอัปเกรดดัชนีละเอียด ไม่ต้องเปิดไฟล์วิดีโอ</p>
       <p class="hint" id="rcInfo"></p>
       <button class="btn" id="rcBtn" style="width:100%;margin-top:8px" disabled><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg>ตรวจตัวละครซ้ำ</button>
-    </div>
+    </div></details>
     </div>
 
     <div class="sech">คลิปในมือถือ</div>
@@ -249,6 +245,6 @@
 <video id="vid" muted playsinline preload="auto" style="position:fixed;left:-9999px;width:2px;height:2px"></video>
 
 <div class="asheet" id="pkSheet" hidden><div class="abox" role="dialog"><div class="pkhead"><h3 id="pkTitle"></h3><span id="pkInfo"></span></div><input id="pkQ" type="search" autocomplete="off"><div id="pkBar" hidden></div><div id="pkList"></div><div class="row" style="margin-top:8px"><button class="btn ghost" id="pkClear" type="button">ล้างที่เลือก</button><button class="btn" id="pkDone" type="button">เสร็จ</button></div></div></div>
-<script src="store.js?v=8.57" data-boot="icons.js?v=8.57 dialog.js?v=8.57 native.js?v=8.57 history.js?v=8.57 history-sheet.js?v=8.57 budget.js?v=8.57 footage-core.js?v=8.57 footage-pick.js?v=8.57 footage.js?v=8.57 local.js?v=8.57 library.js?v=8.57 footage-find.js?v=8.57 footage-ask.js?v=8.57 footage-album.js?v=8.57 footage-organize.js?v=8.57 footage-dup.js?v=8.57 footage-speech.js?v=8.57 footage-audit.js?v=8.57 mp4fix.js?v=8.57 footage-stitch.js?v=8.57 voicestore.js?v=8.57 studio-model.js?v=8.57 footage-plan.js?v=8.57 backup.js?v=8.57"></script>
+<script src="store.js?v=8.58" data-boot="icons.js?v=8.58 dialog.js?v=8.58 native.js?v=8.58 history.js?v=8.58 history-sheet.js?v=8.58 budget.js?v=8.58 footage-core.js?v=8.58 footage-pick.js?v=8.58 footage.js?v=8.58 local.js?v=8.58 library.js?v=8.58 footage-find.js?v=8.58 footage-ask.js?v=8.58 footage-album.js?v=8.58 footage-organize.js?v=8.58 footage-dup.js?v=8.58 footage-speech.js?v=8.58 footage-audit.js?v=8.58 mp4fix.js?v=8.58 footage-stitch.js?v=8.58 voicestore.js?v=8.58 studio-model.js?v=8.58 footage-plan.js?v=8.58 backup.js?v=8.58"></script>
 </body>
 </html>

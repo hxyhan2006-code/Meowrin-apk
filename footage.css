@@ -268,3 +268,8 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 .panel.step h2 small{flex:1 0 100%;font-size:13px;font-weight:400;font-family:inherit;color:var(--muted);line-height:1.4}
 .stn{display:inline-grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);border:1px solid rgba(57,217,138,.55);color:var(--accent);font:500 14px Mitr,sans-serif}
 details.sub{margin-top:12px;border-top:1px solid var(--line);padding-top:8px}details.sub>summary{cursor:pointer;color:var(--muted);font-size:14px;padding:6px 0}
+details.fold.step>summary{align-items:flex-start;gap:12px}
+details.fold>summary>span.stn{flex:none;margin-top:1px}
+details.fold.step>summary>span.st{flex:1;min-width:0;font:500 16px/1.3 Mitr,sans-serif}
+details.fold.step>summary .st small{display:block;margin-top:3px;font-family:"IBM Plex Sans Thai",sans-serif;font-weight:400;font-size:13px;line-height:1.4;color:var(--muted)}
+#spPanel label.chk{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:14px}
