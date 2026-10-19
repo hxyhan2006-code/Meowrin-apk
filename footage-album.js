@@ -17,11 +17,12 @@
     loc.forEach(function(f){
       var e = { k:f.name + "|" + f.size, name:f.name, size:f.size, mtime:f.mtime, album:f.album, uri:f.uri, c:null };
       if(f.dir.indexOf(ROOT) < 0 && !f.lib){ other[e.k] = e; return; } /* ไฟล์นอกโฟลเดอร์หลัก: โชว์เฉพาะที่อยู่ในดัชนี */
-      byKey[e.k] = e; out.push(e);
+      (byKey[e.k] = byKey[e.k] || []).push(e); out.push(e); /* ไฟล์ชื่อ+ขนาดเดียวกันอยู่ได้หลายโฟลเดอร์ (ก๊อปซ้ำ) = รายการละไฟล์ แต่ใช้ดัชนีของคลิปเดียวกัน */
     });
     U.lib().forEach(function(c){
-      var k = c.name + "|" + c.size, e = byKey[k] || other[k];
-      if(e){ e.c = c; if(!byKey[k]){ byKey[k] = e; out.push(e); } }
+      var k = c.name + "|" + c.size, es = byKey[k];
+      if(es){ es.forEach(function(e){ e.c = c; }); } /* ทุกไฟล์ที่ซ้ำกันนับว่าทำดัชนีแล้ว (เดิมติดแค่ตัวสุดท้าย → อีกตัวค้าง "ยังไม่ทำ" และกดทำใหม่ไม่ได้เพราะดัชนีมีอยู่แล้ว) */
+      else if(other[k]){ other[k].c = c; byKey[k] = [other[k]]; out.push(other[k]); }
       else out.push({ k:k, name:c.name, size:c.size, album:loc.length ? MISSING : (c.album || "ไม่ระบุ"), uri:null, c:c });
     });
     allE = out; albums = groupFor(mode);

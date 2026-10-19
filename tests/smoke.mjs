@@ -413,6 +413,16 @@ try {
   check('ดัชนีความหมาย: ข้อความฉากเปลี่ยน = ทำใหม่เฉพาะฉากนั้น (1 ฉาก) · ลบดัชนี = ทำใหม่ทั้งหมด และ ready=false', em3.changed === 1 && em3.afterClear >= 2 && em3.ready === false, JSON.stringify(em3));
   await ak.evaluate(() => { window.__bodies = []; }); await ak.click('#askBtn'); await ak.waitForFunction(() => /ความหมายใกล้|ไม่เจอฉากที่ตรง/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
   check('ถาม AI: ยังไม่มีดัชนีความหมาย = ค้นด้วยคำอย่างเดียว ไม่พัง (ไม่มี error)', !akErr.length, akErr.join());
+  // ไฟล์ชื่อ+ขนาดเดียวกันในหลายโฟลเดอร์ (ก๊อปซ้ำ) มีดัชนีคลิปเดียว → นับว่าทำแล้วทั้งคู่ (บั๊กเดิม: อีกไฟล์ค้าง "ยังไม่ทำ" 1-2 คลิป กดทำที่เหลือก็ไม่หาย)
+  const dp = await context.newPage(); const dpErr = []; dp.on('pageerror', (e) => dpErr.push(e.message));
+  await dp.goto(base + '/footage.html'); await dp.waitForFunction(() => window.FT && FT.ui && document.getElementById('alAi'), null, { timeout: 20000 }); await dp.waitForTimeout(400);
+  await dp.evaluate(() => { const D = '/storage/emulated/0/Pictures/Gallery/owner/'; const f = (n, s, a) => ({ name: n, size: s, dir: D + a + '/', album: a, uri: 'file://' + D + a + '/' + n, mtime: 1 });
+    window.MWLocal.list = () => [f('dup.mp4', 9, 'strawhat gang'), f('dup.mp4', 9, 'luffy'), f('solo.mp4', 7, 'luffy'), f('new.mp4', 5, 'luffy')];
+    FT.ui.lib().push({ id: 'dd1', name: 'dup.mp4', size: 9, album: 'luffy', duration: 5, status: 'done', scenes: [], lastModified: 1 }, { id: 'dd2', name: 'solo.mp4', size: 7, album: 'luffy', duration: 5, status: 'done', scenes: [], lastModified: 1 }); document.dispatchEvent(new CustomEvent('ft:lib')); });
+  await dp.waitForTimeout(300);
+  const dpr = await dp.evaluate(() => document.getElementById('alAi').textContent);
+  check('อัลบั้ม: ไฟล์ชื่อ+ขนาดเดียวกัน 2 โฟลเดอร์ + ดัชนี 1 คลิป = นับว่าทำแล้วทั้ง 2 ไฟล์ (ทำแล้ว 3/4 เหลือ 1 ไม่ใช่ 2)', /AI ทำแล้ว 3\/4 คลิป/.test(dpr) && /ทำที่เหลือ \(1\)/.test(dpr) && !dpErr.length, dpr + dpErr.join());
+  await dp.close();
   // จัดอัลบั้มใหม่ (footage-organize.js): แผนจากภาคที่ AI รู้แน่ → ย้ายไฟล์จริงด้วย MediaScan.move · ไม่แตะคลิปที่ไม่แน่ใจภาค/สำเนาในแอพ/ที่อยู่ถูกแล้ว/ชื่อซ้ำ · ย้ายทดลอง · เลิกทำย้ายกลับ · ไม่มีสิทธิ์ = ปุ่มขอสิทธิ์
   const og = await context.newPage(); const ogErr = []; og.on('pageerror', (e) => ogErr.push(e.message));
   await og.addInitScript(() => { window.__mv = []; window.__perm = { granted: true }; window.__req = 0; window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: () => true,
