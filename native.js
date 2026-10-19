@@ -49,7 +49,7 @@
     var out = { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1), gallery:false, scanned:false, verified:verified, size:blob.size };
     if(/\.(mp4|mov|webm)$/i.test(name)){
       out.scanned = await scanMedia(uri, name); /* มีปลั๊กอินสแกน = สแกนไฟล์ใน Documents ตรงๆ ไม่ต้องก๊อปซ้ำเข้าแกลเลอรี */
-      if(!out.scanned) out.gallery = await toGallery(uri, out.name); /* APK เก่า: ก๊อปเข้า Pictures/Meowrin (สแกนแบบเก่า Android 10+ อาจไม่ติด) */
+      if(!out.scanned) out.gallery = await toGallery(uri, out.name.split("/").pop()); /* APK เก่า: ก๊อปเข้า Pictures/Meowrin (สแกนแบบเก่า Android 10+ อาจไม่ติด) */
     }
     if(window.MWHist && !(opt && opt.noHist)) try{ MWHist.addFile({ name:out.name, uri:uri, rel:path, size:blob.size }); }catch(e){} /* ประวัติงาน: จดไฟล์วิดีโอ/srt ที่เซฟ */
     return out;

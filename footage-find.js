@@ -85,7 +85,8 @@
     (sp.segs || []).forEach(function(g, i){ if(g.e >= sc.s - 0.3 && g.s <= sc.e + 0.3) r.lines.push({ i:i, s:g.s, who:g.who || "", t:g.t, sure:g.sure !== false }); });
     r.look = sp.looks && sp.looks[c.scenes.indexOf(sc)] || ""; return r;
   }
-  function editWho(c, i, done){ /* v8.61 แตะชื่อคนพูดเพื่อแก้ · ตัวหลักเลือกจากรายการ ตัวประกอบพิมพ์บทบาทเอง · เลือก "ทั้งคลิป" = เปลี่ยนทุกบรรทัดที่ใช้ชื่อเดิม · ล็อก (fixed) ไม่ให้ทำเสียงซ้ำทับ */
+  function editWho(c, i, done, t){ /* t = เวลาเริ่มบรรทัดตอนวาด · บทพูดถูกทำใหม่ระหว่างนั้น (ลำดับเปลี่ยน) = หาบรรทัดจากเวลาแทน ไม่แก้ผิดบรรทัด */
+    var sg = c.speech && c.speech.segs || []; if(t != null && !isNaN(t) && !(sg[i] && Math.abs(sg[i].s - t) < 0.05)) i = sg.findIndex(function(g){ return Math.abs(g.s - t) < 0.05; }); if(!sg[i]) return; /* v8.61 แตะชื่อคนพูดเพื่อแก้ · ตัวหลักเลือกจากรายการ ตัวประกอบพิมพ์บทบาทเอง · เลือก "ทั้งคลิป" = เปลี่ยนทุกบรรทัดที่ใช้ชื่อเดิม · ล็อก (fixed) ไม่ให้ทำเสียงซ้ำทับ */
     var segs = c.speech.segs, seg = segs[i], old = seg.who, all = false;
     FT.pick.open({ title:"ใครเป็นคนพูด", placeholder:"ตัวหลักพิมพ์ชื่อ หรือพิมพ์บทบาท เช่น พ่อค้า ลุง", icon:"user",
       barFn:function(){ return old ? [{ k:"all", label:"เปลี่ยนทุกบรรทัดของ \"" + old + "\" ในคลิปนี้", on:all }] : []; }, onBar:function(){ all = !all; },
@@ -125,7 +126,7 @@
   function syncSpeakers(c){
     (c.scenes || []).forEach(function(sc){ var ks = [];
       if(c.speech && !(sc.ai && sc.ai.fixed)) speechLines(c, sc).lines.forEach(function(l){ if(!l.sure || !l.who) return;
-        l.who.split(/\s*,\s*/).forEach(function(w){ var low = w.toLowerCase(), nx = NAMEX.find(function(x){ return x.en.test(low) || x.ths.some(function(t){ return w.indexOf(t) >= 0; }); }); if(nx && ks.indexOf(nx.key) < 0) ks.push(nx.key); }); });
+        l.who.split(/\s*,\s*/).forEach(function(w){ var low = w.toLowerCase(), nx = NAMEX.find(function(x){ return x.en.test(low) || x.ths.indexOf(w.trim()) >= 0; }); /* ชื่อไทยต้องตรงทั้งคำ (เดิม "ลุงปลอมตัว" มีคำว่า "ลอ" กลายเป็น Law) */ if(nx && ks.indexOf(nx.key) < 0) ks.push(nx.key); }); });
       if(ks.length) spkMap.set(sc, ks); else spkMap.delete(sc); chipCache.delete(sc); });
   }
   function syncAllSpeakers(){ U.lib().forEach(function(c){ if(c.speech) syncSpeakers(c); }); }
@@ -295,6 +296,7 @@
   var sT = 0, shown = [], lastQ = "", showPartial = false, chipMax = 40; /* shown = รายการที่โชว์อยู่ (ให้ปุ่มดูรูปใหญ่อ้างถึง) */
   $("q").addEventListener("input", function(){ clearTimeout(sT); sT = setTimeout(search, 250); });
   function search(){
+    if(U.askReset) U.askReset();
     var q = $("q").value.trim();
     document.dispatchEvent(new CustomEvent("ft:search", { detail:{ active:!!q || filtering() } })); /* หน้าอัลบั้มสลับระหว่างตารางอัลบั้ม/ผลค้นหา */
     var clips = U.lib().filter(function(c){ return c.status === "done" && !c.hide ; }); /* c.hide = ซ่อนเพราะซ้ำ (footage-dup.js) */
@@ -347,7 +349,7 @@
   var SHOT = { close:"ภาพใกล้", medium:"ภาพกลาง", wide:"ภาพไกล" };
   function spBlock(c, sc, k){ /* v8.61 บทพูด+คำบรรยายฉากในการ์ด (ไม่ต้องกดเข้าไปดู) */
     var r = speechLines(c, sc); if(!r.lines.length && !r.look) return "";
-    return '<div class="sps" data-k="' + k + '">' + (r.look ? '<p class="lk">' + esc(r.look) + "</p>" : "") + r.lines.slice(0, 4).map(function(l){ return '<p><button type="button" class="spwho' + (l.sure ? "" : " un") + '" data-cid="' + esc(c.id) + '" data-seg="' + l.i + '">' + esc(l.who || "ใคร?") + (l.sure ? "" : "?") + "</button> " + esc(l.t) + "</p>"; }).join("") + (r.lines.length > 4 ? '<p class="hint">+อีก ' + (r.lines.length - 4) + " บรรทัด (เปิดดูฉาก)</p>" : "") + "</div>";
+    return '<div class="sps" data-k="' + k + '">' + (r.look ? '<p class="lk">' + esc(r.look) + "</p>" : "") + r.lines.slice(0, 4).map(function(l){ return '<p><button type="button" class="spwho' + (l.sure ? "" : " un") + '" data-cid="' + esc(c.id) + '" data-seg="' + l.i + '" data-s="' + l.s + '">' + esc(l.who || "ใคร?") + (l.sure ? "" : "?") + "</button> " + esc(l.t) + "</p>"; }).join("") + (r.lines.length > 4 ? '<p class="hint">+อีก ' + (r.lines.length - 4) + " บรรทัด (เปิดดูฉาก)</p>" : "") + "</div>";
   }
   function card(c, sc, exact, why){
     var a = sc && sc.ai || {}, who = (sc ? sceneChars(sc) : []).map(enName).join(", "); /* ชื่ออังกฤษ canon เหมือนตัวกรอง */
@@ -365,7 +367,7 @@
   }
   document.querySelector("main").addEventListener("click", function(e){ /* การ์ดในทุกหน้า (ค้นหา/ผลที่ AI เลือก/วางแผนฉาก) */
     var w = e.target.closest(".spwho[data-cid]"); if(w){ /* v8.62 แตะชื่อคนพูดบนการ์ด = แก้ชื่อ แล้ววาดกล่องบทพูดของการ์ดนั้นใหม่ (ไม่ค้นใหม่ ผลถาม AI ไม่หาย) */
-      var box = w.closest(".sps"), hh = shown[+box.dataset.k], cc = hh && hh.c; if(cc) editWho(cc, +w.dataset.seg, function(){ box.outerHTML = spBlock(cc, hh.sc, box.dataset.k); }); return; }
+      var box = w.closest(".sps"), hh = shown[+box.dataset.k], cc = hh && hh.c; if(cc) editWho(cc, +w.dataset.seg, function(){ box.outerHTML = spBlock(cc, hh.sc, box.dataset.k); }, parseFloat(w.dataset.s)); return; }
     var el = e.target.closest("[data-k]"), h = el && shown[+el.dataset.k], c = h && h.c, sc = h && h.sc;
     if(h && h.cover){ openBig(c, null, c.cover, c.album + " · ปกคลิป (เฟรมแรก) · " + capDur(c.duration)); return; }
     if(!sc) return;
@@ -391,13 +393,14 @@
   }
   $("bigChars").addEventListener("click", async function(e){
     var b = e.target.closest("[data-bc]"); if(!b || !bigCur) return; var k = b.dataset.bc, sc = bigCur.sc, a = sc.ai = sc.ai || {}, nx = NAMEX.find(function(n){ return n.key === k; });
-    var en = (a.characters || []).slice(), th = (a.characters_th || []).slice(), has = sceneChars(sc).indexOf(k) >= 0;
+    var en = (a.characters || []).slice(), th = (a.characters_th || []).slice(), cur = sceneChars(sc), has = cur.indexOf(k) >= 0;
+    if(!a.fixed) cur.forEach(function(x){ if(!en.some(function(n){ return charKey(n) === x; })){ en.push(enName(x)); th.push(labelOf[x] || x); } }); /* ก่อนล็อก (fixed) เก็บตัวละครที่เห็นอยู่ตอนนี้ (รวมที่ได้จากคนพูด) ลงป้ายจริง ไม่งั้นล็อกแล้วหาย */
     var keep = function(arr){ return arr.filter(function(n){ return charKey(n) !== k; }); };
     if(has){ en = keep(en); th = keep(th); }
     else { en.push(nx ? nx.key.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }) : k); th.push(labelOf[k] || k); }
     a.characters = en; a.characters_th = th; a.fixed = true; chipCache.delete(sc);
     try{ await FT.store.put(bigCur.c); }catch(err){ await MWDialog.alert("บันทึกไม่ได้: " + err.message); }
-    renderBigChars(); search();
+    renderBigChars(); if(!(U.askActive && U.askActive())) search(); /* กำลังโชว์คำตอบถาม AI = ไม่ค้นทับ (คำตอบที่จ่ายเงินแล้วหาย) */
   });
   function openBig(c, sc, src, text){
     bigCur = { c:c, sc:sc }; stopPlay(); renderBigChars();
@@ -446,7 +449,7 @@
       a.characters = (a.characters || []).concat(nx ? nx.key.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }) : k); a.characters_th = (a.characters_th || []).concat(nx ? nx.th : k); n++; });
     if(n){ a.rc = 1; chipCache.delete(sc); } return n;
   }
-  Object.assign(U, { shownAt:function(k){ return shown[k]; }, syncSpeakers:syncSpeakers, speechOf:speechOf, speechLines:speechLines, editWho:editWho, addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, speechArc:speechArc, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
+  Object.assign(U, { cancelSearch:function(){ clearTimeout(sT); }, shownAt:function(k){ return shown[k]; }, syncSpeakers:syncSpeakers, speechOf:speechOf, speechLines:speechLines, editWho:editWho, addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, speechArc:speechArc, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
                      openFiles:function(docs){ $(docs ? "pickDocs" : "playFiles").click(); } });
   document.addEventListener("ft:lib", syncAllSpeakers); syncAllSpeakers();
   search();

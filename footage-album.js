@@ -154,6 +154,8 @@
     var p = U.runQueue(); strips(); await p; strips();
     var el = U.queueInfo().errList; /* คลิปที่ทำไม่สำเร็จ: บอกชื่อกับเหตุผลตรงๆ (ไม่งั้นค้างเหลืออยู่โดยไม่รู้สาเหตุ) */
     if(el && el.length) await MWDialog.alert("ทำไม่สำเร็จ " + el.length + " คลิป:\n\n" + el.slice(0, 5).map(function(x){ return "• " + x.name + "\n  " + (x.err || "ไม่ทราบสาเหตุ"); }).join("\n") + (el.length > 5 ? "\n...อีก " + (el.length - 5) + " คลิป" : "") + "\n\nคลิปที่พลาดจะยังค้างในรายการ ลองกดอีกครั้ง ถ้ายังพลาดซ้ำ ส่งข้อความด้านบนมาให้ผมดู");
+    var qi = U.queueInfo(), rm = document.getElementById("runMsg"); /* คิวพักกลางทาง (ถึงเพดานงบ/สลับแอพ/พลาดติดกัน) = บอกตรงๆ ไม่เงียบ */
+    if(qi.wait && !qi.running) await MWDialog.alert("ยังเหลือ " + qi.wait + " คลิปที่ยังไม่ได้ทำ\n\n" + ((rm && rm.textContent) || "คิวพักไว้") + "\n\nกด ให้ AI ทำที่เหลือ อีกครั้งเพื่อทำต่อ");
   }
   function onStrip(items){ return function(e){ var b = e.target.closest("[data-act]"); if(!b) return; if(b.dataset.act === "stop") U.stopQueue(); else runFor(items()); }; }
   $("alAi").addEventListener("click", onStrip(allItems));
@@ -163,7 +165,7 @@
   });
   /* ---------- ให้ AI ดูภาคของคลิปที่ยังไม่แน่ใจ (โหมดภาค) · ไม่เดา: ไม่แน่ใจ = ว่าง · ผลเก็บที่ c.arcAi · ลองแล้วไม่ซ้ำ ---------- */
   var arcRun = false, arcStopF = false, arcMsg = "";
-  function arcTodo(){ return allE.filter(function(e){ return done(e) && !arcOf(e.c).sure && !e.c.arcAi && e.c.scenes.some(function(sc){ return sc.img || sc.thumb; }); }); }
+  function arcTodo(){ var seen = new Set(); return allE.filter(function(e){ if(!done(e) || e.c.hide || seen.has(e.c)) return false; seen.add(e.c); return !arcOf(e.c).sure && !e.c.arcAi && e.c.scenes.some(function(sc){ return sc.img || sc.thumb; }); }); } /* คลิปละครั้ง (ไฟล์ก๊อปหลายโฟลเดอร์ใช้ดัชนีเดียวกัน ไม่จ่ายซ้ำ) · ข้ามคลิปที่ซ่อน */
   function arcFrames(c){ var s = c.scenes.filter(function(x){ return x.img || x.thumb; }), pick = s.length <= 3 ? s : [s[0], s[Math.floor(s.length / 2)], s[s.length - 1]]; return pick.map(function(x){ return x.img || x.thumb; }); }
   function arcStrip(){
     var el = $("alArc"); el.hidden = mode !== "arc"; if(mode !== "arc") return;
@@ -186,13 +188,13 @@
       }
       arcMsg = (arcStopF ? "หยุดแล้ว" : "เสร็จรอบนี้") + ": ดู " + n + " คลิป ได้ภาค " + hit + " คลิป ใช้ " + U.money(cost);
     }catch(err){ arcMsg = (err.budget ? "ถึงเพดานงบ: " : "ไม่สำเร็จ: ") + (err.message || err) + " · ทำไปแล้ว " + n + " คลิป (กดใหม่ทำต่อ)"; }
-    arcRun = false; await U.wake(false); build(); if(view === "home") renderHome();
+    arcRun = false; await U.wake(false); build(); if(view === "home") renderHome(); document.dispatchEvent(new CustomEvent("ft:lib")); /* แผงจัดอัลบั้มใหม่/ตัวกรองภาค เห็นภาคใหม่ */
   }
   Object.assign(U, { playAt:playAt, runIndexFor:runFor, runArcs:runArcs, arcTodoCount:function(){ return arcTodo().length; } }); /* ให้แผงจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ / ให้ AI ดูภาค ได้เลย */
   var wasRunning = false;
   document.addEventListener("ft:queue", function(){ /* คิวเดินอยู่: อัปเดตแค่แถบ · จบรอบค่อยวาดตารางใหม่ (ไม่ให้กะพริบทุกวินาที) */
     var r = U.queueInfo().running; build(); if(curAlbum) curAlbum = albums.find(function(a){ return a.name === curAlbum.name; }) || null; strips();
-    if(wasRunning && !r){ if(view === "home") renderHome(); else if(curAlbum) openAlbum(albums.indexOf(curAlbum)); }
+    if(wasRunning && !r){ if(view === "home") renderHome(); else if(view === "album" && curAlbum) openAlbum(albums.indexOf(curAlbum)); else dirty = true; } /* กำลังดูตัวเล่นอยู่ = ไม่วาดทับ (เดิม openAlbum ตั้ง view=album ทั้งที่ตัวเล่นยังเปิด → ปิดตัวเล่นไม่ได้) */
     wasRunning = r;
   });
   /* ---------- แถบ 3 แบบ: ในมือถือ / ตัวละคร / ภาค ---------- */
@@ -218,7 +220,7 @@
       onPick:async function(k){
         try{ for(var i = 0; i < picks.length; i++){ var c = picks[i].c; if(k){ c.arc = k; c.arcFixed = true; } else { c.arc = ""; c.arcFixed = false; } await FT.store.put(c); } }
         catch(err){ await MWDialog.alert("บันทึกไม่ได้: " + (err.message || err)); return; }
-        sel = null; dirty = true; history.back(); /* ปิดอัลบั้ม กลับหน้ารวมที่จัดกลุ่มใหม่แล้ว */
+        sel = null; dirty = true; history.back(); document.dispatchEvent(new CustomEvent("ft:lib")); /* ปิดอัลบั้ม กลับหน้ารวมที่จัดกลุ่มใหม่แล้ว · แผงจัดอัลบั้มใหม่เห็นภาคที่ตั้งเอง */
       } });
   });
   function closeAlbum(){ $("alView").hidden = true; $("alHome").hidden = false; curAlbum = null; view = "home"; sel = null; selUi(); if(dirty){ dirty = false; renderHome(); } }

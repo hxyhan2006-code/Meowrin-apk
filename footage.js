@@ -29,6 +29,7 @@
   function libChanged(){ clearTimeout(libT); libT = setTimeout(function(){ document.dispatchEvent(new CustomEvent("ft:lib")); }, 500); } /* คลิปทำดัชนีเสร็จ (lib เปลี่ยนในหน่วยความจำ ไม่ได้โหลดใหม่) → แจ้งหน้าอัลบั้ม/ตัวกรอง วาดใหม่ · รวมหลายคลิปที่เสร็จติดกันเป็นครั้งเดียว · เดิมไม่แจ้ง = อัลบั้มค้าง "ทำแล้ว 1036/1037" จนกว่าจะรีเฟรช */
   function refreshLib(){ return FT.store.all().then(function(a){ lib = a || []; renderAll(); document.dispatchEvent(new CustomEvent("ft:lib")); }); } /* ft:lib → หน้าอัลบั้ม (footage-album.js) วาดใหม่ */
   function byId(id){ return lib.find(function(c){ return c.id === id; }); }
+  async function putClip(c){ await FT.store.put(c); lib = lib.filter(function(x){ return x.id !== c.id; }).concat([c]); libChanged(); } /* บันทึกคลิปที่แก้แล้ว + ใส่ตัวนี้แทนใน lib (ถ้า lib ถูกโหลดใหม่ระหว่างทำ ของใหม่ไม่หาย ไม่ถูกเสนอให้ทำซ้ำ) */
   /* ---------- จับคู่ "ไฟล์ในมือถือ ↔ คลิปในดัชนี" ที่เดียวทั้งแอพ (v8.71) ----------
      กุญแจ = ชื่อ|ขนาด ของคลิป + aliases (ชื่อ+ขนาดของคลิปที่ถูกรวมเข้ามาตอนรวมคลิปซ้ำ) · หลายคลิปกุญแจเดียวกัน = เอาที่ทำดัชนีเสร็จ/ไม่ซ่อน/ทำล่าสุด
      ทุกที่ที่ต้องถามว่า "ไฟล์นี้ทำดัชนีแล้วหรือยัง" ใช้ U.clipFor / U.keysOf (อัลบั้ม จัดอัลบั้มใหม่ ทำดัชนีที่เหลือ) ห้ามเขียนตัวจับคู่ซ้ำ (เคยนับไม่ตรงกันหลายรอบ) */
@@ -161,7 +162,7 @@
   async function run(){
     if(running) return;
     if(!FT.orKey()){ msg("runMsg", "ยังไม่มี OpenRouter key ในเบราว์เซอร์นี้ ไปใส่ในแอพหลัก (ตั้งค่า → OpenRouter API key) ก่อน", "err"); return; }
-    running = true; paused = false; capMsg = ""; msg("runMsg", ""); await wake(true);
+    running = true; paused = false; capMsg = ""; msg("runMsg", ""); runCost = 0; await wake(true); /* runCost = ค่าใช้จ่ายรอบนี้ (เพดานงบต่อรอบ) · เดิมไม่เริ่มนับใหม่ ใช้ครบงบครั้งหนึ่งแล้วทุกรอบหลังหยุดทันทีแบบเงียบ */
     runStart = Date.now(); etaBase = etaAt = 0; clearInterval(tick); renderWake(); tick = setInterval(renderQueue, 1000); /* นาฬิกาเดินทุกวินาทีระหว่างทำ */
     renderQueue();
     await Promise.all(Array.from({ length:Math.max(1, Math.min(3, cfg.clipPar || 1)) }, worker)); /* หลายตัวทำงานพร้อมกัน: ตัวหนึ่งรอ AI อีกตัวอ่านเฟรมคลิปถัดไป */
@@ -181,7 +182,7 @@
       q.stage = "รอคิวอ่านวิดีโอ..."; renderQueue();
       var r = await exclusive(function(){ q.stage = "วาดรูปใหม่ให้คมขึ้น..."; return FT.refreshImages($("vid"), q.file, c, function(p){ q.p = p; renderQueue(); }); });
       c.cover = r.cover; c.scenes.forEach(function(sc, i){ sc.img = r.imgs[i].img; sc.thumb = r.imgs[i].thumb; }); c.imgV = FT.IMG_V;
-      await FT.store.put(c); q.status = "done"; q.p = 1; q.mode = "";
+      await putClip(c); q.status = "done"; q.p = 1; q.mode = "";
     }catch(err){ if(document.hidden){ q.status = "wait"; q.p = 0; } else { q.status = "error"; q.err = err.message || String(err); } }
     renderAll();
   }
@@ -226,7 +227,7 @@
       scenes.forEach(function(x, i){ var o = c.scenes[i].ai; if(x.ai){ if(o && o.fixed){ x.ai.characters = o.characters; x.ai.characters_th = o.characters_th; x.ai.fixed = true; } c.scenes[i].ai = x.ai; } }); /* ตัวละครที่ Han แก้เองไว้ไม่ถูกทับ */
       if(r.sums) c.summary_th = r.sums;
       c.aiV = god ? FT.AI_GOD : FT.AI_V; c.cost = (c.cost || 0) + r.cost; c.raw = r.raw; c.deepAt = Date.now(); c.model = god ? (cfg.godModel || cfg.model) : cfg.model;
-      await FT.store.put(c); q.status = "done"; q.p = 1; q.mode = "";
+      await putClip(c); q.status = "done"; q.p = 1; q.mode = "";
     }catch(err){
       if(err.budget || document.hidden){ q.status = "wait"; q.p = 0; if(err.budget){ paused = true; capMsg = err.message === "ถึงเพดานงบ" ? "" : err.message; } }
       else { q.status = "error"; q.err = err.message || String(err); }
@@ -276,7 +277,7 @@
 
   /* ---------- ตรวจตัวละครซ้ำ: ส่งรูปที่เก็บไว้ (480px) ให้ AI ถามเจาะจงว่ามีใครในรายชื่อบ้าง แล้วเติมเฉพาะที่ขาด ---------- */
   var rcRun = false, rcStop = false, rcMsg = "", RC_CHUNK = 12; /* rcMsg = สรุปรอบล่าสุด (คงไว้ข้างสถานะรวม) */
-  function rcTodo(){ var out = []; lib.forEach(function(c){ if(c.status === "done") c.scenes.forEach(function(sc, i){ if(!(sc.ai && (sc.ai.rc || sc.ai.fixed)) && (sc.img || sc.thumb)) out.push({ c:c, sc:sc, i:i }); }); }); return out; }
+  function rcTodo(){ var out = []; lib.forEach(function(c){ if(c.status === "done" && !c.hide) c.scenes.forEach(function(sc, i){ if(!(sc.ai && (sc.ai.rc || sc.ai.fixed)) && (sc.img || sc.thumb)) out.push({ c:c, sc:sc, i:i }); }); }); return out; }
   function renderRc(){
     var all = 0, todo = rcTodo().length; lib.forEach(function(c){ all += c.status === "done" ? c.scenes.length : 0; });
     if(!rcRun) $("rcInfo").textContent = (rcMsg ? rcMsg + " · " : "") + "ตรวจแล้ว " + (all - todo) + "/" + all + " ฉาก" + (todo ? " · ค่า AI ประมาณ " + money(todo * 0.0012) + " (รูปที่เก็บไว้ ไม่ต้องเปิดไฟล์)" : "");
@@ -310,11 +311,11 @@
   /* ---------- อัปเกรดเป็นดัชนีละเอียด ---------- */
   function deepState(){
     var done = lib.filter(function(c){ return c.status === "done"; }), v2 = done.filter(function(c){ return (c.aiV || 1) >= FT.AI_V; });
-    var need = done.filter(function(c){ return (c.aiV || 1) < FT.AI_V && !queue.some(function(q){ return q.id === c.id && q.status !== "done"; }); });
+    var need = done.filter(function(c){ return !c.hide && (c.aiV || 1) < FT.AI_V && !queue.some(function(q){ return q.id === c.id && q.status !== "done"; }); });
     var ok = need.filter(function(c){ return !!srcOf(c); });
     var per = avgCost() * 1.6; /* ยังไม่มีตัวอย่างรุ่นละเอียด = ประมาณ 1.6 เท่าของรุ่นเดิม (รูปใหญ่ขึ้น + ป้ายมากขึ้น) */
     var g3 = done.filter(function(c){ return (c.aiV || 1) >= FT.AI_GOD; }).length;
-    var gneed = done.filter(function(c){ return (c.aiV || 1) < FT.AI_GOD && !queue.some(function(q){ return q.id === c.id && q.status !== "done"; }); });
+    var gneed = done.filter(function(c){ return !c.hide && (c.aiV || 1) < FT.AI_GOD && !queue.some(function(q){ return q.id === c.id && q.status !== "done"; }); });
     var gok = gneed.filter(function(c){ return !!srcOf(c); });
     return { done:done.length, v2:v2.length, need:need.length, ok:ok, cost:per * ok.length, g3:g3, gok:gok, gcost:avgCost() * 4 * gok.length * (cfg.godModel ? 2 : 1) };
   }
@@ -436,8 +437,15 @@
   }
 
   /* ให้ไฟล์อื่นใช้ร่วม · footage-find.js เติม terms/hay/card/chars/hasSrc/srcUrl/openFiles/search */
-  FT.ui = { clipFor:clipFor, keysOf:keysOf, findDupes:findDupes, lib:function(){ return lib; }, esc:esc, msg:msg, money:money, tm:tm, capDur:capDur, refresh:refreshLib,
-            addQueue:function(items){ queue = queue.filter(function(q){ return q.status !== "skip"; }).concat(items.filter(function(a){ return !queue.some(function(q){ return q.id === a.id; }); })); renderQueue(); },
+  FT.ui = { renderAll:function(){ renderAll(); }, clipFor:clipFor, keysOf:keysOf, findDupes:findDupes, lib:function(){ return lib; }, esc:esc, msg:msg, money:money, tm:tm, capDur:capDur, refresh:refreshLib,
+            addQueue:function(items){ /* ไม่ใส่ซ้ำ: ไฟล์เดียวกัน (ชื่อ|ขนาด + โหมดเดียวกัน) ที่ส่งมาซ้ำในรอบเดียว (ไฟล์ก๊อปหลายโฟลเดอร์) หรือมีในคิวแล้ว = ข้าม · ตัวที่เคยพลาด (error) = ตั้งให้รอทำใหม่ (เดิมกดซ้ำแล้วเงียบ ไม่ลองใหม่) */
+              queue = queue.filter(function(q){ return q.status !== "skip"; }); var seen = {};
+              var nk = function(a){ return (a.info ? a.info.name + "|" + a.info.size : a.id) + "|" + (a.mode || ""); };
+              items.forEach(function(a){ var k = nk(a); if(seen[k]) return; seen[k] = 1;
+                var ex = queue.find(function(q){ return q.id === a.id || nk(q) === k; });
+                if(ex){ if(ex.status === "error"){ ex.status = "wait"; ex.err = ""; ex.p = 0; } return; }
+                queue.push(a); });
+              renderQueue(); },
             addCost:function(x){ runCost += x; renderStats(); }, wake:wake,
             /* ให้หน้าอัลบั้มสั่งทำดัชนีคลิปในมือถือ: list = [{ name, size, uri, album, mtime }] · อ่านเฟรมจากที่อยู่ไฟล์ตรงๆ (ไม่ต้องเลือกไฟล์) · คืนจำนวนที่เข้าคิว (ข้ามคลิปที่ทำแล้ว/อยู่ในคิวแล้ว) */
             indexLocal:function(list){
@@ -480,7 +488,7 @@
   function applyTips(){ document.documentElement.classList.toggle("tips", !!cfg.tips); $("tipBtn").classList.toggle("on", !!cfg.tips); }
   $("tipBtn").addEventListener("click", function(){ cfg.tips = !cfg.tips; FT.saveCfg(); applyTips(); });
   applyTips();
-  function renderAll(){ renderAlbums(); renderQueue(); renderStats(); renderDb(); if(FT.ui.search) FT.ui.search(); }
+  function renderAll(){ renderAlbums(); renderQueue(); renderStats(); renderDb(); if(FT.ui.search && !(FT.ui.askActive && FT.ui.askActive())) FT.ui.search(); } /* กำลังโชว์คำตอบถาม AI = ไม่ค้นทับ */
 
   refreshLib().then(function(){ /* เปิดหน้าครั้งไหน ถ้ามีรายการซ้ำเก่าค้าง รวมให้เองเลย (ลบแค่รายการดัชนีที่ซ้ำ ไม่แตะไฟล์วิดีโอ) */
     var d = findDupes(); if(!d.del.length) return;

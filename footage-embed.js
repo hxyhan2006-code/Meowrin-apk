@@ -13,8 +13,8 @@
   function saveModel(m){ MWStore.set(CK, { model:m }); }
   function open(){
     if(db) return db;
-    db = new Promise(function(res, rej){ var r = indexedDB.open("mw_embed_v1", 1); r.onupgradeneeded = function(){ r.result.createObjectStore("v", { keyPath:"k" }); }; r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error); }; });
-    return db;
+    db = new Promise(function(res, rej){ /* ล้ม = ลืม promise ให้ลองใหม่ได้ */ var r = indexedDB.open("mw_embed_v1", 1); r.onupgradeneeded = function(){ r.result.createObjectStore("v", { keyPath:"k" }); }; r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error); }; });
+    db.catch(function(){ db = null; }); return db;
   }
   async function load(){ /* อ่านทั้งหมดเข้าหน่วยความจำครั้งเดียว (≈ 10k ฉาก × 1.5 KB) */
     if(mem) return mem; var d = await open();
@@ -41,8 +41,9 @@
   function dot(a, b){ var s = 0, n = Math.min(a.length, b.length); for(var i = 0; i < n; i++) s += a[i] * b[i]; return s / (127 * 127); }
 
   async function build(onProg){ /* ทำเวกเตอร์ที่ขาด · คืน { done, fail, cost, tokens } · หยุดเอง: พลาดติดกัน 3 / เกินงบ */
-    if(run) return null; run = true; stopF = false; var l = await todo(), m = await load(), model = cfg().model, r = { done:0, fail:0, cost:0, tokens:0, total:l.length, err:"" }, bad = 0;
+    if(run) return null; run = true; stopF = false; var l = [], m = null, model = cfg().model, r = { done:0, fail:0, cost:0, tokens:0, total:0, err:"" }, bad = 0;
     try{
+      l = await todo(); m = await load(); r.total = l.length; /* อยู่ใน try → run ถูกปลดเสมอแม้ฐานข้อมูลเปิดไม่ได้ */
       for(var i = 0; i < l.length && !stopF; i += BATCH){
         var part = l.slice(i, i + BATCH);
         try{
@@ -58,7 +59,7 @@
     var m = await load(); if(!m.size) return [];
     var e = await FT.embed([String(text).slice(0, 1200)], cfg().model), qv = quant(e.vecs[0]), res = [];
     eligible().forEach(function(c){ c.scenes.forEach(function(sc, i){ var w = m.get(kOf(c, i)); if(w && w.d === qv.length) res.push({ c:c, sc:sc, sim:dot(qv, w.v) }); }); });
-    res.sort(function(a, b){ return b.sim - a.sim; }); res.cost = e.cost; return res.slice(0, n);
+    res.sort(function(a, b){ return b.sim - a.sim; }); var o = res.slice(0, n); o.cost = e.cost; return o; /* slice ทิ้ง property เดิม → ต้องติด cost ที่ตัวที่คืน */
   }
   async function stat(){ var m = await load(), el = eligible(), have = 0, total = 0, model = cfg().model; el.forEach(function(c){ c.scenes.forEach(function(sc, i){ if(textOf(c, sc).length < 6) return; total++; var w = m.get(kOf(c, i)); if(w) have++; }); }); return { have:have, total:total, size:m.size, model:model }; }
 

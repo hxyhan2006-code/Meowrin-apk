@@ -7,7 +7,8 @@
   "use strict";
   var FT = window.FT, U = FT && FT.ui; if(!U || !FT.askPick) return;
   function $(id){ return document.getElementById(id); }
-  var MAXC = 40, PER_CLIP = 5, busy = false;
+  var MAXC = 40, PER_CLIP = 5, busy = false, shown = false; /* shown = #results กำลังโชว์คำตอบของ ถาม AI (ห้ามค้นทับอัตโนมัติ) */
+  U.askActive = function(){ return shown; }; U.askReset = function(){ shown = false; }; /* ค้นหาแบบปกติ (ชิป/พิมพ์) เริ่มเมื่อไหร่ = ออกจากโหมดคำตอบ */
 
   async function candidates(q, exp){ /* คืนฉากผู้สมัคร [{ c, sc, score }] จากดัชนีในเครื่อง: ค้นด้วยคำ + (ถ้าทำดัชนีความหมายไว้) ฉากที่ความหมายใกล้คำถาม รวมกันแบบจัดอันดับ (RRF) · semErr/semCost/semN ติดที่ผลลัพธ์ */
     var ts = U.terms(q), ek = exp.keys.length ? U.terms(exp.keys.join(" ")) : [], want = [], out = [];
@@ -22,15 +23,15 @@
     }); });
     out.sort(function(x, y){ return y.score - x.score; });
     var semErr = "", semCost = 0, semN = 0;
-    if(FT.sem && await FT.sem.ready()){ /* v8.63 ฉากที่ความหมายใกล้คำถาม (ไม่ต้องมีคำตรงกัน) */
-      try{
+    if(FT.sem){ /* v8.63 ฉากที่ความหมายใกล้คำถาม (ไม่ต้องมีคำตรงกัน) */
+      try{ if(!(await FT.sem.ready())) throw 0; /* ยังไม่มีดัชนีความหมาย = ข้ามเงียบๆ · ฐานเปิดไม่ได้ = ใช้ค้นด้วยคำ */
         var hits = await FT.sem.query(q + " " + exp.keys.join(" ") + (exp.chars.length ? " ตัวละคร: " + exp.chars.join(", ") : ""), 30); semCost = hits.cost || 0;
         var best = hits.length ? hits[0].sim : 0; hits = hits.filter(function(x){ return x.sim > 0 && x.sim >= best * 0.6; }); /* ไกลจากฉากที่ใกล้สุดมาก = ไม่ใช่ผู้สมัคร (ไม่ส่งฉากไม่เกี่ยวให้ AI) */
         hits = hits.filter(function(x){ if(!want.length) return true; var cs = U.chars(x.sc); return want.some(function(k){ return cs.indexOf(k) >= 0; }); }); semN = hits.length; /* ถามถึงตัวละคร = ฉากต้องมีตัวละครนั้น เหมือนฝั่งค้นด้วยคำ */
         var fused = new Map(), RK = 60; out.forEach(function(x, i){ fused.set(x.sc, { c:x.c, sc:x.sc, score:1 / (RK + i) }); });
         hits.forEach(function(x, i){ var f = fused.get(x.sc); if(f) f.score += 1 / (RK + i); else fused.set(x.sc, { c:x.c, sc:x.sc, score:1 / (RK + i), sem:true }); });
         out = Array.from(fused.values()); out.sort(function(x, y){ return y.score - x.score; });
-      }catch(err){ semErr = (err && err.message) || String(err); } /* ล้ม = ใช้ผลค้นด้วยคำอย่างเดียว */
+      }catch(err){ if(err !== 0) semErr = (err && err.message) || String(err); } /* ล้ม = ใช้ผลค้นด้วยคำอย่างเดียว */
     }
     var per = {}, top = [];
     for(var i = 0; i < out.length && top.length < MAXC; i++){ var id = out[i].c.id; if((per[id] = (per[id] || 0) + 1) <= PER_CLIP) top.push(out[i]); } /* คลิปเดียวไม่เกิน PER_CLIP ฉาก ให้ผลหลากหลายคลิป */
@@ -49,7 +50,7 @@
     if(!q){ say("พิมพ์คำถามในช่องค้นหาก่อน เช่น \"มีฉากที่ซันจิร้องไห้ไหม\" หรือ \"ฉากลูฟี่ชนะเอสอยู่คลิปไหน\""); return; }
     if(!U.lib().some(function(c){ return c.status === "done"; })){ say("ยังไม่มีคลิปที่ทำดัชนีแล้ว · ไปที่ตั้งค่า > ทำดัชนี หรือกด \"ให้ AI ทำที่เหลือ\" ในอัลบั้มก่อน"); return; }
     if(!FT.orKey()){ say("ยังไม่มี OpenRouter key ในแอพนี้ (ตั้งค่า → OpenRouter API key)"); return; }
-    busy = true; $("askBtn").disabled = true; var cost = 0;
+    busy = true; $("askBtn").disabled = true; var cost = 0; if(U.cancelSearch) U.cancelSearch(); /* ยกเลิกค้นหาที่ตั้งเวลาไว้ตอนพิมพ์ ไม่ให้มาทับคำตอบ */
     document.dispatchEvent(new CustomEvent("ft:search", { detail:{ active:true } })); /* ซ่อนตารางอัลบั้ม โชว์ผล */
     try{
       say("AI กำลังแปลคำถาม...");
@@ -61,10 +62,11 @@
       var picks = r.picks.filter(function(p){ return cs[p.n - 1]; }).filter(function(p, i, a){ return a.findIndex(function(z){ return z.n === p.n; }) === i; });
       out('<div class="askans">' + U.esc(r.answer || (picks.length ? "เจอ " + picks.length + " ฉาก" : "ไม่เจอฉากที่ตรง")) + '<small>ค้นจาก ' + cs.length + " ฉากผู้สมัคร" + (cs.semN ? " (รวมที่ค้นตามความหมาย " + cs.semN + " ฉาก)" : "") + (cs.semErr ? " · ค้นตามความหมายไม่ได้: " + U.esc(cs.semErr) : "") + " · ใช้ไป " + U.money(cost) + " · รูปด้านล่างตรวจเองได้ ป้าย AI ผิดได้</small></div>");
       $("findInfo").textContent = r.none || !picks.length ? "" : "คำตอบของ AI: " + picks.length + " ฉาก (แตะรูปดูใหญ่/เล่น)";
+      shown = picks.length > 0;
       $("results").innerHTML = picks.length ? picks.map(function(p){ var x = cs[p.n - 1]; return U.card(x.c, x.sc, false, U.tm(x.sc.s) + (p.why ? " · " + p.why : "")); }).join("") : '<p class="empty">AI ดูแล้วไม่มีฉากไหนตรงจริง</p>';
     }catch(err){ say("ถาม AI ไม่ได้: " + err.message); }
     finally { U.addCost(cost); busy = false; $("askBtn").disabled = false; } /* finally: เดิมคำตอบ "ไม่เจอเลย" return ออกก่อน ปุ่มค้างกดไม่ได้จนโหลดหน้าใหม่ */
   }
   $("askBtn").addEventListener("click", ask);
-  $("q").addEventListener("input", function(){ if(!$("q").value.trim()) out(""); }); /* ล้างคำค้น = ล้างคำตอบด้วย */
+  $("q").addEventListener("input", function(){ shown = false; if(!$("q").value.trim()) out(""); }, true); /* ล้างคำค้น = ล้างคำตอบด้วย · capture = ปลดโหมดคำตอบก่อนตัวค้นหาจะทำงาน */
 })();

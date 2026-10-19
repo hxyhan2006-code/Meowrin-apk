@@ -387,6 +387,8 @@ try {
   await ak.fill('#q', 'ซันจิร้องไห้อยู่คลิปไหน'); await ak.click('#askBtn'); await ak.waitForFunction(() => /เจอ 1 ฉาก/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
   const ak1 = await ak.evaluate(() => ({ cards: document.querySelectorAll('#results .card').length, txt: document.getElementById('results').textContent, pick: window.__bodies[1], main: document.getElementById('alMain').hidden }));
   check('ถาม AI: AI เห็นเฉพาะฉากซันจิที่เกี่ยวข้อง (ไม่มีโซโร) · โชว์การ์ดฉากที่ AI เลือก 1 ใบ พร้อมชื่อคลิป · ตารางอัลบั้มซ่อน', ak1.cards === 1 && /sanji_cry/.test(ak1.txt) && /sanji_cry/.test(ak1.pick) && !/zoro_cry/.test(ak1.pick) && ak1.main, JSON.stringify(ak1).slice(0, 400));
+  const akg = await ak.evaluate(async () => { const before = document.querySelectorAll('#results .card').length, act = FT.ui.askActive(); FT.ui.renderAll(); await new Promise((r) => setTimeout(r, 200)); return { before, act, after: document.querySelectorAll('#results .card').length }; });
+  check('ถาม AI: คำตอบที่โชว์อยู่ไม่ถูกค้นหาอัตโนมัติทับ (เช่น ตอนคลิปทำดัชนีเสร็จ/โหลดคลังใหม่)', akg.act === true && akg.before === 1 && akg.after === 1, JSON.stringify(akg));
   await ak.evaluate(() => { window.__mode = 'nopick'; window.__bodies = []; }); await ak.click('#askBtn'); await ak.waitForFunction(() => /ไม่มีฉากไหนตรง/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
   check('ถาม AI: AI บอกไม่มีฉากไหนตรง → ไม่โชว์การ์ดหลอก บอกตรงๆ', (await ak.evaluate(() => document.querySelectorAll('#results .card').length)) === 0 && /ไม่มีฉากไหนตรง/.test(await ak.evaluate(() => document.getElementById('results').textContent)));
   await ak.evaluate(() => { window.__mode = 'none'; window.__bodies = []; }); await ak.fill('#q', 'ฉากกินเค้ก'); await ak.click('#askBtn'); await ak.waitForFunction(() => /ไม่เจอฉากที่ตรงในคลังเลย/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
@@ -441,6 +443,9 @@ try {
   const up = await dp.evaluate(async () => { FT.ui.lib().push({ id: 'up1', name: 'old.mp4', size: 3, album: 'x', duration: 5, status: 'done', aiV: 1, scenes: [], lastModified: 1 }); const prev = MWLocal.urlOf; MWLocal.urlOf = (c) => c.id === 'up1' ? 'https://localhost/_capacitor_file_/x' : prev(c);
     document.getElementById('godModel').dispatchEvent(new Event('change')); await new Promise((r) => setTimeout(r, 200)); return { info: document.getElementById('deepInfo').textContent, dis: document.getElementById('deepBtn').disabled }; });
   check('อัปเกรดดัชนีละเอียด: คลิปเก่าที่ไฟล์อยู่ในมือถือนับว่าพร้อมอัปเกรด (ปุ่มกดได้) ไม่ใช่ 0', /พร้อมอัปเกรด [1-9]/.test(up.info) && !up.dis, JSON.stringify(up));
+  // คิวไม่ใส่ไฟล์ซ้ำ: ไฟล์เดียวกันก๊อปไว้ 2 โฟลเดอร์ (mtime ต่างกัน) ส่งเข้าทำดัชนีพร้อมกัน = ทำครั้งเดียว ไม่จ่ายซ้ำ · ส่งซ้ำอีกรอบก็ไม่เพิ่ม
+  const qd = await dp.evaluate(() => { MWLocal.fileUrl = (u) => 'https://localhost/_capacitor_file_' + u; const f = (u, m) => ({ name: 'zz.mp4', size: 11, uri: 'file://' + u, album: 'x', mtime: m }); const a = FT.ui.indexLocal([f('a/zz.mp4', 1), f('b/zz.mp4', 2)]), b = FT.ui.indexLocal([f('c/zz.mp4', 3)]); return { a, b, total: FT.ui.queueInfo().total }; });
+  check('ทำดัชนี: ไฟล์ชื่อ+ขนาดเดียวกันหลายโฟลเดอร์เข้าคิวครั้งเดียว (ไม่จ่ายซ้ำ) · ส่งซ้ำไม่เพิ่ม', qd.a === 1 && qd.b === 0, JSON.stringify(qd));
   await dp.close();
   // จัดอัลบั้มใหม่ (footage-organize.js): แผนจากภาคที่ AI รู้แน่ → ย้ายไฟล์จริงด้วย MediaScan.move · ไม่แตะคลิปที่ไม่แน่ใจภาค/สำเนาในแอพ/ที่อยู่ถูกแล้ว/ชื่อซ้ำ · ย้ายทดลอง · เลิกทำย้ายกลับ · ไม่มีสิทธิ์ = ปุ่มขอสิทธิ์
   const og = await context.newPage(); const ogErr = []; og.on('pageerror', (e) => ogErr.push(e.message));
@@ -520,6 +525,8 @@ try {
   const spk = await sp.evaluate(() => { const U = FT.ui, mk = (sure, fixed) => ({ id: 'spk' + Math.random(), name: 'x', scenes: [{ s: 0, e: 2, ai: { characters: ['Luffy'], fixed } }], speech: { segs: [{ s: 0.5, e: 1.5, t: 'ฮึ่ม', who: 'Zoro', sure }] } });
     const ch = (c) => { U.syncSpeakers(c); return U.chars(c.scenes[0]).slice(); }; return { z: ch(mk(true, false)), unsure: ch(mk(false, false)), fixed: ch(mk(true, true)) }; });
   check('คนพูดช่วยบอกตัวละคร: Zoro พูดอย่างแน่ใจ = ฉากนั้นมี Zoro เพิ่ม (นอกจาก Luffy) · ไม่แน่ใจ = ไม่เพิ่ม · ฉากที่ Han แก้ตัวละครเอง (fixed) = ไม่เพิ่ม', spk.z.includes('zoro') && spk.z.includes('luffy') && !spk.unsure.includes('zoro') && !spk.fixed.includes('zoro'), JSON.stringify(spk));
+  const spx = await sp.evaluate(() => { const U = FT.ui, c = { id: 'thx', name: 'x', scenes: [{ s: 0, e: 2, ai: { characters: [] } }], speech: { segs: [{ s: 0.5, e: 1, t: 'ฮ่า', who: 'ลุงปลอมตัว', sure: true }, { s: 1, e: 1.5, t: 'โย่', who: 'ลอ', sure: true }] } }; U.syncSpeakers(c); return U.chars(c.scenes[0]).slice(); });
+  check('คนพูดช่วยบอกตัวละคร: ชื่อไทยต้องตรงทั้งคำ ("ลุงปลอมตัว" ไม่กลายเป็น Law แต่ "ลอ" เป็น Law)', spx.length === 1 && spx[0] === 'law', JSON.stringify(spx));
   const cd = await sp.evaluate(() => { const U = FT.ui, a = U.lib().find((c) => c.id === 'sp1'); const host = document.createElement('div'); host.id = 'cardHost'; host.innerHTML = U.card(a, a.scenes[0]); document.querySelector('main').appendChild(host); return host.querySelectorAll('.spwho').length; });
   await sp.evaluate(() => { document.getElementById('cardHost').scrollIntoView(); }); await sp.locator('#cardHost .spwho').first().click(); await sp.waitForSelector('#pkSheet:not([hidden])', { timeout: 5000 });
   await sp.fill('#pkQ', 'ลุงเกาะ'); await sp.waitForTimeout(150); await sp.locator('#pkList button', { hasText: 'ใช้ "ลุงเกาะ"' }).first().click(); await sp.waitForTimeout(400);
@@ -535,6 +542,10 @@ try {
     return { size: blob.size, n: fr.length, head: fr[0] && fr[0].img.slice(0, 23), s0: fr[0] && fr[0].s };
   });
   check('ฟังเสียงคลิป: ดึงภาพถี่จากวิดีโอจริงได้ (JPEG data URL ตามเวลา)', df.n >= 1 && df.head === 'data:image/jpeg;base64,' && df.s0 > 0, JSON.stringify(df));
+  const se = await sp.evaluate(() => { const L = FT.ui.lib(), mk = (id) => ({ id, name: id + '.mp4', size: 1, album: 'x', duration: 3, status: 'done', lastModified: 1, scenes: [{ s: 0, e: 3, ai: { arc: 'Alabasta' } }] });
+    const a = mk('se1'), b = mk('se2'); a.speechErr = { wv: 3, msg: 'ไฟล์ใหญ่เกิน' }; L.push(a, b); const prev = FT.ui.hasSrc; FT.ui.hasSrc = (c) => /^se\d$/.test(c.id) || prev(c);
+    const ids = FT.speech.pending().map((c) => c.id).filter((x) => /^se\d$/.test(x)); FT.ui.hasSrc = prev; L.splice(L.indexOf(a), 1); L.splice(L.indexOf(b), 1); return ids; });
+  check('ฟังเสียงที่เหลือ: คลิปที่เคยพลาด (ไฟล์ใหญ่เกิน/ถอดเสียงไม่ได้) ไปอยู่ท้ายคิว ไม่ขวางคลิปอื่นทุกรอบ', se.join() === 'se2,se1', JSON.stringify(se));
   // v8.64 ตะกร้าฉาก: เก็บฉากจากการ์ด → แถบลอย → ตัดเป็นไฟล์ (mediabunny Conversion trim, WebM ในเครื่องทดสอบ) → MWNative.save · ฉากที่ตัดสำเร็จออกจากตะกร้า
   const bk0 = await sp.evaluate(async () => {
     const cv = document.createElement('canvas'); cv.width = 320; cv.height = 180; const x = cv.getContext('2d'), st = cv.captureStream(15), rec = new MediaRecorder(st, { mimeType: 'video/webm;codecs=vp8' }), ch = [];
@@ -557,7 +568,7 @@ try {
   await sp.waitForFunction(() => /ตัดเสร็จ/.test(document.getElementById('bskMsg').textContent), null, { timeout: 30000 });
   const bk2 = await sp.evaluate(async () => { const sv = window.__saved[0], mb = await FT.speech.loadMB(); let dur = -1, err = ''; try { const inp = new mb.Input({ source: new mb.BlobSource(sv.blob), formats: mb.ALL_FORMATS }); dur = await inp.computeDuration(); } catch (e) { err = e.message; }
     return { n: window.__saved.length, nm: sv.nm, size: sv.size, noHist: sv.noHist, dur, err, msg: document.getElementById('bskMsg').textContent, left: FT.basket.list().length, over: document.documentElement.scrollWidth > innerWidth + 1 }; });
-  check('ตะกร้าฉาก: ตัดฉาก 0.5–1.5 วิ ของคลิปเป็นไฟล์ใหม่ (ยาวราว 1 วิ) · ชื่อไฟล์มีลำดับ/ชื่อคลิป/เวลา · ไม่จดประวัติงาน · ฉากที่ตัดแล้วออกจากตะกร้า · หน้าไม่ล้น', bk2.n === 1 && /^01_bk_clip_0m01s-0m02s\.webm$/.test(bk2.nm) && bk2.size > 500 && bk2.noHist && bk2.dur > 0.5 && bk2.dur < 1.8 && bk2.left === 0 && /ตัดเสร็จ 1 ไฟล์/.test(bk2.msg) && !bk2.over && !spErr.length, JSON.stringify(bk2));
+  check('ตะกร้าฉาก: ตัดฉาก 0.5–1.5 วิ ของคลิปเป็นไฟล์ใหม่ (ยาวราว 1 วิ) · ชื่อไฟล์มีลำดับ/ชื่อคลิป/เวลา · ไม่จดประวัติงาน · ฉากที่ตัดแล้วออกจากตะกร้า · หน้าไม่ล้น', bk2.n === 1 && /^picks\/01_bk_clip_0m01s-0m02s\.webm$/.test(bk2.nm) && bk2.size > 500 && bk2.noHist && bk2.dur > 0.5 && bk2.dur < 1.8 && bk2.left === 0 && /ตัดเสร็จ 1 ไฟล์/.test(bk2.msg) && !bk2.over && !spErr.length, JSON.stringify(bk2));
   await sp.click('#bskDone'); await sp.evaluate(() => document.getElementById('bkHost').remove());
   await sp.evaluate(() => { document.querySelectorAll('#spList details').forEach((d) => { d.open = true; }); });
   await sp.locator('#spList .spln').first().click(); await sp.waitForFunction(() => !document.getElementById('alPlay').hidden && /^blob:/.test(document.getElementById('alVid').src), null, { timeout: 8000 });
