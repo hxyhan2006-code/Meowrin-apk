@@ -96,12 +96,13 @@
 
   /* ---------- แผง ---------- */
   function clips(){ return U.lib().filter(function(c){ return c.status === "done" && !c.hide; }); }
-  function done1(c){ return c.speech && (!watchOn || c.speech.wv === WV); } /* โหมดดูพร้อมฟัง: คลิปที่ฟังเสียงล้วนมาก่อนถือว่ายังไม่ได้ทำ (ทำซ้ำให้ได้ชื่อคนพูด) */
+  function done1(c){ return c.speech && (!watchOn || c.speech.wv >= 2); } /* โหมดดูพร้อมฟัง: คลิปที่ฟังเสียงล้วน (wv 0) ถือว่ายังไม่ได้ทำ (ทำซ้ำให้ได้ชื่อคนพูด) · รุ่น 2 (ก่อนมีป้ายตัวประกอบ) นับว่าทำแล้ว ไม่บังคับทำซ้ำ (เดิมนับเป็น 0 → ปุ่มทั้งหมดไม่ขึ้น ทั้งที่จ่ายเงินไปแล้ว) · ทำซ้ำเองได้ที่ปุ่ม spOld */
+  function oldGen(){ return clips().filter(function(c){ return c.speech && !c.speech.silent && c.speech.wv === 2 && U.hasSrc(c); }); }
   function unsureArc(c){ return !U.arcOf(c).sure; }
   function pending(){ /* v8.59 คลิปที่ภาคยังไม่แน่ใจมาก่อน (เสียงช่วยบอกภาค → จัดอัลบั้มได้มากขึ้นเร็วที่สุด) */
     var l = clips().filter(function(c){ return !done1(c) && U.hasSrc(c); }), err = function(c){ return !!(c.speechErr && c.speechErr.wv === WV); };
     var ok = l.filter(function(c){ return !err(c); }), u = ok.filter(unsureArc); return u.concat(ok.filter(function(c){ return u.indexOf(c) < 0; }), l.filter(err)); } /* คลิปที่เคยพลาด (ไฟล์ใหญ่เกิน/ถอดเสียงไม่ได้) ไว้ท้ายสุด ไม่ให้ 3 ตัวเดิมขวางทุกรอบ */
-  function stats(){ var d = clips().filter(function(c){ return c.speech; }), paid = d.filter(function(c){ return !c.speech.silent && (c.speech.wv === WV) === watchOn; }), cost = paid.reduce(function(s, c){ return s + (c.speech.cost || 0); }, 0);
+  function stats(){ var d = clips().filter(function(c){ return c.speech; }), paid = d.filter(function(c){ return !c.speech.silent && (c.speech.wv >= 2) === watchOn; }), cost = paid.reduce(function(s, c){ return s + (c.speech.cost || 0); }, 0);
     return { done:d.filter(done1).length, paid:paid.length, avg:paid.length ? cost / paid.length : 0, cost:cost, withText:d.filter(function(c){ return c.speech.segs.length; }).length }; }
   function timeline(c){ /* บทพูดกับคำบรรยายฉาก (ใครทำอะไรที่ไหนยังไง) เรียงตามเวลาในแผ่นเดียว */
     var s = c.speech, rows = (s.segs || []).map(function(g){ return { t:g.s, k:1, g:g }; });
@@ -117,6 +118,7 @@
     if(msg === undefined){ msg = lastMsg[0]; cls = lastMsg[1]; } else lastMsg = [msg, cls]; /* วาดใหม่เพราะคลังเปลี่ยน (ft:lib) = คงข้อความเดิม */
     var m = $("spMsg"); m.textContent = msg || ""; m.className = "hint" + (cls ? " " + cls : "");
     $("spTrial").disabled = run || !pend.length; $("spTrial").textContent = "ทดลอง" + (watchOn ? "ดู+ฟัง " : "ฟังเสียง ") + Math.min(TRIAL, pend.length) + " คลิป";
+    var og = watchOn ? oldGen() : []; $("spOld").hidden = !og.length; $("spOld").disabled = run; $("spOld").textContent = "ทำซ้ำคลิปรุ่นก่อน " + og.length + " คลิป (ให้ได้ป้ายตัวประกอบ พ่อค้า/ลุง ฯลฯ) · ประมาณ " + U.money(og.length * est);
     $("spAll").hidden = !(st.paid >= 5 && pend.length); $("spAll").disabled = run; $("spAll").textContent = (watchOn ? "ดู+ฟัง" : "ฟังเสียง") + "ที่เหลือทั้งหมด (" + pend.length + ") · ประมาณ " + U.money(pend.length * est);
     $("spStop").hidden = !run;
     var recent = clips().filter(function(c){ return c.speech; }).sort(function(a, b){ return b.speech.at - a.speech.at; }).slice(0, TRIAL);
@@ -142,6 +144,11 @@
     var pend = pending(), pick = []; while(pick.length < TRIAL && pend.length){ pick.push(pend.splice(Math.floor(Math.random() * pend.length), 1)[0]); }
     if(!await MWDialog.confirm("ให้ AI ฟังเสียง " + pick.length + " คลิป (สุ่ม)?\n\nประมาณ " + U.money(pick.length * (stats().avg || (watchOn ? GUESSW : GUESS))) + (stats().avg ? " (จากค่าเฉลี่ยที่ฟังไปแล้ว)" : " (ประมาณการหยาบ ยังไม่เคยวัดจริง)") + "\n\nต้องเปิดหน้านี้ค้างไว้จนเสร็จ ผลที่ได้จะโชว์บทพูดให้ตรวจ", { ok:"เริ่ม" })) return;
     runList(pick, "ทดลอง");
+  });
+  $("spOld").addEventListener("click", async function(){
+    var og = oldGen(); if(!og.length) return;
+    if(!await MWDialog.confirm("ทำซ้ำ " + og.length + " คลิปที่ฟังไว้ด้วยรุ่นก่อน?\n\nรุ่นใหม่ใส่ป้ายตัวประกอบ (พ่อค้า ลุง ป้า ฯลฯ) และคำบรรยายฉากละเอียดขึ้น · ประมาณ " + U.money(og.length * (stats().avg || GUESSW)) + "\n\nชื่อคนพูดที่คุณแก้เองไว้ไม่ถูกทับ", { ok:"เริ่ม" })) return;
+    runList(og, "ทำซ้ำ");
   });
   $("spAll").addEventListener("click", async function(){
     var pend = pending(); if(!pend.length) return; var nu = pend.filter(unsureArc).length;

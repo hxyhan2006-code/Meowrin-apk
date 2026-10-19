@@ -553,6 +553,11 @@ try {
     const a = mk('se1'), b = mk('se2'); a.speechErr = { wv: 3, msg: 'ไฟล์ใหญ่เกิน' }; L.push(a, b); const prev = FT.ui.hasSrc; FT.ui.hasSrc = (c) => /^se\d$/.test(c.id) || prev(c);
     const ids = FT.speech.pending().map((c) => c.id).filter((x) => /^se\d$/.test(x)); FT.ui.hasSrc = prev; L.splice(L.indexOf(a), 1); L.splice(L.indexOf(b), 1); return ids; });
   check('ฟังเสียงที่เหลือ: คลิปที่เคยพลาด (ไฟล์ใหญ่เกิน/ถอดเสียงไม่ได้) ไปอยู่ท้ายคิว ไม่ขวางคลิปอื่นทุกรอบ', se.join() === 'se2,se1', JSON.stringify(se));
+  const oldGenT = await sp.evaluate(async () => { const L = FT.ui.lib(), added = []; for (let i = 0; i < 6; i++) { const c = { id: 'wv2_' + i, name: 'wv2_' + i + '.mp4', size: 1, album: 'x', duration: 3, status: 'done', lastModified: 1, scenes: [{ s: 0, e: 3, ai: {} }], speech: { wv: 2, watch: true, segs: [], cost: 0.03, sec: 10, at: 1 } }; L.push(c); added.push(c); }
+    const prev = FT.ui.hasSrc; FT.ui.hasSrc = (c) => /^wv2_/.test(c.id) || prev(c); document.dispatchEvent(new CustomEvent('ft:lib')); await new Promise((r) => setTimeout(r, 300));
+    const pend = FT.speech.pending().map((c) => c.id).filter((x) => /^wv2_/.test(x)).length, info = document.getElementById('spInfo').textContent, old = document.getElementById('spOld'), all = document.getElementById('spAll');
+    const r = { pend, oldTxt: old.hidden ? '' : old.textContent, allHidden: all.hidden, info }; FT.ui.hasSrc = prev; added.forEach((c) => L.splice(L.indexOf(c), 1)); document.dispatchEvent(new CustomEvent('ft:lib')); return r; });
+  check('ฟังเสียง: คลิปที่ฟังด้วยรุ่นก่อน (wv 2) นับว่าทำแล้ว ไม่บังคับทำซ้ำ (ไม่อยู่ในคิวที่เหลือ) · มีปุ่ม ทำซ้ำคลิปรุ่นก่อน 6 คลิป · ปุ่มที่เหลือทั้งหมดโผล่ (เพราะมีสถิติราคาแล้ว)', oldGenT.pend === 0 && /ทำซ้ำคลิปรุ่นก่อน 6 คลิป/.test(oldGenT.oldTxt) && /ดู\+ฟังแล้ว [6-9]|ดู\+ฟังแล้ว \d{2,}/.test(oldGenT.info), JSON.stringify(oldGenT));
   // v8.64 ตะกร้าฉาก: เก็บฉากจากการ์ด → แถบลอย → ตัดเป็นไฟล์ (mediabunny Conversion trim, WebM ในเครื่องทดสอบ) → MWNative.save · ฉากที่ตัดสำเร็จออกจากตะกร้า
   const bk0 = await sp.evaluate(async () => {
     const cv = document.createElement('canvas'); cv.width = 320; cv.height = 180; const x = cv.getContext('2d'), st = cv.captureStream(15), rec = new MediaRecorder(st, { mimeType: 'video/webm;codecs=vp8' }), ch = [];
