@@ -73,6 +73,16 @@
       sp.segs.forEach(function(n){ var o = Math.min(n.e, g.e) - Math.max(n.s, g.s); if(o > bo && o >= 0.5 * Math.min(n.e - n.s, g.e - g.s)){ bo = o; best = n; } });
       if(best){ best.who = g.who; best.sure = true; best.fixed = true; } });
   }
+  var SAFE = /SAFETY|PROHIBITED|BLOCKED/i, PIECE = 30 * SR;
+  async function txSafe(data, a, b, frames, scenes, arcs, sp){ /* โมเดลบล็อกเสียงท่อนนั้น (403 SAFETY) = แบ่งเป็นท่อนละ 30 วิ ลองใหม่ทีละท่อน ท่อนที่ยังโดนบล็อกข้าม (บันทึกจำนวนไว้ที่ sp.blocked) · ทุกท่อนโดนบล็อก = ได้บทว่าง ไม่ใช่ error วนซ้ำ */
+    try{ return await FT.transcribe(await wavB64(data, a, b), (b - a) / SR, "", frames, scenes, arcs); }
+    catch(e){ if(!SAFE.test((e && e.message) || "") || b - a <= PIECE) { if(SAFE.test((e && e.message) || "")){ sp.blocked = (sp.blocked || 0) + 1; return { json:{ segments:[] }, cost:0 }; } throw e; }
+      var segs = [], cost = 0, sum = "", ok = 0;
+      for(var x = a; x < b; x += PIECE){ var y = Math.min(b, x + PIECE); if(y - x < SR) continue;
+        try{ var r = await FT.transcribe(await wavB64(data, x, y), (y - x) / SR, "", null, null, null); ok++; cost += r.cost || 0; if(r.json.summary_th) sum += " " + r.json.summary_th;
+          (Array.isArray(r.json.segments) ? r.json.segments : []).forEach(function(g){ var o = (x - a) / SR; segs.push({ s:Number(g.s) + o, e:Number(g.e) + o, t:g.t, who:g.who }); }); }
+        catch(e2){ if(!SAFE.test((e2 && e2.message) || "")) throw e2; sp.blocked = (sp.blocked || 0) + 1; } }
+      return { json:{ segments:segs, summary_th:sum.trim() }, cost:cost }; } }
   async function doClip(c, opt){ var wo = opt && opt.audioOnly ? false : watchOn, dry = !!(opt && opt.dry); /* dry = ไม่เซฟลงคลิป (ใช้เทียบคุณภาพ) */ /* ถอดบทพูดของคลิปเดียว · เก็บที่ c.speech · โยน error ถ้าพลาด */
     var src = await U.srcUrl(c); if(!src) throw new Error("ไม่เจอไฟล์ของคลิปนี้ในมือถือ (ลองสแกนใหม่)");
     try{
@@ -86,7 +96,7 @@
         var b = Math.min(p.data.length, a + CH_SEC * SR); if(b - a < SR) continue; /* เศษสั้นกว่า 1 วิ ข้าม */
         var frames = null, scenes = null;
         if(wo){ scenes = sceneList(c, a / SR, b / SR); frames = await denseFrames(blob, a / SR, b / SR); if(!frames.length) frames = framesOf(c, a / SR, b / SR); } /* ภาพถี่จากวิดีโอก่อน · ไม่ได้ = ภาพฉากในดัชนี */
-        var r = await FT.transcribe(await wavB64(p.data, a, b), (b - a) / SR, "", frames, scenes, wo ? U.ARCS : null);
+        var r = await txSafe(p.data, a, b, frames, scenes, wo ? U.ARCS : null, sp);
         var ar = String(r.json.arc || "").trim(); if(ar && U.ARCS.indexOf(ar) >= 0) arcs[ar] = (arcs[ar] || 0) + (b - a); /* ภาคที่ AI ตอบ · นับตามความยาวท่อน (คลิปยาวหลายท่อน) */
         sp.cost += r.cost || 0; sp.segs = sp.segs.concat(cleanSegs(r.json.segments, a / SR, p.sec)); if(r.json.summary_th) sums.push(String(r.json.summary_th).trim());
         (Array.isArray(r.json.scenes) ? r.json.scenes : Array.isArray(r.json.looks) ? r.json.looks : []).forEach(function(l){ var i = Number(l && l.i) - 1, t = String(l && l.t || "").trim(); if(t && i >= 0 && i < c.scenes.length){ sp.looks = sp.looks || {}; sp.looks[i] = t.slice(0, 200); } });
@@ -202,6 +212,6 @@
   $("spStop").addEventListener("click", function(){ stopF = true; $("spStop").hidden = true; });
   document.addEventListener("ft:lib", function(){ if(!run) render(); });
   document.addEventListener("ft:files", function(){ if(!run) render(); });
-  FT.speech = { pending:function(){ return pending(); }, doClip:doClip, stats:stats, denseFrames:denseFrames, compare1:compare1, blobOf:blobOf, loadMB:loadMB };
+  FT.speech = { pending:function(){ return pending(); }, doClip:doClip, stats:stats, denseFrames:denseFrames, compare1:compare1, txSafe:txSafe, blobOf:blobOf, loadMB:loadMB };
   render();
 })();
