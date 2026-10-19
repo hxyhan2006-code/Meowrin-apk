@@ -197,10 +197,11 @@
     return out;
   }
   /* อัปเกรดคลิปเดิมเป็นดัชนีรุ่นละเอียด (AI_V): ช่วงฉาก/รูปเดิม · จับเฟรมต้น/กลาง/ท้ายใหม่จากไฟล์ในเครื่อง หรือสตรีมจากคลัง (อ่านเฉพาะช่วงที่ต้องใช้) */
+  function srcOf(c){ return (FT.ui.fileFor && FT.ui.fileFor(c)) || (window.MWLocal && MWLocal.urlOf(c)) || null; } /* ไฟล์ของคลิป: ที่เลือกไว้ในรอบนี้ หรือไฟล์ในมือถือ (MWLocal) · เดิมนับเฉพาะอย่างแรก → ในแอพขึ้น พร้อมอัปเกรด 0 ทั้งที่ไฟล์อยู่ครบ */
   async function deepClip(q){
     var c = byId(q.id), t0 = Date.now(); q.status = "run"; q.p = 0; q.err = ""; q.t0 = t0; q.stage = "เปิดวิดีโอ..."; renderQueue();
     try{
-      var src = q.file || (FT.ui.fileFor && FT.ui.fileFor(c));
+      var src = q.file || srcOf(c);
       if(!src) throw new Error("ไม่มีไฟล์ (ไม่เจอในมือถือ และยังไม่ได้เปิดไฟล์)");
       var god = !!q.god;
       q.stage = "รอคิวอ่านวิดีโอ..."; renderQueue();
@@ -295,16 +296,16 @@
   function deepState(){
     var done = lib.filter(function(c){ return c.status === "done"; }), v2 = done.filter(function(c){ return (c.aiV || 1) >= FT.AI_V; });
     var need = done.filter(function(c){ return (c.aiV || 1) < FT.AI_V && !queue.some(function(q){ return q.id === c.id && q.status !== "done"; }); });
-    var ok = need.filter(function(c){ return (FT.ui.fileFor && FT.ui.fileFor(c)); });
+    var ok = need.filter(function(c){ return !!srcOf(c); });
     var per = avgCost() * 1.6; /* ยังไม่มีตัวอย่างรุ่นละเอียด = ประมาณ 1.6 เท่าของรุ่นเดิม (รูปใหญ่ขึ้น + ป้ายมากขึ้น) */
     var g3 = done.filter(function(c){ return (c.aiV || 1) >= FT.AI_GOD; }).length;
     var gneed = done.filter(function(c){ return (c.aiV || 1) < FT.AI_GOD && !queue.some(function(q){ return q.id === c.id && q.status !== "done"; }); });
-    var gok = gneed.filter(function(c){ return (FT.ui.fileFor && FT.ui.fileFor(c)); });
+    var gok = gneed.filter(function(c){ return !!srcOf(c); });
     return { done:done.length, v2:v2.length, need:need.length, ok:ok, cost:per * ok.length, g3:g3, gok:gok, gcost:avgCost() * 4 * gok.length * (cfg.godModel ? 2 : 1) };
   }
   function renderDeep(){
     var d = deepState();
-    $("deepInfo").textContent = "ละเอียดแล้ว " + d.v2 + "/" + d.done + " คลิป" + (d.need ? " · ยังไม่ละเอียด " + d.need + " คลิป (พร้อมอัปเกรด " + d.ok.length + (d.need > d.ok.length ? " · อีก " + (d.need - d.ok.length) + " ไม่อยู่ในคลัง ต้องเลือกไฟล์ในเครื่องก่อน" : "") + ")" : "");
+    $("deepInfo").textContent = "ละเอียดแล้ว " + d.v2 + "/" + d.done + " คลิป" + (d.need ? " · ยังไม่ละเอียด " + d.need + " คลิป (พร้อมอัปเกรด " + d.ok.length + (d.need > d.ok.length ? " · อีก " + (d.need - d.ok.length) + " หาไฟล์ในมือถือไม่เจอ (ลอง สแกนใหม่ ที่หน้าอัลบั้ม)" : "") + ")" : "");
     $("deepBtn").disabled = running || !d.ok.length;
     $("godInfo").textContent = "ขั้นเทพแล้ว " + d.g3 + "/" + d.done + " คลิป";
     $("godBtn").disabled = running || !d.gok.length;
