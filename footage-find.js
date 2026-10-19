@@ -349,7 +349,7 @@
   var SHOT = { close:"ภาพใกล้", medium:"ภาพกลาง", wide:"ภาพไกล" };
   function spBlock(c, sc, k){ /* v8.61 บทพูด+คำบรรยายฉากในการ์ด (ไม่ต้องกดเข้าไปดู) */
     var r = speechLines(c, sc); if(!r.lines.length && !r.look) return "";
-    return '<div class="sps" data-k="' + k + '">' + (r.look ? '<p class="lk">' + esc(r.look) + "</p>" : "") + r.lines.slice(0, 4).map(function(l){ return '<p><button type="button" class="spwho' + (l.sure ? "" : " un") + '" data-cid="' + esc(c.id) + '" data-seg="' + l.i + '" data-s="' + l.s + '">' + esc(l.who || "ใคร?") + (l.sure ? "" : "?") + "</button> " + esc(l.t) + "</p>"; }).join("") + (r.lines.length > 4 ? '<p class="hint">+อีก ' + (r.lines.length - 4) + " บรรทัด (เปิดดูฉาก)</p>" : "") + "</div>";
+    return '<div class="sps" data-k="' + k + '">' + (r.look ? '<p class="lk">' + esc(r.look) + "</p>" : "") + r.lines.slice(0, 4).map(function(l){ return '<p><button type="button" class="spwho' + (l.sure ? "" : " un") + (l.who ? "" : " empty") + '" data-cid="' + esc(c.id) + '" data-seg="' + l.i + '" data-s="' + l.s + '">' + (l.who ? esc(l.who) + (l.sure ? "" : "?") : "+") + "</button> " + esc(l.t) + "</p>"; }).join("") + (r.lines.length > 4 ? '<p class="hint">+อีก ' + (r.lines.length - 4) + " บรรทัด (เปิดดูฉาก)</p>" : "") + "</div>";
   }
   function card(c, sc, exact, why){
     var a = sc && sc.ai || {}, who = (sc ? sceneChars(sc) : []).map(enName).join(", "); /* ชื่ออังกฤษ canon เหมือนตัวกรอง */

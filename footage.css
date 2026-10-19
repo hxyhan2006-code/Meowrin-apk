@@ -293,3 +293,4 @@ details.fold.step>summary .st small{display:block;margin-top:3px;font-family:"IB
 #bskSheet .row .btn{flex:1}
 body.hasbsk main{padding-bottom:84px}
 #bskSheet .row .btn{white-space:nowrap;padding:0 8px}
+.card .sps .spwho.empty,#spPanel .spwho.empty{opacity:.4;border-style:dashed;font-weight:400;padding:1px 8px}.card .sps .spwho.empty{padding:1px 7px}

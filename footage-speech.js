@@ -109,7 +109,7 @@
     Object.keys(s.looks || {}).forEach(function(i){ var sc = c.scenes[i]; if(sc) rows.push({ t:sc.s, k:0, d:s.looks[i] }); });
     rows.sort(function(a, b){ return a.t - b.t || a.k - b.k; });
     return rows.map(function(r){ if(!r.g) return "<div class=\"splook\"><i>" + tm(r.t) + "</i>" + U.esc(r.d) + "</div>"; var g = r.g;
-      return "<div class=\"spln\" data-id=\"" + U.esc(c.id) + "\" data-t=\"" + g.s + "\"><i>" + tm(g.s) + "</i><button type=\"button\" class=\"spwho" + (g.sure === false ? " un" : "") + (g.fixed ? " fx" : "") + "\" data-seg=\"" + s.segs.indexOf(g) + "\" data-s=\"" + g.s + "\" data-id=\"" + U.esc(c.id) + "\">" + U.esc(g.who || "ใคร?") + (g.sure === false ? "?" : "") + "</button> " + U.esc(g.t) + "</div>"; }).join("");
+      return "<div class=\"spln\" data-id=\"" + U.esc(c.id) + "\" data-t=\"" + g.s + "\"><i>" + tm(g.s) + "</i><button type=\"button\" class=\"spwho" + (g.sure === false ? " un" : "") + (g.fixed ? " fx" : "") + (g.who ? "" : " empty") + "\" data-seg=\"" + s.segs.indexOf(g) + "\" data-s=\"" + g.s + "\" data-id=\"" + U.esc(c.id) + "\">" + (g.who ? U.esc(g.who) + (g.sure === false ? "?" : "") : "ระบุชื่อ") + "</button> " + U.esc(g.t) + "</div>"; }).join("");
   }
   var lastMsg = ["", ""];
   function render(msg, cls){
