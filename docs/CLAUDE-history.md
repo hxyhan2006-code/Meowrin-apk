@@ -158,3 +158,6 @@
 
 ### v8.76 — ฟังเสียงกันจอดับ + ข้าม SAFETY
 - `footage-speech.js` `runList`: `U.wake(true/false)` (try/finally) กันจอดับระหว่างฟังเสียง · กลับเข้าแอพ (visibilitychange) ขอล็อกใหม่ · error SAFETY/blocked = ข้ามคลิป ไม่นับเข้า FAIL_STOP · `footage-embed.js` `build` ใช้ wake ด้วย
+
+### v8.77 — ฟังเสียงไฟล์ใหญ่เกิน 700 MB
+- `footage-speech.js` `doClip`/`pcm`: โหมดฟังเสียงล้วน ไฟล์เกิน MAXB อ่านผ่าน `mb.UrlSource(src.url)` (Range) แทนโหลดเป็น Blob · **ยังไม่ยืนยันบนมือถือ** ว่า `_capacitor_file_` ตอบ Range ครบ (ถ้าไม่ครบ = พลาดเหมือนเดิม) · โหมดดูภาพยังข้ามไฟล์ใหญ่

@@ -17,7 +17,7 @@
     var b = await r.blob(); if(b.size > MAXB) throw new Error("ไฟล์ใหญ่เกิน " + Math.round(MAXB / 1048576) + " MB"); return b;
   }
   async function pcm(blob){ /* → { sec, data:Int16Array โมโน 16 kHz } · ไม่มีแทร็กเสียง = sec 0 */
-    var mb = await loadMB(), input = new mb.Input({ source:new mb.BlobSource(blob), formats:mb.ALL_FORMATS });
+    var mb = await loadMB(), input = new mb.Input({ source:blob.url ? new mb.UrlSource(blob.url) : new mb.BlobSource(blob), formats:mb.ALL_FORMATS });
     try{
       var tr = await input.getPrimaryAudioTrack(); if(!tr) return { sec:0, data:new Int16Array(0) };
       if(!(await tr.canDecode())) throw new Error("เครื่องนี้ถอดรหัสเสียงของคลิปไม่ได้");
@@ -76,7 +76,9 @@
   async function doClip(c){ /* ถอดบทพูดของคลิปเดียว · เก็บที่ c.speech · โยน error ถ้าพลาด */
     var src = await U.srcUrl(c); if(!src) throw new Error("ไม่เจอไฟล์ของคลิปนี้ในมือถือ (ลองสแกนใหม่)");
     try{
-      var blob = await blobOf(src.url), p = await pcm(blob);
+      var blob = null;
+      try{ blob = await blobOf(src.url); }catch(e){ if(watchOn || !/ไฟล์ใหญ่/.test(e.message || "")) throw e; blob = { url:src.url }; } /* ไฟล์ใหญ่เกิน MAXB: โหมดฟังเสียงล้วนอ่านเป็นสตรีมทาง URL (ไม่โหลดทั้งก้อน) · โหมดดูภาพยังไม่รองรับ */
+      var p = await pcm(blob);
       var sp = { at:Date.now(), model:FT.cfg.model, segs:[], sum:"", cost:0, sec:Math.round(p.sec * 10) / 10, watch:watchOn, wv:watchOn ? WV : 0 };
       if(!p.sec || rms(p.data) < 0.003){ blob = null; sp.silent = true; c.speech = sp; await FT.store.put(c); return sp; } /* ไม่มีเสียง/เงียบ = ไม่เสียเงิน */
       var sums = [], arcs = {};
