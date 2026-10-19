@@ -41,7 +41,7 @@
   function dot(a, b){ var s = 0, n = Math.min(a.length, b.length); for(var i = 0; i < n; i++) s += a[i] * b[i]; return s / (127 * 127); }
 
   async function build(onProg){ /* ทำเวกเตอร์ที่ขาด · คืน { done, fail, cost, tokens } · หยุดเอง: พลาดติดกัน 3 / เกินงบ */
-    if(run) return null; run = true; stopF = false; var l = [], m = null, model = cfg().model, r = { done:0, fail:0, cost:0, tokens:0, total:0, err:"" }, bad = 0;
+    if(run) return null; run = true; stopF = false; try{ await U.wake(true); }catch(e){} var l = [], m = null, model = cfg().model, r = { done:0, fail:0, cost:0, tokens:0, total:0, err:"" }, bad = 0;
     try{
       l = await todo(); m = await load(); r.total = l.length; /* อยู่ใน try → run ถูกปลดเสมอแม้ฐานข้อมูลเปิดไม่ได้ */
       for(var i = 0; i < l.length && !stopF; i += BATCH){

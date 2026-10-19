@@ -129,16 +129,21 @@
   }
   async function runList(list, label){
     if(run || !list.length) return; run = true; stopF = false; var done = 0, fail = 0, bad = 0, cost0 = stats().cost, last = "";
+    try{ await U.wake(true); }catch(e){} /* กันจอดับ/แอพหลับระหว่างฟังเสียง เหมือนตอนทำดัชนี */
+    try{
     for(var i = 0; i < list.length && !stopF; i++){
       render(label + " " + (i + 1) + "/" + list.length + " · " + list[i].name + (last ? " · ล่าสุดพลาด: " + last : ""));
       try{ await doClip(list[i]); done++; bad = 0; if(list[i].speechErr){ delete list[i].speechErr; } }
-      catch(e){ fail++; bad++; last = (e && e.message) || String(e); if(e && e.budget) break;
+      catch(e){ fail++; last = (e && e.message) || String(e); if(e && e.budget) break;
+        if(!/SAFETY|safety|PROHIBITED|blocked/.test(last)) bad++; /* ตัวกรองความปลอดภัยของโมเดลบล็อกเฉพาะคลิปนั้น = ข้ามคลิป ไม่นับว่าระบบพัง (เดิมติดกัน 3 คลิปหยุดทั้งงาน) */
         try{ list[i].speechErr = { wv:WV, msg:last.slice(0, 120), at:Date.now() }; await FT.store.put(list[i]); }catch(e2){} /* จดว่าคลิปนี้พลาด → รอบหน้าไปอยู่ท้ายคิว ไม่ขวางคลิปอื่นซ้ำๆ */
         if(bad >= FAIL_STOP) break; }
     }
+    } finally { try{ await U.wake(false); }catch(e){} }
     run = false; var used = stats().cost - cost0; if(done) document.dispatchEvent(new CustomEvent("ft:lib")); /* ภาคจากเสียง → อัลบั้ม/จัดอัลบั้มใหม่ วาดใหม่ · ไม่โหลด lib ใหม่จากฐาน (เดิม U.refresh แทนวัตถุคลิปทั้งหมด งานอื่นที่ทำอยู่ เช่น ให้ AI ดูภาค เขียนลงวัตถุเก่า ผลหาย/จ่ายซ้ำ) */
     render(label + ": ฟังเสร็จ " + done + " คลิป" + (fail ? " · พลาด " + fail + (last ? " (" + last + ")" : "") : "") + " · ใช้ " + U.money(used) + (stopF ? " · พักไว้" : ""), fail ? "err" : "ok");
   }
+  document.addEventListener("visibilitychange", function(){ if(run && !document.hidden) U.wake(true); }); /* กลับมาที่แอพ = ขอกันจอดับใหม่ (ระบบปล่อยล็อกตอนซ่อนหน้า) */
   $("spTrial").addEventListener("click", async function(){
     if(!FT.orKey()){ await MWDialog.alert("ยังไม่มี OpenRouter key ในแอพ ไปใส่ที่ ตั้งค่า > คีย์ API ก่อน"); return; }
     var pend = pending(), pick = []; while(pick.length < TRIAL && pend.length){ pick.push(pend.splice(Math.floor(Math.random() * pend.length), 1)[0]); }
