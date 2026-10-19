@@ -446,6 +446,13 @@ try {
   // คิวไม่ใส่ไฟล์ซ้ำ: ไฟล์เดียวกันก๊อปไว้ 2 โฟลเดอร์ (mtime ต่างกัน) ส่งเข้าทำดัชนีพร้อมกัน = ทำครั้งเดียว ไม่จ่ายซ้ำ · ส่งซ้ำอีกรอบก็ไม่เพิ่ม
   const qd = await dp.evaluate(() => { MWLocal.fileUrl = (u) => 'https://localhost/_capacitor_file_' + u; const f = (u, m) => ({ name: 'zz.mp4', size: 11, uri: 'file://' + u, album: 'x', mtime: m }); const a = FT.ui.indexLocal([f('a/zz.mp4', 1), f('b/zz.mp4', 2)]), b = FT.ui.indexLocal([f('c/zz.mp4', 3)]); return { a, b, total: FT.ui.queueInfo().total }; });
   check('ทำดัชนี: ไฟล์ชื่อ+ขนาดเดียวกันหลายโฟลเดอร์เข้าคิวครั้งเดียว (ไม่จ่ายซ้ำ) · ส่งซ้ำไม่เพิ่ม', qd.a === 1 && qd.b === 0, JSON.stringify(qd));
+  // ให้ AI ดูภาค: คำตอบมีข้อความ/ปีกกาต่อท้าย JSON ต้องอ่านได้ · ตอบเพี้ยนครั้งแรก = ลองใหม่ ไม่ล้มทั้งงาน (บั๊กจริง: "Unexpected non-whitespace character after JSON" แล้วทำไปแล้ว 0 คลิปทุกรอบ)
+  await dp.evaluate(() => { MWStore.set('mw_openrouter_key_v1', 'k'); window.__arcN = 0; FT.ui.lib().push({ id: 'ar1', name: 'arc1.mp4', size: 81, album: 'x', duration: 5, status: 'done', scenes: [{ s: 0, e: 2, thumb: 'data:image/jpeg;base64,/9j/4AAQ', ai: {} }], lastModified: 1 }); document.dispatchEvent(new CustomEvent('ft:lib'));
+    const prev = window.fetch; window.fetch = async (u, o) => { if (!/openrouter/.test(String(u))) return prev(u, o); const n = ++window.__arcN; const text = n === 1 ? 'ขออภัย ตอบไม่เป็น JSON' : '{"r":[{"i":1,"arc":"Alabasta"}]}\n\nหมายเหตุ: ตอบตามภาพ {ตัวอย่าง}'; return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: text } }], usage: { cost: 0.001 } }) }; }; });
+  await dp.waitForTimeout(300); await dp.evaluate(() => { FT.ui.runArcs(); }); await dp.waitForTimeout(300); await dp.getByRole('button', { name: 'เริ่ม', exact: true }).click();
+  await dp.waitForFunction(() => { const c = FT.ui.lib().find((x) => x.id === 'ar1'); return c && c.arcAi; }, null, { timeout: 15000 });
+  const arcR = await dp.evaluate(() => ({ arc: FT.ui.lib().find((x) => x.id === 'ar1').arcAi.arc, calls: window.__arcN }));
+  check('ให้ AI ดูภาค: ตอบเพี้ยนครั้งแรกแล้วลองใหม่สำเร็จ · JSON ที่มีข้อความ/ปีกกาต่อท้ายอ่านได้ → ได้ภาค Alabasta', arcR.arc === 'Alabasta' && arcR.calls === 2, JSON.stringify(arcR));
   await dp.close();
   // จัดอัลบั้มใหม่ (footage-organize.js): แผนจากภาคที่ AI รู้แน่ → ย้ายไฟล์จริงด้วย MediaScan.move · ไม่แตะคลิปที่ไม่แน่ใจภาค/สำเนาในแอพ/ที่อยู่ถูกแล้ว/ชื่อซ้ำ · ย้ายทดลอง · เลิกทำย้ายกลับ · ไม่มีสิทธิ์ = ปุ่มขอสิทธิ์
   const og = await context.newPage(); const ogErr = []; og.on('pageerror', (e) => ogErr.push(e.message));

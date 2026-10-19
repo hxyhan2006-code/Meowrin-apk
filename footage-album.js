@@ -179,11 +179,14 @@
     var todo = arcTodo(); if(!todo.length || arcRun) return;
     if(!FT.orKey()){ await MWDialog.alert("ยังไม่มี OpenRouter key ในแอพ ไปใส่ที่ ตั้งค่า > คีย์ API ก่อน"); return; }
     if(!await MWDialog.confirm("ให้ AI ดูภาคของ " + todo.length + " คลิปที่ยังไม่แน่ใจ?\n\nประมาณ " + U.money(todo.length * 3 * 0.0012) + " (ประมาณการจากราคาต่อรูปของการตรวจตัวละครซ้ำ $0.0012 คูณ 3 รูปต่อคลิป ราคาจริงอาจต่างไป)\n\nAI จะไม่เดา: คลิปที่ไม่แน่ใจจะยังอยู่ในอัลบั้ม ยังไม่แน่ใจ และจะไม่ถูกลองซ้ำ ผลที่ AI ตอบไม่ทับภาคที่คุณย้ายเอง · พักและทำต่อได้ ต้องเปิดแอพค้างไว้", { ok:"เริ่ม" })) return;
-    arcRun = true; arcStopF = false; arcMsg = ""; var n = 0, hit = 0, cost = 0, dirty = []; arcStrip(); await U.wake(true);
+    arcRun = true; arcStopF = false; arcMsg = ""; var n = 0, hit = 0, cost = 0, dirty = [], failB = 0, lastErr = null; arcStrip(); await U.wake(true);
     try{
       for(var i = 0; i < todo.length && !arcStopF; i += 8){
-        var g = todo.slice(i, i + 8), r = await FT.classifyArcs(g.map(function(en, k){ return { n:k + 1, imgs:arcFrames(en.c), hint:en.c.album }; }), ARCS);
-        cost += r.cost; g.forEach(function(en, k){ var ar = r.map[k + 1] || ""; en.c.arcAi = { arc:ar, at:Date.now() }; if(ar) hit++; dirty.push(en.c); });
+        var g = todo.slice(i, i + 8), r = null, items = g.map(function(en, k){ return { n:k + 1, imgs:arcFrames(en.c), hint:en.c.album }; });
+        for(var t = 0; t < 2 && !r; t++){ /* ตอบเพี้ยน (ไม่ใช่ JSON) = ลองอีกรอบ ไม่ล้มทั้งงาน · ค่าที่จ่ายไปแล้วนับด้วย */
+          try{ r = await FT.classifyArcs(items, ARCS); }catch(err){ if(err.cost) cost += err.cost; if(err.budget) throw err; lastErr = err; } }
+        if(!r){ failB++; if(failB >= 3) throw lastErr; n += g.length; arcMsg = n + "/" + todo.length + " · ข้ามชุดที่ AI ตอบไม่ได้ " + failB + " ชุด (คลิปเหล่านั้นยังค้าง กดทำใหม่ได้)"; arcStrip(); continue; }
+        failB = 0; cost += r.cost; g.forEach(function(en, k){ var ar = r.map[k + 1] || ""; en.c.arcAi = { arc:ar, at:Date.now() }; if(ar) hit++; dirty.push(en.c); });
         await FT.store.putMany(dirty); dirty = []; n += g.length; arcMsg = n + "/" + todo.length + " · ได้ภาค " + hit + " · ใช้ " + U.money(cost); build(); arcStrip();
       }
       arcMsg = (arcStopF ? "หยุดแล้ว" : "เสร็จรอบนี้") + ": ดู " + n + " คลิป ได้ภาค " + hit + " คลิป ใช้ " + U.money(cost);

@@ -188,7 +188,14 @@
   function parseJSON(t){
     var s = t.replace(/```(?:json)?/gi, ""), a = s.indexOf("{"), b = s.lastIndexOf("}");
     if(a < 0 || b <= a) throw new Error("AI ไม่ได้ตอบเป็น JSON");
-    return JSON.parse(s.slice(a, b + 1));
+    try{ return JSON.parse(s.slice(a, b + 1)); }catch(err){
+      /* AI แถมข้อความ/JSON ตัวที่สองต่อท้าย (\"Unexpected non-whitespace character after JSON\") = เอาออบเจ็กต์แรกที่ปีกกาครบ (นับปีกกานอกสตริง) */
+      var d = 0, ins = false, esc = false;
+      for(var i = a; i < s.length; i++){ var ch = s[i];
+        if(ins){ if(esc) esc = false; else if(ch === "\\") esc = true; else if(ch === '"') ins = false; continue; }
+        if(ch === '"') ins = true; else if(ch === "{") d++; else if(ch === "}" && --d === 0){ try{ return JSON.parse(s.slice(a, i + 1)); }catch(e2){ break; } } }
+      throw err;
+    }
   }
   var PROMPT = [
     "You are indexing anime footage clips (mostly One Piece, Thai dub) for a video editor's search tool and an AI director that picks shots for narration.",
