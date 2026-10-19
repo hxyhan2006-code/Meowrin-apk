@@ -404,7 +404,7 @@ try {
       const out = /search terms/.test(t) ? { chars: [], keys: ['เสียใจ'], arc: '' } : { answer: 'เจอ 1 ฉากความหมายใกล้', picks: [{ n: 1, why: 'น้ำตา' }], none: false };
       return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(out) } }], usage: { cost: 0.002 } }) }; };
   });
-  const em1 = await ak.evaluate(async () => { const r = await FT.sem.build(); const st = await FT.sem.stat(); const again = await FT.sem.build(); return { r: { done: r.done, fail: r.fail }, st, again: again.done, calls: window.__embCalls.length, info: document.getElementById('emInfo').textContent }; });
+  const em1 = await ak.evaluate(async () => { const r = await FT.sem.build(); const st = await FT.sem.stat(); const again = await FT.sem.build(); document.getElementById('emPanel').open = true; document.dispatchEvent(new CustomEvent('ft:lib')); await new Promise((r) => setTimeout(r, 400)); return { r: { done: r.done, fail: r.fail }, st, again: again.done, calls: window.__embCalls.length, info: document.getElementById('emInfo').textContent }; });
   check('ดัชนีความหมาย: ทำเวกเตอร์ให้ฉากที่มีข้อความ (ทุกฉากในคลัง) · ทำซ้ำ = ไม่เรียกซ้ำ (0 ฉาก) · แผงโชว์จำนวน', em1.r.fail === 0 && em1.r.done === em1.st.have && em1.st.have >= 2 && em1.again === 0 && /ทำดัชนีความหมายแล้ว \d+\/\d+/.test(em1.info), JSON.stringify(em1));
   await ak.evaluate(() => { window.__mode = 'sem'; window.__bodies = []; }); await ak.fill('#q', 'ใครเสียใจ'); await ak.click('#askBtn'); await ak.waitForFunction(() => /ความหมายใกล้/.test(document.getElementById('askOut').textContent), null, { timeout: 10000 });
   const em2 = await ak.evaluate(() => ({ pick: window.__bodies[1] || '', note: document.getElementById('askOut').textContent, cards: document.querySelectorAll('#results .card').length }));
@@ -990,7 +990,7 @@ try {
     await fp.goto(base + '/footage.html'); await fp.waitForFunction(() => window.FT && FT.ui && document.getElementById('filesDocs'), null, { timeout: 20000 });
     const runCase = async (clipPar, tag) => {
       await fp.evaluate(async (clipPar) => {
-        MWStore.set('mw_openrouter_key_v1', 'test-key'); FT.cfg.clipPar = clipPar; FT.cfg.budget = 50; window.__ev = []; window.__act = 0; window.__maxAct = 0; window.__scanning = 0; window.__maxScan = 0; window.__seen = {};
+        MWStore.set('mw_openrouter_key_v1', 'test-key'); FT.cfg.clipPar = clipPar; FT.cfg.budget = 50; if (!window.__libHook) { window.__libHook = 1; window.__libEv = 0; document.addEventListener('ft:lib', () => { window.__libEv++; }); } window.__libEv = 0; window.__ev = []; window.__act = 0; window.__maxAct = 0; window.__scanning = 0; window.__maxScan = 0; window.__seen = {};
         const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
         FT.scan = async (v, f, onStep) => { __act++; __maxAct = Math.max(__maxAct, __act); __scanning++; __maxScan = Math.max(__maxScan, __scanning); __seen[f.name] = (__seen[f.name] || 0) + 1; __ev.push('scan+' + f.name); await sleep(150); onStep && onStep(1); __scanning--; __ev.push('scan-' + f.name);
           return { duration: 5, w: 10, h: 10, cover: '', scenes: [{ s: 0, e: 2, thumb: '', img: '' }, { s: 2, e: 5, thumb: '', img: '' }] }; };
@@ -1000,10 +1000,12 @@ try {
       const files = [1, 2, 3, 4, 5].map((i) => ({ name: tag + i + '.mp4', mimeType: 'video/mp4', buffer: Buffer.from('v' + tag + i) }));
       await fp.setInputFiles('#filesDocs', files); await fp.waitForTimeout(200);
       const t0 = Date.now(); await fp.evaluate(() => document.getElementById('startBtn').click()); await fp.waitForFunction(() => /เสร็จ 5\/5/.test(document.getElementById('progTxt').textContent), null, { timeout: 20000 }); const ms = Date.now() - t0;
-      return fp.evaluate((ms) => ({ ms, maxAct: __maxAct, maxScan: __maxScan, seen: Object.values(__seen).join(''), ev: __ev.join(' ') }), ms);
+      await fp.waitForTimeout(900);
+      return fp.evaluate((ms) => ({ libEv: __libEv, libHas: FT.ui.lib().filter((c) => /^\w\d\.mp4$/.test(c.name)).length, ms, maxAct: __maxAct, maxScan: __maxScan, seen: Object.values(__seen).join(''), ev: __ev.join(' ') }), ms);
     };
     const par2 = await runCase(2, 'p'), ser = await runCase(1, 's');
     check('ทำดัชนี 2 คลิปพร้อมกัน: ครบ 5 คลิป ไม่หยิบซ้ำ อ่านเฟรมทีละคลิป (ไม่ทับกัน) แต่ซ้อนกับรอ AI · เร็วกว่าทีละคลิปชัดเจน', par2.seen === '11111' && par2.maxScan === 1 && par2.maxAct <= 2 && par2.ms < ser.ms * 0.8 && /scan\+p2.*ai\+.*scan-p2|ai\+ scan\+/.test(par2.ev), JSON.stringify([par2, ser]));
+    check('ทำดัชนีเสร็จ → แจ้งหน้าอัลบั้ม (ft:lib) อย่างน้อย 1 ครั้ง แต่รวมครั้ง ไม่ยิงทุกคลิป (≤3 สำหรับ 5 คลิป) · คลิปเข้า lib ครบ (บั๊กเดิม: อัลบั้มค้าง ทำแล้ว 1036/1037)', par2.libEv >= 1 && par2.libEv <= 3 && par2.libHas >= 5, JSON.stringify([par2.libEv, par2.libHas]));
     check('ทำดัชนีตั้ง 1 คลิป = ทีละคลิปเหมือนเดิม (ไม่ซ้อนกัน)', ser.seen === '11111' && ser.maxAct === 1 && !/scan\+s\d scan\+s\d/.test(ser.ev.replace(/ai[+-] /g, '')), ser.ev);
     check('ทำดัชนีหลายคลิปพร้อมกัน: ไม่มี error · ช่องตั้งค่า "ทำพร้อมกันกี่คลิป" มีและบันทึกค่า', !fErr.length && (await fp.evaluate(() => { const i = document.getElementById('clipPar'); i.value = '3'; i.dispatchEvent(new Event('change')); return FT.cfg.clipPar === 3; })), fErr.join(' | '));
     await fp.evaluate(() => { MWStore.del('mw_openrouter_key_v1'); });

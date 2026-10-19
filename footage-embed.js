@@ -83,6 +83,7 @@
   });
   $("emStop").addEventListener("click", function(){ stopF = true; $("emStop").hidden = true; });
   $("emClear").addEventListener("click", async function(){ if(!await MWDialog.confirm("ลบดัชนีความหมายทั้งหมด? (ทำใหม่ได้ ราคาไม่กี่เซ็นต์ · ค้นหาด้วยคำยังใช้ได้ปกติ)", { ok:"ลบ" })) return; await clearAll(); render("ลบแล้ว", "ok"); });
-  document.addEventListener("ft:lib", function(){ if(!run) render(); });
-  render();
+  document.addEventListener("ft:lib", function(){ if(!run && $("emPanel").open) render(); }); /* คำนวณจำนวนฉากทุกครั้งที่ lib เปลี่ยนหนัก · เปิดแผงอยู่ค่อยวาด */
+  $("emPanel").addEventListener("toggle", function(){ if(this.open && !run) render(); });
+  if($("emPanel").open) render();
 })();

@@ -25,6 +25,8 @@
     etaBase = mbDone > 1 ? ms / mbDone * mbLeft : ms / dn.length * rest.length; etaAt = Date.now();
   }
   function mmss(ms){ var s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ":" + pad(s % 60); }
+  var libT = 0;
+  function libChanged(){ clearTimeout(libT); libT = setTimeout(function(){ document.dispatchEvent(new CustomEvent("ft:lib")); }, 500); } /* คลิปทำดัชนีเสร็จ (lib เปลี่ยนในหน่วยความจำ ไม่ได้โหลดใหม่) → แจ้งหน้าอัลบั้ม/ตัวกรอง วาดใหม่ · รวมหลายคลิปที่เสร็จติดกันเป็นครั้งเดียว · เดิมไม่แจ้ง = อัลบั้มค้าง "ทำแล้ว 1036/1037" จนกว่าจะรีเฟรช */
   function refreshLib(){ return FT.store.all().then(function(a){ lib = a || []; renderAll(); document.dispatchEvent(new CustomEvent("ft:lib")); }); } /* ft:lib → หน้าอัลบั้ม (footage-album.js) วาดใหม่ */
   function byId(id){ return lib.find(function(c){ return c.id === id; }); }
   function findClip(f){ /* แกลเลอรีมือถือส่ง lastModified ไม่เหมือนเดิม และตัวเลือกรูป (Google Photos) ส่งชื่อเป็นเลข เช่น 21347.mp4 แต่แอพไฟล์ส่งชื่อจริง
@@ -154,7 +156,7 @@
     else if(left && runCost >= cfg.budget) msg("runMsg", "ถึงเพดานงบรอบนี้ " + money(cfg.budget) + " แล้ว พักไว้ก่อน (ปรับงบได้ที่แท็บตั้งค่า แล้วกด ทำต่อ)", "err");
     else if(left && paused) msg("runMsg", document.hidden ? "พักไว้เพราะสลับแอพ กลับมาแล้วกด ทำต่อ" : "พักแล้ว กด ทำต่อ เมื่อพร้อม");
     else if(!queue.some(function(x){ return x.status === "wait"; })) msg("runMsg", "เสร็จรอบนี้แล้ว · ใช้ไป " + money(runCost), "ok");
-    paused = false; renderQueue();
+    paused = false; renderQueue(); libChanged();
   }
 
   var CHUNK = 8; /* กี่ฉากต่อคำขอ AI */
@@ -233,7 +235,7 @@
         scenes: m.scenes.map(function(sc){ return { s:sc.s, e:sc.e, thumb:sc.thumb, img:sc.img, ai:sc.ai || null }; }),
         raw:r.raw, cost:r.cost, tokens:{ in:r.tin, out:r.tout }, ms:Date.now() - t0, imgV:FT.IMG_V, aiV:cfg.godNew ? FT.AI_GOD : FT.AI_V, msScan:msScan, msAI:Date.now() - t0 - msScan, model:cfg.model, at:Date.now(), status:"done" };
       await FT.store.put(rec);
-      lib = lib.filter(function(c){ return c.id !== rec.id; }).concat([rec]);
+      lib = lib.filter(function(c){ return c.id !== rec.id; }).concat([rec]); libChanged();
       q.status = "done"; q.p = 1;
     }catch(err){
       if(err.budget || document.hidden){ q.status = "wait"; q.p = 0; if(err.budget){ paused = true; capMsg = err.message === "ถึงเพดานงบ" ? "" : err.message; } } /* ยังไม่ใช่ error จริง ทำใหม่ได้ · capMsg = ชนเพดานรวมใน budget.js */
