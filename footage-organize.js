@@ -11,20 +11,21 @@
   function load(){ var j = MWStore.get(KEY, null); return j && Array.isArray(j.batches) ? j : { batches:[] }; }
   function pad(n){ return n < 10 ? "0" + n : String(n); }
   function nameOfArc(arc){ var i = U.ARCS.indexOf(arc); return (i < 0 ? "99" : pad(i + 1)) + " " + arc.replace(/[\\/:*?"<>|]/g, " ").trim(); } /* ชื่อโฟลเดอร์: เลขลำดับเนื้อเรื่อง + ภาค */
-  function clipOf(it){ return U.lib().find(function(c){ return c.name === it.name && c.size === it.size && c.status === "done" && !c.hide; }); }
+  function clipOf(it){ var c = U.clipFor(it.name, it.size); return c && c.status === "done" ? c : null; } /* ตัวจับคู่เดียวกับหน้าอัลบั้ม (ชื่อ|ขนาด + aliases) · เดิมเขียนเองไม่รู้จัก aliases → นับ "ยังไม่ได้ทำดัชนี 1" ไม่ตรงกับแถบ AI */
 
   function buildPlan(){ /* คืน { moves:[{ name, size, from, to, album, toAlbum, clipId }], byAlbum:{ ชื่อ:จำนวน }, unsure, dup, skipped } */
-    var moves = [], byAlbum = {}, seenTo = {}, unsure = 0, dup = 0, same = 0, noIdx = []; /* noIdx = ไฟล์ในอัลบั้มจริงที่ยังไม่ได้ทำดัชนี (ย้ายไม่ได้ เพราะยังไม่รู้ภาค) */
+    var moves = [], byAlbum = {}, seenTo = {}, unsure = 0, dup = 0, same = 0, hidden = 0, noIdx = []; /* noIdx = ไฟล์ในอัลบั้มจริงที่ยังไม่ได้ทำดัชนี (ย้ายไม่ได้ เพราะยังไม่รู้ภาค) */
     (MWLocal.list() || []).forEach(function(it){
       var m = /^(.*\/Gallery\/owner)\/([^\/]+)\/$/.exec(it.dir || ""); if(!m) return; /* เฉพาะอัลบั้มจริงของแกลเลอรี (สำเนาในแอพอยู่ Documents/Meowrin/library จึงไม่เข้า) · ห้ามกรองด้วย it.lib: local.js ติดป้าย lib ให้ "ต้นฉบับที่มีสำเนาแล้ว" ด้วย ไม่ได้แปลว่าเป็นสำเนา */
-      var c = clipOf(it); if(!c){ noIdx.push({ name:it.name, size:it.size, uri:it.uri, album:it.album, mtime:it.mtime }); return; }
+      var c = clipOf(it); if(c && c.hide){ hidden++; return; } /* คลิปที่ซ่อนไว้ (ฟุตซ้ำ) ไม่ย้าย และไม่นับว่ายังไม่ทำดัชนี */
+      if(!c){ noIdx.push({ name:it.name, size:it.size, uri:it.uri, album:it.album, mtime:it.mtime }); return; }
       var ar = U.arcOf(c); if(!ar.arc || !ar.sure){ unsure++; return; }
       var to = nameOfArc(ar.arc); if(to === m[2]){ same++; return; }
       var dest = m[1] + "/" + to + "/" + it.name; if(seenTo[dest]){ dup++; return; } /* ชื่อซ้ำ (ไฟล์เดียวกันกระจายหลายอัลบั้ม) ย้ายแค่ตัวแรก */
       seenTo[dest] = 1; byAlbum[to] = (byAlbum[to] || 0) + 1;
       moves.push({ name:it.name, size:it.size, from:m[1] + "/" + m[2] + "/" + it.name, to:dest, album:m[2], toAlbum:to, clipId:c.id });
     });
-    return { moves:moves, byAlbum:byAlbum, unsure:unsure, dup:dup, same:same, noIdx:noIdx };
+    return { moves:moves, byAlbum:byAlbum, unsure:unsure, dup:dup, same:same, hidden:hidden, noIdx:noIdx };
   }
 
   async function run(list, onStep){ /* ย้ายทีละไฟล์ · พลาดติดกัน FAIL_STOP ครั้งหยุด · คืน { done:[], fail, last } */

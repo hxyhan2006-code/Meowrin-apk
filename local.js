@@ -60,7 +60,7 @@
   function lib(){ return window.FT && FT.ui && FT.ui.lib ? FT.ui.lib() : []; }
   function render(msg, bad){
     var info = $("locInfo"), tag = $("tagLoc"), btn = $("locScan"); if(!info) return;
-    var ok = st.at > 0, m = ok ? lib().filter(function(c){ return map[key(c.name, c.size)]; }).length : 0;
+    var ok = st.at > 0, m = ok ? lib().filter(function(c){ return addrOf(c); }).length : 0; /* รวม aliases */
     info.textContent = msg || (!native() ? "ใช้ได้เฉพาะในแอพ APK · ในเบราว์เซอร์ใช้ปุ่มเลือกไฟล์แทน"
       : ok ? "สแกนแล้ว " + st.albums + " อัลบั้ม · วิดีโอ " + st.files + " ไฟล์ · ตรงกับดัชนี " + m + "/" + lib().length + " คลิป (เล่น/ตัดต่อจากไฟล์ในเครื่องได้เลย)"
       : "ยังไม่ได้สแกน · ครั้งแรกจะมีหน้าต่างขออนุญาตดูรูปและวิดีโอ ให้กดอนุญาต");

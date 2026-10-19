@@ -433,6 +433,10 @@ try {
   await dp.waitForTimeout(300);
   const dm2 = await dp.evaluate(() => document.getElementById('alAi').textContent);
   check('รวมคลิปซ้ำ: เก็บตัวที่ทำล่าสุด (b) ใส่ aliases ของ a · ไฟล์ a และ b ในมือถือนับว่าทำแล้วทั้งคู่ (ทำแล้ว 3/4 เหลือ 1)', dm.del.join() === 'm1' && dm.keepName === 'b.mp4' && dm.al.length === 1 && dm.al[0].name === 'a.mp4' && /AI ทำแล้ว 3\/4 คลิป/.test(dm2) && /ทำที่เหลือ \(1\)/.test(dm2), JSON.stringify([dm, dm2]));
+  // v8.71 ตัวจับคู่ไฟล์↔ดัชนีที่เดียว: แผงจัดอัลบั้มใหม่ต้องนับ "ยังไม่ได้ทำดัชนี" ตรงกับแถบ AI (เคสจริง: แผงบอก 1 แต่แถบบอกครบ เพราะแผงไม่รู้จัก aliases) · คลิปที่ซ่อนไว้ไม่นับว่ายังไม่ทำ
+  const orgCnt = await dp.evaluate(() => { const strip = document.getElementById('alAi').textContent, p = FT.organize.buildPlan(); const lib = FT.ui.lib(); lib.push({ id: 'hid1', name: 'n.mp4', size: 70, album: 'luffy', duration: 9, status: 'done', hide: true, scenes: [], at: 9 }); const p2 = FT.organize.buildPlan(); lib.pop();
+    return { strip, noIdx: p.noIdx.map((x) => x.name).join(), noIdx2: p2.noIdx.length, hidden2: p2.hidden, a: FT.ui.clipFor('a.mp4', 50) && FT.ui.clipFor('a.mp4', 50).name }; });
+  check('จัดอัลบั้มใหม่นับ "ยังไม่ทำดัชนี" ตรงกับแถบ AI: ไฟล์ a (alias ของ b) ไม่นับ เหลือแค่ n · คลิปที่ซ่อนไว้ไม่นับว่ายังไม่ทำ · U.clipFor หา a ผ่าน alias ได้', orgCnt.noIdx === 'n.mp4' && /ทำที่เหลือ \(1\)/.test(orgCnt.strip) && orgCnt.noIdx2 === 0 && orgCnt.hidden2 === 1 && orgCnt.a === 'b.mp4', JSON.stringify(orgCnt));
   // อัปเกรดดัชนีละเอียด: คลิปเก่าที่ไฟล์อยู่ในมือถือ (MWLocal) ต้องนับว่า "พร้อมอัปเกรด" (เดิมนับเฉพาะไฟล์ที่เลือกในรอบนี้ → ในแอพขึ้น 0)
   const up = await dp.evaluate(async () => { FT.ui.lib().push({ id: 'up1', name: 'old.mp4', size: 3, album: 'x', duration: 5, status: 'done', aiV: 1, scenes: [], lastModified: 1 }); const prev = MWLocal.urlOf; MWLocal.urlOf = (c) => c.id === 'up1' ? 'https://localhost/_capacitor_file_/x' : prev(c);
     document.getElementById('godModel').dispatchEvent(new Event('change')); await new Promise((r) => setTimeout(r, 200)); return { info: document.getElementById('deepInfo').textContent, dis: document.getElementById('deepBtn').disabled }; });

@@ -29,9 +29,24 @@
   function libChanged(){ clearTimeout(libT); libT = setTimeout(function(){ document.dispatchEvent(new CustomEvent("ft:lib")); }, 500); } /* คลิปทำดัชนีเสร็จ (lib เปลี่ยนในหน่วยความจำ ไม่ได้โหลดใหม่) → แจ้งหน้าอัลบั้ม/ตัวกรอง วาดใหม่ · รวมหลายคลิปที่เสร็จติดกันเป็นครั้งเดียว · เดิมไม่แจ้ง = อัลบั้มค้าง "ทำแล้ว 1036/1037" จนกว่าจะรีเฟรช */
   function refreshLib(){ return FT.store.all().then(function(a){ lib = a || []; renderAll(); document.dispatchEvent(new CustomEvent("ft:lib")); }); } /* ft:lib → หน้าอัลบั้ม (footage-album.js) วาดใหม่ */
   function byId(id){ return lib.find(function(c){ return c.id === id; }); }
+  /* ---------- จับคู่ "ไฟล์ในมือถือ ↔ คลิปในดัชนี" ที่เดียวทั้งแอพ (v8.71) ----------
+     กุญแจ = ชื่อ|ขนาด ของคลิป + aliases (ชื่อ+ขนาดของคลิปที่ถูกรวมเข้ามาตอนรวมคลิปซ้ำ) · หลายคลิปกุญแจเดียวกัน = เอาที่ทำดัชนีเสร็จ/ไม่ซ่อน/ทำล่าสุด
+     ทุกที่ที่ต้องถามว่า "ไฟล์นี้ทำดัชนีแล้วหรือยัง" ใช้ U.clipFor / U.keysOf (อัลบั้ม จัดอัลบั้มใหม่ ทำดัชนีที่เหลือ) ห้ามเขียนตัวจับคู่ซ้ำ (เคยนับไม่ตรงกันหลายรอบ) */
+  function fkey(name, size){ return name + "|" + size; }
+  function keysOf(c){ return [fkey(c.name, c.size)].concat((c.aliases || []).map(function(x){ return fkey(x.name, x.size); })); }
+  var kIdx = null, kLib = null, kLen = -1;
+  function rank(c){ return (c.status === "done" ? 4 : 0) + (c.hide ? 0 : 2); }
+  function clipFor(name, size){
+    if(!kIdx || kLib !== lib || kLen !== lib.length){ /* lib ถูกแทน/เพิ่ม/ลด = สร้างดัชนีกุญแจใหม่ */
+      kIdx = {}; kLib = lib; kLen = lib.length;
+      lib.forEach(function(c){ keysOf(c).forEach(function(k){ var o = kIdx[k]; if(!o || rank(c) > rank(o) || (rank(c) === rank(o) && (c.at || 0) > (o.at || 0))) kIdx[k] = c; }); });
+    }
+    return kIdx[fkey(name, size)] || null;
+  }
+  document.addEventListener("ft:lib", function(){ kIdx = null; }); /* คลิปแก้ในที่เดิม (เช่น ได้ aliases) แล้วแจ้ง ft:lib = สร้างใหม่ */
   function findClip(f){ /* แกลเลอรีมือถือส่ง lastModified ไม่เหมือนเดิม และตัวเลือกรูป (Google Photos) ส่งชื่อเป็นเลข เช่น 21347.mp4 แต่แอพไฟล์ส่งชื่อจริง
                            → จับด้วยชื่อ+ขนาด แล้วถอยไปขนาดอย่างเดียว (ไบต์เท่ากันเป๊ะ = ไฟล์เดียวกันแทบแน่นอน) ถ้ามีคลิปขนาดนั้นตัวเดียว */
-    var c = byId(FT.clipId(f)) || lib.find(function(c){ return c.name === f.name && c.size === f.size; }); if(c) return c;
+    var c = byId(FT.clipId(f)) || clipFor(f.name, f.size); if(c) return c;
     var same = lib.filter(function(c){ return c.size === f.size; }); return same.length === 1 ? same[0] : null;
   }
 
@@ -421,14 +436,14 @@
   }
 
   /* ให้ไฟล์อื่นใช้ร่วม · footage-find.js เติม terms/hay/card/chars/hasSrc/srcUrl/openFiles/search */
-  FT.ui = { findDupes:findDupes, lib:function(){ return lib; }, esc:esc, msg:msg, money:money, tm:tm, capDur:capDur, refresh:refreshLib,
+  FT.ui = { clipFor:clipFor, keysOf:keysOf, findDupes:findDupes, lib:function(){ return lib; }, esc:esc, msg:msg, money:money, tm:tm, capDur:capDur, refresh:refreshLib,
             addQueue:function(items){ queue = queue.filter(function(q){ return q.status !== "skip"; }).concat(items.filter(function(a){ return !queue.some(function(q){ return q.id === a.id; }); })); renderQueue(); },
             addCost:function(x){ runCost += x; renderStats(); }, wake:wake,
             /* ให้หน้าอัลบั้มสั่งทำดัชนีคลิปในมือถือ: list = [{ name, size, uri, album, mtime }] · อ่านเฟรมจากที่อยู่ไฟล์ตรงๆ (ไม่ต้องเลือกไฟล์) · คืนจำนวนที่เข้าคิว (ข้ามคลิปที่ทำแล้ว/อยู่ในคิวแล้ว) */
             indexLocal:function(list){
               var picked = Date.now(), items = [];
               list.forEach(function(f){
-                var done = lib.find(function(c){ return (c.name === f.name && c.size === f.size) || (c.aliases || []).some(function(x){ return x.name === f.name && x.size === f.size; }); }); if(done && done.status === "done") return; /* รวมนามแฝงที่เกิดจากการรวมคลิปซ้ำด้วย */ /* ชื่อ+ขนาดตรงเป๊ะเท่านั้น (ไม่ใช้ขนาดอย่างเดียว: คลิปคนละไฟล์ขนาดเท่ากันจะถูกข้ามผิด) */
+                var done = clipFor(f.name, f.size); if(done && done.status === "done") return; /* ตัวจับคู่เดียวกับหน้าอัลบั้ม (รวม aliases) */ /* ชื่อ+ขนาดตรงเป๊ะเท่านั้น (ไม่ใช้ขนาดอย่างเดียว: คลิปคนละไฟล์ขนาดเท่ากันจะถูกข้ามผิด) */
                 var lm = f.mtime || 0, id = FT.clipId({ name:f.name, size:f.size, lastModified:lm });
                 items.push({ file:MWLocal.fileUrl(f.uri), id:id, album:f.album || "ไม่ระบุ", mode:"", status:"wait", err:"", p:0, info:{ name:f.name, type:"video/mp4", size:f.size, lastModified:lm, picked:picked } });
               });
