@@ -37,9 +37,15 @@
     for(var i = 0; i < out.length && top.length < MAXC; i++){ var id = out[i].c.id; if((per[id] = (per[id] || 0) + 1) <= PER_CLIP) top.push(out[i]); } /* คลิปเดียวไม่เกิน PER_CLIP ฉาก ให้ผลหลากหลายคลิป */
     top.semErr = semErr; top.semCost = semCost; top.semN = semN; return top;
   }
-  function describe(x, n){
-    var a = x.sc.ai || {}, tags = (a.tags_th || []).slice(0, 6).join(","), extra = [a.event, a.mood, tags].filter(Boolean).join(" · "), sp = U.speechOf ? U.speechOf(x.c, x.sc) : ""; /* บทพูดของฉาก (ถ้าเคยให้ AI ฟังเสียง) */
-    return { n:n, clip:String(x.c.name || "").replace(/\.[a-z0-9]+$/i, ""), at:U.tm(x.sc.s), who:U.chars(x.sc).map(U.enName).join(","), sum:(a.summary_th || "(ไม่มีคำอธิบาย)") + (extra ? " [" + extra + "]" : "") + (sp ? " · พูดว่า: \"" + sp.slice(0, 140) + "\"" : "") };
+  function speechFor(x, ws){ /* บทพูดของฉากที่ส่งให้ AI: สั้นพอก็ส่งทั้งหมด · ยาวเกิน = เอาบรรทัดที่มีคำของคำถามก่อน (เดิมตัดที่ 140 ตัวอักษรแรก → ประโยคที่ถามหาอยู่ท้ายๆ แล้วหลุด AI ตอบ 'ไม่มี') */
+    var L = U.speechLines ? U.speechLines(x.c, x.sc).lines : [], MAX = 700, all = L.map(function(g){ return (g.who ? g.who + ": " : "") + g.t; });
+    if(all.join(" / ").length <= MAX) return all.join(" / ");
+    var hit = function(i){ var t = String(L[i].t).toLowerCase(); return ws.some(function(w){ return t.indexOf(w) >= 0; }); }, a = all.filter(function(t, i){ return hit(i); }), b = all.filter(function(t, i){ return !hit(i); }), o = ""; /* เทียบเฉพาะเนื้อบท ไม่รวมชื่อคนพูด (ชื่อตัวละครตรงทุกบรรทัด) */
+    a.concat(b).forEach(function(t){ if(o.length + t.length < MAX) o += (o ? " / " : "") + t; }); return o;
+  }
+  function describe(x, n, ws){
+    var a = x.sc.ai || {}, tags = (a.tags_th || []).slice(0, 6).join(","), extra = [a.event, a.mood, tags].filter(Boolean).join(" · "), sp = speechFor(x, ws || []); /* บทพูดของฉาก (ถ้าเคยให้ AI ฟังเสียง) */
+    return { n:n, clip:String(x.c.name || "").replace(/\.[a-z0-9]+$/i, ""), at:U.tm(x.sc.s), who:U.chars(x.sc).map(U.enName).join(","), sum:(a.summary_th || "(ไม่มีคำอธิบาย)") + (extra ? " [" + extra + "]" : "") + (sp ? " · พูดว่า: \"" + sp + "\"" : "") };
   }
   function out(html){ $("askOut").innerHTML = html; $("askOut").hidden = !html; }
   function say(t){ out('<div class="askans">' + U.esc(t) + "</div>"); }
@@ -56,9 +62,10 @@
       say("AI กำลังแปลคำถาม...");
       var exp = await FT.askExpand(q); cost += exp.cost;
       var cs = await candidates(q, exp); cost += cs.semCost || 0;
+      var ws = U.terms(q + " " + exp.keys.join(" ")).map(function(v){ return v.map(function(w){ return String(w).toLowerCase(); }); }).reduce(function(a, v){ return a.concat(v); }, []).filter(function(w){ return w.length >= 2; });
       if(!cs.length){ say("ไม่เจอฉากที่ตรงในคลังเลย (ค้นแล้วทั้งคำที่พิมพ์และคำใกล้เคียง) · อาจยังไม่ได้ทำดัชนีคลิปที่มีฉากนี้ หรือไม่มีฟุตนี้ในมือถือ"); $("results").innerHTML = ""; return; }
       say("เจอผู้สมัคร " + cs.length + " ฉาก AI กำลังคัดให้...");
-      var r = await FT.askPick(q, cs.map(function(x, i){ return describe(x, i + 1); })); cost += r.cost;
+      var r = await FT.askPick(q, cs.map(function(x, i){ return describe(x, i + 1, ws); })); cost += r.cost;
       var picks = r.picks.filter(function(p){ return cs[p.n - 1]; }).filter(function(p, i, a){ return a.findIndex(function(z){ return z.n === p.n; }) === i; });
       out('<div class="askans">' + U.esc(r.answer || (picks.length ? "เจอ " + picks.length + " ฉาก" : "ไม่เจอฉากที่ตรง")) + '<small>ค้นจาก ' + cs.length + " ฉากผู้สมัคร" + (cs.semN ? " (รวมที่ค้นตามความหมาย " + cs.semN + " ฉาก)" : "") + (cs.semErr ? " · ค้นตามความหมายไม่ได้: " + U.esc(cs.semErr) : "") + " · ใช้ไป " + U.money(cost) + " · รูปด้านล่างตรวจเองได้ ป้าย AI ผิดได้</small></div>");
       $("findInfo").textContent = r.none || !picks.length ? "" : "คำตอบของ AI: " + picks.length + " ฉาก (แตะรูปดูใหญ่/เล่น)";
