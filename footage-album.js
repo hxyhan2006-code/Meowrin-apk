@@ -20,10 +20,13 @@
       (byKey[e.k] = byKey[e.k] || []).push(e); out.push(e); /* ไฟล์ชื่อ+ขนาดเดียวกันอยู่ได้หลายโฟลเดอร์ (ก๊อปซ้ำ) = รายการละไฟล์ แต่ใช้ดัชนีของคลิปเดียวกัน */
     });
     U.lib().forEach(function(c){
-      var k = c.name + "|" + c.size, es = byKey[k];
-      if(es){ es.forEach(function(e){ e.c = c; }); } /* ทุกไฟล์ที่ซ้ำกันนับว่าทำดัชนีแล้ว (เดิมติดแค่ตัวสุดท้าย → อีกตัวค้าง "ยังไม่ทำ" และกดทำใหม่ไม่ได้เพราะดัชนีมีอยู่แล้ว) */
-      else if(other[k]){ other[k].c = c; byKey[k] = [other[k]]; out.push(other[k]); }
-      else out.push({ k:k, name:c.name, size:c.size, album:loc.length ? MISSING : (c.album || "ไม่ระบุ"), uri:null, c:c });
+      var k = c.name + "|" + c.size, ks = [k].concat((c.aliases || []).map(function(x){ return x.name + "|" + x.size; })), hit = false; /* aliases = ชื่อ+ขนาดของคลิปที่ถูกรวมเข้ามา (การรวมคลิปซ้ำ) */
+      ks.forEach(function(kk){
+        var es = byKey[kk];
+        if(es){ hit = true; es.forEach(function(e){ e.c = c; }); } /* ทุกไฟล์ที่ซ้ำกันนับว่าทำดัชนีแล้ว (เดิมติดแค่ตัวสุดท้าย → อีกตัวค้าง "ยังไม่ทำ" และกดทำใหม่ไม่ได้เพราะดัชนีมีอยู่แล้ว) */
+        else if(other[kk]){ hit = true; other[kk].c = c; byKey[kk] = [other[kk]]; out.push(other[kk]); }
+      });
+      if(!hit) out.push({ k:k, name:c.name, size:c.size, album:loc.length ? MISSING : (c.album || "ไม่ระบุ"), uri:null, c:c });
     });
     allE = out; albums = groupFor(mode);
   }

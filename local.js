@@ -33,8 +33,12 @@
       }).catch(function(err){ v._fixing = false; if(onMsg) onMsg(err && err.message === "big" ? "คลิปนี้ใหญ่เกินจะกรอในแอพได้ (เปิดในแอพแกลเลอรีแทน)" : "กรอไม่ได้ (โหลดคลิปไม่สำเร็จ)"); });
     });
   }
-  function uriOf(c){ return c && map[key(c.name, c.size)] || null; } /* ที่อยู่ไฟล์ (file://) ให้สตูดิโอเก็บลงโปรเจกต์ */
-  function urlOf(c){ var u = c && map[key(c.name, c.size)]; return u ? fileUrl(u) : null; } /* ที่อยู่ที่ <video> เล่นได้ หรือ null */
+  function addrOf(c){ /* ที่อยู่ไฟล์ของคลิป: ชื่อ+ขนาดของตัวเอง ไม่เจอลองชื่อที่รวมมา (c.aliases จากการรวมคลิปซ้ำ) */
+    if(!c) return null; var u = map[key(c.name, c.size)]; if(u) return u;
+    var al = c.aliases || []; for(var i = 0; i < al.length; i++){ u = map[key(al[i].name, al[i].size)]; if(u) return u; } return null;
+  }
+  function uriOf(c){ return addrOf(c); } /* ที่อยู่ไฟล์ (file://) ให้สตูดิโอเก็บลงโปรเจกต์ */
+  function urlOf(c){ var u = addrOf(c); return u ? fileUrl(u) : null; } /* ที่อยู่ที่ <video> เล่นได้ หรือ null */
   async function scan(onStep){
     var M = plug("Media"), F = plug("Filesystem"); if(!M || !F) throw new Error("ใช้ได้เฉพาะในแอพ APK");
     var albums = (await M.getAlbums()).albums || [], next = {}, items = [], seen = {}, files = 0, n = 0;

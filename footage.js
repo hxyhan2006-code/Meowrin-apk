@@ -383,9 +383,13 @@
     Object.keys(g).forEach(function(k){
       var a = g[k]; if(a.length < 2) return;
       a.sort(function(x, y){ return (y.at || 0) - (x.at || 0); }); /* เอาที่ทำล่าสุด → เก็บไว้ */
+      var keep = a[0], rest = a.slice(1), changed = false, same = function(x, y){ return x.name === y.name && x.size === y.size; };
       var real = a.find(function(c){ return c.album && c.album !== "ไม่ระบุ"; }); /* อัลบั้มจริงของตัวไหนก็ได้ ดีกว่า "ไม่ระบุ" */
-      if(real && a[0].album !== real.album){ a[0].album = real.album; fix.push(a[0]); }
-      a.slice(1).forEach(function(c){ del.push(c.id); });
+      if(real && keep.album !== real.album){ keep.album = real.album; changed = true; }
+      /* จำชื่อ+ขนาดของตัวที่ถูกรวมไว้เป็นนามแฝง (aliases) ให้ตัวที่เก็บ: ไฟล์ในมือถือที่ชื่อนั้นยังนับว่าทำดัชนีแล้ว · เดิมลบทิ้งเฉย ๆ → ไฟล์ชื่ออื่นกลายเป็น "ยังไม่ทำ" กดทำใหม่ (เสียเงิน) เปิดหน้าครั้งต่อไปถูกรวมทิ้งอีก วนไม่จบ */
+      var al = (keep.aliases || []).slice();
+      rest.forEach(function(c){ [{ name:c.name, size:c.size }].concat(c.aliases || []).forEach(function(x){ if(!same(x, keep) && !al.some(function(y){ return same(x, y); })){ al.push({ name:x.name, size:x.size }); changed = true; } }); del.push(c.id); });
+      if(changed){ keep.aliases = al; fix.push(keep); }
     });
     return { del:del, fix:fix };
   }
@@ -416,14 +420,14 @@
   }
 
   /* ให้ไฟล์อื่นใช้ร่วม · footage-find.js เติม terms/hay/card/chars/hasSrc/srcUrl/openFiles/search */
-  FT.ui = { lib:function(){ return lib; }, esc:esc, msg:msg, money:money, tm:tm, capDur:capDur, refresh:refreshLib,
+  FT.ui = { findDupes:findDupes, lib:function(){ return lib; }, esc:esc, msg:msg, money:money, tm:tm, capDur:capDur, refresh:refreshLib,
             addQueue:function(items){ queue = queue.filter(function(q){ return q.status !== "skip"; }).concat(items.filter(function(a){ return !queue.some(function(q){ return q.id === a.id; }); })); renderQueue(); },
             addCost:function(x){ runCost += x; renderStats(); }, wake:wake,
             /* ให้หน้าอัลบั้มสั่งทำดัชนีคลิปในมือถือ: list = [{ name, size, uri, album, mtime }] · อ่านเฟรมจากที่อยู่ไฟล์ตรงๆ (ไม่ต้องเลือกไฟล์) · คืนจำนวนที่เข้าคิว (ข้ามคลิปที่ทำแล้ว/อยู่ในคิวแล้ว) */
             indexLocal:function(list){
               var picked = Date.now(), items = [];
               list.forEach(function(f){
-                var done = lib.find(function(c){ return c.name === f.name && c.size === f.size; }); if(done && done.status === "done") return; /* ชื่อ+ขนาดตรงเป๊ะเท่านั้น (ไม่ใช้ขนาดอย่างเดียว: คลิปคนละไฟล์ขนาดเท่ากันจะถูกข้ามผิด) */
+                var done = lib.find(function(c){ return (c.name === f.name && c.size === f.size) || (c.aliases || []).some(function(x){ return x.name === f.name && x.size === f.size; }); }); if(done && done.status === "done") return; /* รวมนามแฝงที่เกิดจากการรวมคลิปซ้ำด้วย */ /* ชื่อ+ขนาดตรงเป๊ะเท่านั้น (ไม่ใช้ขนาดอย่างเดียว: คลิปคนละไฟล์ขนาดเท่ากันจะถูกข้ามผิด) */
                 var lm = f.mtime || 0, id = FT.clipId({ name:f.name, size:f.size, lastModified:lm });
                 items.push({ file:MWLocal.fileUrl(f.uri), id:id, album:f.album || "ไม่ระบุ", mode:"", status:"wait", err:"", p:0, info:{ name:f.name, type:"video/mp4", size:f.size, lastModified:lm, picked:picked } });
               });

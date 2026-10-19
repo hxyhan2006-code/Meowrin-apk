@@ -422,6 +422,17 @@ try {
   await dp.waitForTimeout(300);
   const dpr = await dp.evaluate(() => document.getElementById('alAi').textContent);
   check('อัลบั้ม: ไฟล์ชื่อ+ขนาดเดียวกัน 2 โฟลเดอร์ + ดัชนี 1 คลิป = นับว่าทำแล้วทั้ง 2 ไฟล์ (ทำแล้ว 3/4 เหลือ 1 ไม่ใช่ 2)', /AI ทำแล้ว 3\/4 คลิป/.test(dpr) && /ทำที่เหลือ \(1\)/.test(dpr) && !dpErr.length, dpr + dpErr.join());
+  // รวมคลิปซ้ำ (ขนาด+ความยาวเท่ากัน ชื่อต่าง) ต้องจำชื่อที่ถูกรวมเป็น aliases · ไฟล์ชื่อนั้นยังนับว่าทำแล้ว ไม่ถูกขอทำใหม่ (บั๊กเดิม: ทำแล้วหาย → กดทำใหม่เสียเงิน → เปิดหน้าใหม่ถูกรวมทิ้งอีก วนไม่จบ)
+  const dm = await dp.evaluate(() => {
+    const lib = FT.ui.lib(); lib.length = 0;
+    lib.push({ id: 'm1', name: 'a.mp4', size: 50, album: 'luffy', duration: 5, status: 'done', scenes: [], at: 1 }, { id: 'm2', name: 'b.mp4', size: 50, album: 'luffy', duration: 5, status: 'done', scenes: [], at: 2 }, { id: 'm3', name: 'c.mp4', size: 60, album: 'luffy', duration: 7, status: 'done', scenes: [], at: 3 });
+    const d = FT.ui.findDupes(); const keep = d.fix[0]; lib.splice(0, lib.length, ...lib.filter((c) => !d.del.includes(c.id)));
+    const D = '/storage/emulated/0/Pictures/Gallery/owner/', f = (n, s) => ({ name: n, size: s, dir: D + 'luffy/', album: 'luffy', uri: 'file://' + D + n, mtime: 1 }); window.MWLocal.list = () => [f('a.mp4', 50), f('b.mp4', 50), f('c.mp4', 60), f('n.mp4', 70)];
+    document.dispatchEvent(new CustomEvent('ft:lib')); return { del: d.del, keepName: keep && keep.name, al: keep && keep.aliases, n: lib.length, url: MWLocal.urlOf({ name: 'zzz.mp4', size: 1, aliases: [{ name: 'b.mp4', size: 50 }] }) };
+  });
+  await dp.waitForTimeout(300);
+  const dm2 = await dp.evaluate(() => document.getElementById('alAi').textContent);
+  check('รวมคลิปซ้ำ: เก็บตัวที่ทำล่าสุด (b) ใส่ aliases ของ a · ไฟล์ a และ b ในมือถือนับว่าทำแล้วทั้งคู่ (ทำแล้ว 3/4 เหลือ 1)', dm.del.join() === 'm1' && dm.keepName === 'b.mp4' && dm.al.length === 1 && dm.al[0].name === 'a.mp4' && /AI ทำแล้ว 3\/4 คลิป/.test(dm2) && /ทำที่เหลือ \(1\)/.test(dm2), JSON.stringify([dm, dm2]));
   await dp.close();
   // จัดอัลบั้มใหม่ (footage-organize.js): แผนจากภาคที่ AI รู้แน่ → ย้ายไฟล์จริงด้วย MediaScan.move · ไม่แตะคลิปที่ไม่แน่ใจภาค/สำเนาในแอพ/ที่อยู่ถูกแล้ว/ชื่อซ้ำ · ย้ายทดลอง · เลิกทำย้ายกลับ · ไม่มีสิทธิ์ = ปุ่มขอสิทธิ์
   const og = await context.newPage(); const ogErr = []; og.on('pageerror', (e) => ogErr.push(e.message));
