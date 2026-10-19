@@ -7,20 +7,25 @@
   "use strict";
   var FT = window.FT, U = FT && FT.ui; if(!U || !FT.askPick) return;
   function $(id){ return document.getElementById(id); }
-  var MAXC = 40, PER_CLIP = 5, busy = false, shown = false; /* shown = #results กำลังโชว์คำตอบของ ถาม AI (ห้ามค้นทับอัตโนมัติ) */
+  var MAXC = 60, PER_CLIP = 5, busy = false, shown = false; /* shown = #results กำลังโชว์คำตอบของ ถาม AI (ห้ามค้นทับอัตโนมัติ) */
   U.askActive = function(){ return shown; }; U.askReset = function(){ shown = false; }; /* ค้นหาแบบปกติ (ชิป/พิมพ์) เริ่มเมื่อไหร่ = ออกจากโหมดคำตอบ */
 
   async function candidates(q, exp){ /* คืนฉากผู้สมัคร [{ c, sc, score }] จากดัชนีในเครื่อง: ค้นด้วยคำ + (ถ้าทำดัชนีความหมายไว้) ฉากที่ความหมายใกล้คำถาม รวมกันแบบจัดอันดับ (RRF) · semErr/semCost/semN ติดที่ผลลัพธ์ */
     var ts = U.terms(q), ek = exp.keys.length ? U.terms(exp.keys.join(" ")) : [], want = [], out = [];
     exp.chars.forEach(function(n){ var k = U.charKey(n); if(k && want.indexOf(k) < 0) want.push(k); });
+    var N = 0, df = new Map(), rows = []; /* v8.82 คำที่เจอในเกือบทุกฉาก (เช่น เรื่อง/ถาม) ให้คะแนนน้อย คำหายาก (เช่น เสบียง) ให้มาก · เดิมทุกคำคะแนนเท่ากัน ฉากที่มีคำเฉพาะหลุดอันดับ */
     U.lib().forEach(function(c){ if(c.status !== "done" || c.hide) return; c.scenes.forEach(function(sc){
-      var h = U.hay(c, sc), s = 0, a = sc.ai || {};
-      ts.forEach(function(v){ var k = U.matchIdx(v, h); if(k >= 0) s += [4, 2, 1][k] * 2; });
-      ek.forEach(function(v){ var k = U.matchIdx(v, h); if(k >= 0) s += [4, 2, 1][k]; });
+      var h = U.hay(c, sc), m = []; N++;
+      ts.concat(ek).forEach(function(v, vi){ var k = U.matchIdx(v, h); if(k >= 0){ m.push({ v:v, k:k, w:vi < ts.length ? 2 : 1 }); df.set(v, (df.get(v) || 0) + 1); } });
+      rows.push({ c:c, sc:sc, m:m });
+    }); });
+    var lnN = Math.log(1 + N) || 1;
+    rows.forEach(function(rw){ var c = rw.c, sc = rw.sc, s = 0, a = sc.ai || {};
+      rw.m.forEach(function(x){ s += [4, 2, 1][x.k] * x.w * (Math.log(1 + N / (1 + df.get(x.v))) / lnN) * 2.5; });
       if(want.length){ var cs = U.chars(sc), hit = want.filter(function(k){ return cs.indexOf(k) >= 0; }).length; if(!hit) return; s += hit * 8; } /* ถามถึงตัวละคร = ฉากต้องมีตัวละครนั้น */
       (a.issues || []).forEach(function(x){ if(/screen/.test(x)) s -= 3; });
       if(s > 0) out.push({ c:c, sc:sc, score:s });
-    }); });
+    });
     out.sort(function(x, y){ return y.score - x.score; });
     var semErr = "", semCost = 0, semN = 0;
     if(FT.sem){ /* v8.63 ฉากที่ความหมายใกล้คำถาม (ไม่ต้องมีคำตรงกัน) */

@@ -2,7 +2,7 @@
    แก้ด้วย `node bump-version.mjs X.Y` เท่านั้น (บวก ?v= ของทุกไฟล์ให้ตรงกันด้วย) · ไม่ต้องแสดงเลขรุ่นที่อื่นอีก */
 (function(){
   "use strict";
-  var VERSION = "8.81";
+  var VERSION = "8.82";
   window.MW_VERSION = VERSION; /* ota.js ใช้แสดง/เทียบเวอร์ชัน */
   var el = document.getElementById("appVersion");
   if(el) el.textContent = "Meowrin factory v" + VERSION;

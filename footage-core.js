@@ -389,7 +389,7 @@
     var list = cands.map(function(c){ return c.n + ". [" + c.clip + " · " + c.at + "] " + (c.who ? c.who + " · " : "") + c.sum; }).join("\n");
     var r = await askText([
       "You are the footage librarian for a Thai One Piece editor. He asks a question about his footage. Below are candidate scenes from his library, each with an automatic description (it can be imperfect).",
-      "Text after \"พูดว่า\" is the real dialogue transcript of the scene (speaker: words) - it is more reliable than the visual description, so use it to match what was said. Judge by BOTH.",
+      "Text after \"พูดว่า\" is the real dialogue transcript of the scene (speaker: words) - it is more reliable than the visual description, so use it to match what was said. If the dialogue of a scene clearly contains what he asks about (even in the middle of a long dialogue), pick that scene. Judge by BOTH.",
       "Pick the scenes that truly answer the question (best first, at most 12). If nothing truly matches, say so honestly: none=true and picks=[]. Never invent scenes not in the list.",
       "Write answer in short casual Thai (1-3 sentences): how many matching scenes and in which clips (name + minute), or that there is none. For each pick give a short Thai reason.",
       "Return ONLY JSON: {\"answer\":\"Thai\",\"none\":false,\"picks\":[{\"n\":<number>,\"why\":\"short Thai\"}]}",
