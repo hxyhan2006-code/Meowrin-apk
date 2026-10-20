@@ -355,6 +355,9 @@ body.stk-open{overflow:hidden}
 .stk-snow .ic{width:34px;height:34px;margin:0;color:var(--line-strong)}
 .stk-snow.on .ic{color:var(--frost)}
 .stk-note .ic{color:var(--frost)}
+.stk-fold{margin:0 0 14px}
+.stk-fold .stk-act{margin-top:12px}
+.stk-fold .hint{margin-bottom:0}
 .stk-sw{display:flex;align-items:center;gap:10px;margin:0;font-size:14px;color:var(--text);cursor:pointer}
 .stk-times{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .stk-chip{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line-strong);background:var(--field);color:var(--muted);font:600 14px "IBM Plex Sans Thai",sans-serif;cursor:pointer}

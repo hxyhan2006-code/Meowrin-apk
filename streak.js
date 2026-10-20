@@ -18,7 +18,7 @@
   var MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
   var btn = document.getElementById("stkBtn"), page = document.getElementById("stkPage");
   var st = MWStore.get(KEY, null) || {};
-  var busy = false, err = "", tick = 0, view = null, prevHook = null, nst = null, sent = "";
+  var busy = false, err = "", tick = 0, view = null, prevHook = null, nst = null, sent = "", nOpen = false; /* nOpen = แถบ วิดเจ็ต+แจ้งเตือน เปิดอยู่ไหม (วาดหน้าใหม่แล้วไม่หุบเอง) */
   function plugin(){ return window.MWNative && MWNative.plug ? MWNative.plug("Streak") : null; }
   function notif(){ return st.notif || { on: true, times: TIMES.slice() }; }
 
@@ -151,16 +151,22 @@
   }
   function refreshStatus(){ var P = plugin(); if(P && P.status) P.status().then(function(r){ nst = r; render(); }).catch(function(){}); }
 
+  /* แถบพับได้แบบเดียวกับตั้งค่า (details.fold.top) · ป้ายสถานะโชว์เฉพาะตอนมีเรื่องให้ดูแล (สิทธิ์/แบต/ต้องลง APK ใหม่) */
   function notifBox(){
-    var P = plugin(), n = notif(), h = '<div class="stk-box"><h3>วิดเจ็ต + แจ้งเตือน</h3>';
-    if(!P) return h + '<p class="hint tip">ต้องลง APK ใหม่ (สร้างหลัง v8.98) ถึงจะมีวิดเจ็ตบนหน้าจอหลักและแจ้งเตือนเรียกตัว · GitHub → Actions → build-apk → Run workflow</p></div>';
-    h += '<label class="stk-sw"><input type="checkbox" data-stk="on"' + (n.on ? " checked" : "") + '> แจ้งเตือนเมื่อวันนี้ยังทำงานไม่ครบ</label>';
-    if(n.on) h += '<div class="stk-times">' + TIMES.map(function(t){ return '<button type="button" class="stk-chip' + (n.times.indexOf(t) >= 0 ? " on" : "") + '" data-stk="time" data-t="' + t + '">' + t + '</button>'; }).join("") + '</div>';
-    if(nst && n.on && !nst.notify) h += '<div class="stk-warn">' + MWIcon("warn") + '<span>ยังไม่ได้อนุญาตแจ้งเตือน</span><button class="btn small" data-stk="perm">อนุญาต</button></div>';
-    if(nst && !nst.battery) h += '<div class="stk-warn">' + MWIcon("warn") + '<span>แอพถูกจำกัดแบต แจ้งเตือน/วิดเจ็ตอาจไม่อัปเดต · ตั้งค่าแอพ → แบตเตอรี่ → ไม่จำกัด/อนุญาตทำงานเบื้องหลัง</span><button class="btn small ghost" data-stk="settings">เปิด</button></div>';
-    h += '<div class="row stk-act">' + (nst && nst.widgets ? '<span class="stk-ok">' + MWIcon("check") + 'มีวิดเจ็ตบนหน้าจอแล้ว</span>'
-        : '<button class="btn ghost" data-stk="pin">เพิ่มวิดเจ็ตบนหน้าจอ</button>') + '<button class="btn ghost" data-stk="test">ทดสอบแจ้งเตือน</button></div>';
-    return h + '<p class="hint tip">มือถือเช็กยอดวันนี้เองทุก 30 นาที (10:00–23:30) แม้ไม่ได้เปิดแอพ · ทำครบแล้วแจ้งเตือนที่เหลือของวันนั้นเงียบเอง · ข้อความสุ่มไม่ซ้ำ</p></div>';
+    var P = plugin(), n = notif(), tag, kind = "warn", body = "";
+    if(!P){ tag = "ต้องลง APK ใหม่"; body = '<p class="hint tip">ต้องลง APK ใหม่ (สร้างหลัง v8.98) ถึงจะมีวิดเจ็ตบนหน้าจอหลักและแจ้งเตือนเรียกตัว · GitHub → Actions → build-apk → Run workflow</p>'; }
+    else {
+      var needPerm = nst && n.on && !nst.notify, needBat = nst && !nst.battery;
+      tag = needPerm ? "ยังไม่อนุญาตแจ้งเตือน" : needBat ? "แบตจำกัดอยู่" : n.on ? "เปิดอยู่" : "ปิดอยู่"; kind = needPerm || needBat ? "warn" : "idle";
+      body = '<label class="stk-sw"><input type="checkbox" data-stk="on"' + (n.on ? " checked" : "") + '> แจ้งเตือนเมื่อวันนี้ยังทำงานไม่ครบ</label>';
+      if(n.on) body += '<div class="stk-times">' + TIMES.map(function(t){ return '<button type="button" class="stk-chip' + (n.times.indexOf(t) >= 0 ? " on" : "") + '" data-stk="time" data-t="' + t + '">' + t + '</button>'; }).join("") + '</div>';
+      if(needPerm) body += '<div class="stk-warn">' + MWIcon("warn") + '<span>ยังไม่ได้อนุญาตแจ้งเตือน</span><button class="btn small" data-stk="perm">อนุญาต</button></div>';
+      if(needBat) body += '<div class="stk-warn">' + MWIcon("warn") + '<span>แอพถูกจำกัดแบต แจ้งเตือน/วิดเจ็ตอาจไม่อัปเดต · ตั้งค่าแอพ → แบตเตอรี่ → ไม่จำกัด/อนุญาตทำงานเบื้องหลัง</span><button class="btn small ghost" data-stk="settings">เปิด</button></div>';
+      body += '<div class="row stk-act">' + (nst && nst.widgets ? '<span class="stk-ok">' + MWIcon("check") + 'มีวิดเจ็ตบนหน้าจอแล้ว</span>'
+          : '<button class="btn ghost" data-stk="pin">เพิ่มวิดเจ็ตบนหน้าจอ</button>') + '<button class="btn ghost" data-stk="test">ทดสอบแจ้งเตือน</button></div>'
+        + '<p class="hint tip">มือถือเช็กยอดวันนี้เองทุก 30 นาที (10:00–23:30) แม้ไม่ได้เปิดแอพ · ทำครบแล้วแจ้งเตือนที่เหลือของวันนั้นเงียบเอง · ข้อความสุ่มไม่ซ้ำ</p>';
+    }
+    return '<details class="fold top stk-fold" id="stkNotif"' + (nOpen ? " open" : "") + '><summary><span>วิดเจ็ต + แจ้งเตือน</span><em class="state ' + kind + '">' + tag + '</em></summary><div class="fbody">' + body + '</div></details>';
   }
 
   function renderBtn(s){
@@ -252,6 +258,7 @@
         st = { notif: st.notif }; err = ""; save(); render();
       }
     });
+    page.addEventListener("toggle", function(e){ if(e.target.id === "stkNotif") nOpen = e.target.open; }, true); /* toggle ไม่ลอยขึ้น ต้องดักตอนจับ */
     page.addEventListener("keydown", function(e){ if(e.key === "Enter" && e.target.dataset.stk === "handle") setup(e.target.value); });
     document.addEventListener("visibilitychange", function(){ if(!document.hidden){ render(); check(false); if(!page.hidden) refreshStatus(); } }); /* กลับจากหน้าตั้งค่าแอพ = อ่านสิทธิ์ใหม่ */ /* กลับจาก CapCut/YouTube = เช็กยอดวันนี้ใหม่ (เว้น 3 นาที) */
     render(); check(false);
