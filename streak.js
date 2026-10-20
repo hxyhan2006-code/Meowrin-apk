@@ -3,6 +3,7 @@
    กติกา: วันละ GOAL คลิป = ไฟติด · คลิปเกิน GOAL ทุก 2 คลิป = กันไฟดับ 1 อัน (เก็บได้ MAX_FREEZE) · วันที่ไม่ครบใช้กันไฟดับอัตโนมัติ ไม่มีเหลือ = ไฟดับเริ่มนับใหม่
    คำนวณสตรีคใหม่ทั้งหมดจากจำนวนคลิปรายวัน (days) ทุกครั้ง ไม่เก็บตัวนับที่คลาดได้ · เก็บใน MWStore key mw_streak_v1
    ข้อความแจ้งเตือน/วิดเจ็ตอยู่ใน streak-msgs.js (MWStreakMsgs) · Han วางชุดของตัวเองได้ (แถบ "ข้อความของฉัน": คำตอบจาก AI นอกแอพ หัวหมวด [11:00] [w_d] …)
+   แถบ "Prompt ของฉัน" เก็บ prompt สั่ง AI ไว้ (mw_streak_prompt_v1 ข้อความล้วน บันทึกเองทุกครั้งที่พิมพ์/วาง) มี วาง/คัดลอก/ลบ
    เก็บใน mw_streak_msgs_v1 { raw ข้อความที่วาง, pools หมวดที่แยกได้, at } · หมวดที่ไม่ได้วางใช้ของเดิม · ลบทั้งหมด = กลับไปใช้ชุดเริ่มต้น
    { handle, chId, title, list, since:"YYYY-MM-DD" วันเริ่มนับ, days:{ "YYYY-MM-DD": จำนวนคลิป }, syncedAt, sprint: เวลาเริ่มจับ 10 นาที, cheered: วันที่ฉลองไฟติดแล้ว }
    notif: { on, times:["HH:MM"] } แจ้งเตือน (ส่งเฉพาะวันที่ยังไม่ครบ)
@@ -29,6 +30,12 @@
     return Object.keys(pools).length ? { raw: typeof v.raw === "string" ? v.raw : "", pools: pools, at: v.at || 0 } : null;
   }
   var MKEY = "mw_streak_msgs_v1", my = cleanMy(MWStore.get(MKEY, null)), draft = my ? my.raw : "", mOpen = false, mMsg = "", mErr = false;
+  var PKEY = "mw_streak_prompt_v1", pr = String(MWStore.get(PKEY, "") || ""), pOpen = false;
+  /* คัดลอก: clipboard เขียนได้ในแอพ · ไม่ได้ = เปิดกล่องให้ก๊อปเอง (MWDialog.copy) */
+  async function copyOut(t, what){
+    if(!t){ MW.toast(what + "ว่างอยู่ ไม่มีอะไรให้คัดลอก", true); return; }
+    try{ await navigator.clipboard.writeText(t); MW.toast("คัดลอก" + what + "แล้ว"); }catch(e){ await MWDialog.copy(t); }
+  }
   function msgs(){ return Object.assign({}, window.MWStreakMsgs || {}, my ? my.pools : {}); } /* ชุดของ Han ทับเฉพาะหมวดที่วาง (cleanMy รับประกันว่าเป็นอาร์เรย์ไม่ว่าง) */
   function vis(t){ return t.replace(/\{streak\}/g, "000").replace(/\{\w+\}/g, "0").replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, "").length; } /* ความยาวที่มองเห็น ไม่นับสระบน/ล่าง วรรณยุกต์ */
   /* แยกคำตอบจาก AI: บรรทัด [หมวด] = หัว (มี ** ครอบได้) · บรรทัดถัดไป = ข้อความ (ตัดเลขข้อ/ขีด/จุด/เครื่องหมายคำพูดออก) · หัวที่ไม่รู้จัก = ข้ามทั้งหมวด */
@@ -202,10 +209,18 @@
     return '<details class="fold top stk-fold" id="stkMsgs"' + (mOpen ? " open" : "") + '><summary><span>ข้อความของฉัน</span><em class="state idle">' + (my ? "ชุดของคุณ" : "") + '</em></summary><div class="fbody">'
       + '<p class="hint tip">วางคำตอบจาก AI (ที่มีหัวหมวด [11:00] [any] [w_d] …) แล้วกด ใช้ข้อความนี้ · หมวดที่ไม่ได้วางใช้ของเดิม · ลบทั้งหมด = กลับไปใช้ชุดเริ่มต้นของแอพ</p>'
       + '<textarea data-stk="mtext" rows="8" spellcheck="false" placeholder="[11:00]&#10;ข้อความ&#10;ข้อความ&#10;[w_d]&#10;ข้อความ" aria-label="ข้อความของฉัน">' + MW.esc(draft) + '</textarea>'
-      + '<div class="row stk-act"><button type="button" class="btn ghost" data-stk="mpaste">วาง</button><button type="button" class="btn ghost" data-stk="mclear">ลบทั้งหมด</button></div>'
+      + '<div class="row stk-act"><button type="button" class="btn ghost" data-stk="mpaste">วาง</button><button type="button" class="btn ghost" data-stk="mcopy">คัดลอก</button><button type="button" class="btn ghost" data-stk="mclear">ลบทั้งหมด</button></div>'
       + '<button type="button" class="btn stk-wide" data-stk="msave">ใช้ข้อความนี้</button>'
       + (mMsg ? '<div class="msg' + (mErr ? " err" : "") + '">' + MW.esc(mMsg) + '</div>' : "")
       + '<p class="hint">ตอนนี้ใช้: ' + (my ? "ชุดของคุณ " + Object.keys(my.pools).length + " หมวด · " + cnt + " ข้อความ (หมวดอื่นใช้ของเดิม)" : "ชุดเริ่มต้นของแอพ") + '</p></div></details>';
+  }
+
+  function promptBox(){
+    return '<details class="fold top stk-fold" id="stkPrompt"' + (pOpen ? " open" : "") + '><summary><span>Prompt ของฉัน</span><em class="state idle"></em></summary><div class="fbody">'
+      + '<p class="hint tip">เก็บ prompt ที่ใช้สั่ง AI เจนข้อความไว้ที่นี่ กลัวหาย · บันทึกเองทุกครั้งที่พิมพ์หรือวาง · ไม่ส่งไปไหน เก็บในเครื่อง</p>'
+      + '<textarea data-stk="ptext" rows="8" spellcheck="false" placeholder="วาง prompt ของคุณตรงนี้" aria-label="Prompt ของฉัน">' + MW.esc(pr) + '</textarea>'
+      + '<div class="row stk-act"><button type="button" class="btn ghost" data-stk="ppaste">วาง</button><button type="button" class="btn ghost" data-stk="pcopy">คัดลอก</button><button type="button" class="btn ghost" data-stk="pclear">ลบ</button></div>'
+      + '<p class="hint">' + (pr ? "บันทึกอยู่ " + pr.length + " ตัวอักษร" : "ยังไม่มี prompt") + '</p></div></details>';
   }
 
   function renderBtn(s){
@@ -247,7 +262,7 @@
       + '<div class="stk-box"><h3>กันไฟดับ ' + s.freeze + '/' + MAX_FREEZE + '</h3><div class="stk-frz">' + snow + '</div>'
       + '<p class="hint tip">วันที่ลงไม่ครบ ' + GOAL + ' คลิป แอพใช้กันไฟดับให้เอง ไฟไม่ดับ · ได้เพิ่มจากการลงเกินวันละ ' + GOAL + ' คลิป ทุก ' + BONUS_PER_FREEZE + ' คลิป = 1 อัน'
       + (s.freeze < MAX_FREEZE ? ' · อีก ' + (BONUS_PER_FREEZE - s.bonus) + ' คลิปได้อันต่อไป' : ' · เต็มแล้ว') + '</p></div>'
-      + notifBox() + myBox()
+      + notifBox() + myBox() + promptBox()
       + '<div class="stk-foot">' + esc(st.handle) + ' · ' + (busy ? "กำลังเช็ก..." : st.syncedAt ? "เช็กล่าสุด " + ago(st.syncedAt) : "ยังไม่ได้เช็ก") + '<button type="button" class="stk-link" data-stk="change">เปลี่ยนช่อง</button></div>';
   }
 
@@ -294,6 +309,15 @@
         try{ var t = await navigator.clipboard.readText(); if(!t){ MW.toast("คลิปบอร์ดว่างอยู่", true); return; } draft = t; mMsg = ""; render(); }
         catch(e2){ MW.toast("ปุ่มวางใช้ไม่ได้ในเครื่องนี้ กดค้างในช่องแล้วเลือก วาง แทน", true, 4000); }
       }
+      else if(a === "mcopy") copyOut(draft, "ข้อความ");
+      else if(a === "ppaste"){
+        var pt; try{ pt = await navigator.clipboard.readText(); }catch(e3){ MW.toast("ปุ่มวางใช้ไม่ได้ในเครื่องนี้ กดค้างในช่องแล้วเลือก วาง แทน", true, 4000); return; }
+        if(!pt){ MW.toast("คลิปบอร์ดว่างอยู่", true); return; }
+        if(pr && pr !== pt && !await MWDialog.confirm("แทนที่ prompt เดิมด้วยที่เพิ่งวางไหม?")) return; /* ไม่ทับ prompt ที่เก็บไว้เงียบๆ */
+        pr = pt; MWStore.set(PKEY, pr); render();
+      }
+      else if(a === "pcopy") copyOut(pr, " prompt".trim());
+      else if(a === "pclear") MW.confirmTap(b, "ลบ", function(){ pr = ""; MWStore.del(PKEY); render(); });
       else if(a === "mclear") MW.confirmTap(b, "ลบทั้งหมด", function(){ draft = ""; my = null; MWStore.del(MKEY); mMsg = "ลบแล้ว กลับไปใช้ชุดเริ่มต้นของแอพ"; mErr = false; render(); });
       else if(a === "msave"){
         var r = parseMsgs(draft);
@@ -316,8 +340,8 @@
         st = { notif: st.notif }; err = ""; save(); render();
       }
     });
-    page.addEventListener("toggle", function(e){ if(e.target.id === "stkNotif") nOpen = e.target.open; if(e.target.id === "stkMsgs") mOpen = e.target.open; }, true); /* toggle ไม่ลอยขึ้น ต้องดักตอนจับ */
-    page.addEventListener("input", function(e){ if(e.target.dataset.stk === "mtext") draft = e.target.value; }); /* จำที่พิมพ์/วางไว้ วาดหน้าใหม่แล้วไม่หาย */
+    page.addEventListener("toggle", function(e){ if(e.target.id === "stkNotif") nOpen = e.target.open; if(e.target.id === "stkMsgs") mOpen = e.target.open; if(e.target.id === "stkPrompt") pOpen = e.target.open; }, true); /* toggle ไม่ลอยขึ้น ต้องดักตอนจับ */
+    page.addEventListener("input", function(e){ var k = e.target.dataset.stk; if(k === "mtext") draft = e.target.value; if(k === "ptext"){ pr = e.target.value; if(pr) MWStore.set(PKEY, pr); else MWStore.del(PKEY); var h = page.querySelector("#stkPrompt .fbody > .hint:last-child"); if(h) h.textContent = pr ? "บันทึกอยู่ " + pr.length + " ตัวอักษร" : "ยังไม่มี prompt"; } }); /* จำที่พิมพ์/วางไว้ วาดหน้าใหม่แล้วไม่หาย */
     page.addEventListener("keydown", function(e){ if(e.key === "Enter" && e.target.dataset.stk === "handle") setup(e.target.value); });
     document.addEventListener("visibilitychange", function(){ if(!document.hidden){ render(); check(false); if(!page.hidden) refreshStatus(); } }); /* กลับจากหน้าตั้งค่าแอพ = อ่านสิทธิ์ใหม่ */ /* กลับจาก CapCut/YouTube = เช็กยอดวันนี้ใหม่ (เว้น 3 นาที) */
     render(); check(false);

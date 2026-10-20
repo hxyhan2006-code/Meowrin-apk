@@ -1203,7 +1203,7 @@ try {
   // ไฟวันต่อเนื่อง ฝั่งเนทีฟ (ปลั๊กอิน Streak ปลอม): ส่ง base/กันไฟดับ/ยอดวันนี้/ข้อความให้วิดเจ็ต · แตะวิดเจ็ตแล้วเปิดหน้าไฟเอง · ตั้งเวลาแจ้งเตือน · เตือนสิทธิ์/แบต · ไม่มีปลั๊กอิน = บอกให้ลง APK ใหม่
   {
     const nv = await context.newPage(); const nvErr = []; nv.on('pageerror', (e) => nvErr.push(e.message));
-    await nv.addInitScript(() => { window.__sk = []; const st = { notify: false, battery: false, widgets: 1, canPin: true }; window.__tw = [];
+    await nv.addInitScript(() => { window.__sk = []; const st = { notify: false, battery: false, widgets: 1, canPin: true }; window.__tw = []; Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { window.__cb = t; }, readText: async () => 'วางจากคลิปบอร์ด' } });
       window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: (n) => n === 'Streak', Plugins: { Streak: {
         sync: async (a) => { __sk.push(a); return st; }, status: async () => st, consumeOpen: async () => ({ open: true }), addListener: () => {},
         requestNotify: async () => st, openSettings: async () => {}, pinWidget: async () => ({ ok: true }), test: async () => {}, testWidget: async (a) => { __tw.push(a.state); return { widgets: 1 }; } } } }; });
@@ -1228,10 +1228,19 @@ try {
     await nv.click('#stkMsgs summary'); await nv.fill('#stkMsgs textarea', '**[w_d]**\n1. เท่ว่ะ\n- "สุดยอด"\n\n[foo]\nข้ามอันนี้\n[11:00]\nตื่นดิ'); await nv.click('#stkMsgs [data-stk=msave]'); await nv.waitForTimeout(300);
     const my1 = await nv.evaluate(() => { const m = __sk[__sk.length - 1].msgs; return { wd: m.w_d, m11: m['11:00'], wz: m.w_z.length, saved: !!MWStore.get('mw_streak_msgs_v1', null), msg: document.querySelector('#stkMsgs .msg').textContent, open: document.querySelector('#stkMsgs').open }; });
     check('ข้อความของฉัน: วางคำตอบ AI → แยกตามหัวหมวด (ตัดเลขข้อ/ขีด/คำพูด, ข้ามหัวที่ไม่รู้จัก) ส่งให้มือถือ · หมวดที่ไม่ได้วางใช้ของเดิม', JSON.stringify(my1.wd) === '["เท่ว่ะ","สุดยอด"]' && JSON.stringify(my1.m11) === '["ตื่นดิ"]' && my1.wz === 20 && my1.saved && /2 หมวด 3 ข้อความ/.test(my1.msg) && /foo/.test(my1.msg) && my1.open, JSON.stringify(my1));
+    await nv.fill('#stkMsgs textarea', '[w_d]\nเท่ว่ะ'); await nv.click('#stkMsgs [data-stk=mcopy]'); await nv.waitForTimeout(200);
+    check('ข้อความของฉัน: ปุ่ม คัดลอก ส่งข้อความในช่องไปคลิปบอร์ด', await nv.evaluate(() => __cb === '[w_d]\nเท่ว่ะ'));
     await nv.click('#stkMsgs [data-stk=mclear]'); await nv.click('#stkMsgs [data-stk=mclear]'); await nv.waitForTimeout(300);
     const my2 = await nv.evaluate(() => ({ wd: __sk[__sk.length - 1].msgs.w_d.length, saved: MWStore.get('mw_streak_msgs_v1', null), text: document.querySelector('#stkMsgs textarea').value }));
     check('ข้อความของฉัน: ลบทั้งหมด (แตะสองครั้ง) = ล้างช่อง + กลับไปใช้ชุดเริ่มต้น', my2.wd === 20 && my2.saved === null && my2.text === '', JSON.stringify(my2));
-    await nv.evaluate(() => { MWStore.del('mw_streak_v1'); MWStore.del('mw_streak_msgs_v1'); MWStore.flush(); }); await nv.waitForTimeout(300); await nv.close();
+    await nv.click('#stkPrompt summary'); await nv.fill('#stkPrompt textarea', 'prompt ทดสอบ'); await nv.waitForTimeout(200);
+    const pr1 = await nv.evaluate(() => MWStore.get('mw_streak_prompt_v1', null)); await nv.click('#stkPrompt [data-stk=pcopy]'); await nv.waitForTimeout(150); const cb1 = await nv.evaluate(() => __cb);
+    await nv.click('#stkPrompt [data-stk=ppaste]'); await nv.waitForTimeout(300); const dlg = await nv.evaluate(() => !!document.querySelector('.mwd:not([hidden])'));
+    check('Prompt ของฉัน: พิมพ์แล้วบันทึกเองทันที · คัดลอกได้ · วางทับ prompt เดิมต้องถามก่อน (ไม่ทับเงียบๆ)', pr1 === 'prompt ทดสอบ' && cb1 === 'prompt ทดสอบ' && dlg && await nv.evaluate(() => document.querySelector('#stkPrompt textarea').value === 'prompt ทดสอบ'), JSON.stringify({ pr1, cb1, dlg }));
+    await nv.evaluate(() => { const b = document.querySelector('.mwd:not([hidden]) .mwd-btn:not(.ok)'); if (b) b.click(); }); await nv.waitForTimeout(200);
+    await nv.click('#stkPrompt [data-stk=pclear]'); await nv.click('#stkPrompt [data-stk=pclear]'); await nv.waitForTimeout(250);
+    check('Prompt ของฉัน: ปุ่มลบ (แตะสองครั้ง) ล้างช่องและลบที่เก็บไว้', await nv.evaluate(() => document.querySelector('#stkPrompt textarea').value === '' && MWStore.get('mw_streak_prompt_v1', null) === null));
+    await nv.evaluate(() => { MWStore.del('mw_streak_v1'); MWStore.del('mw_streak_msgs_v1'); MWStore.del('mw_streak_prompt_v1'); MWStore.flush(); }); await nv.waitForTimeout(300); await nv.close();
     const np = await context.newPage(); await np.goto(base + '/index.html'); await np.waitForFunction(() => window.MWStreak, null, { timeout: 20000 });
     await np.evaluate(() => { MWStore.set('mw_streak_v1', { handle: '@x', list: 'UUSHx', since: '2026-01-01', days: {}, syncedAt: Date.now() }); }); await np.reload(); await np.waitForFunction(() => window.MWStreak, null, { timeout: 20000 });
     await np.click('#stkBtn'); await np.waitForTimeout(300);
