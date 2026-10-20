@@ -37,20 +37,23 @@
   async function fetchDays(){
     var from = st.syncedAt ? addDay(dayKey(st.syncedAt), -2) : st.since;
     if(from < st.since) from = st.since;
-    var counts = {}, token = "", oldest = "", crossed = false, pages = 0;
+    var counts = {}, token = "", oldest = "", oldPages = 0, pages = 0, seen = 0;
     for(;;){
       var p = { part: "contentDetails", playlistId: st.list, maxResults: 50 }; if(token) p.pageToken = token;
-      var r = await MWSync.yt("playlistItems", p);
+      var r = await MWSync.yt("playlistItems", p), fresh = 0;
       (r.items || []).forEach(function(it){
         var at = it.contentDetails && it.contentDetails.videoPublishedAt; if(!at) return; /* คลิปที่ลบ/ตั้งเป็นส่วนตัวไม่มีเวลาลง */
-        var k = dayKey(at); if(!oldest || k < oldest) oldest = k;
-        if(k < from){ crossed = true; return; }
-        counts[k] = (counts[k] || 0) + 1;
+        var k = dayKey(at); seen++; if(!oldest || k < oldest) oldest = k;
+        if(k < from) return;
+        fresh++; counts[k] = (counts[k] || 0) + 1;
       });
       token = r.nextPageToken; pages++;
-      if(crossed || !token) break;
-      if(pages >= MAX_PAGES){ from = addDay(oldest, 1); break; } /* ดูไม่ถึง: วันเก่าสุดที่เห็นอาจนับไม่ครบ → ไม่ทับของเดิมตั้งแต่วันนั้นลงไป */
+      /* playlist เรียงตามวันอัปโหลด ไม่ใช่วันลง: คลิปตั้งเวลาลงล่วงหน้าอยู่ลึกกว่าคลิปเก่าได้ → หยุดเมื่อเจอหน้าที่เก่าทั้งหน้า 2 หน้าติด ไม่ใช่คลิปเก่าคลิปแรก */
+      oldPages = fresh ? 0 : oldPages + 1;
+      if(oldPages >= 2 || !token) break;
+      if(pages >= MAX_PAGES){ if(!oldest) return; from = addDay(oldest, 1); break; } /* ดูไม่ถึง: วันเก่าสุดที่เห็นอาจนับไม่ครบ → ไม่ทับของเดิมตั้งแต่วันนั้นลงไป */
     }
+    if(!seen && Object.keys(st.days || {}).some(function(k){ return k >= from; })) throw new Error("YouTube ไม่ส่งรายการคลิปมา ลองใหม่อีกที"); /* ได้ว่างเปล่าผิดปกติ → ไม่ลบยอดที่นับไว้แล้ว */
     var days = st.days || {};
     Object.keys(days).forEach(function(k){ if(k >= from) delete days[k]; });
     Object.keys(counts).forEach(function(k){ if(k >= from) days[k] = counts[k]; });

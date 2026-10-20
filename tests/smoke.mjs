@@ -1179,7 +1179,8 @@ try {
   {
     const sk = await context.newPage(); const skErr = []; sk.on('pageerror', (e) => skErr.push(e.message));
     await sk.addInitScript(() => { const of = window.fetch; window.fetch = (u, o) => { u = String(u); if (!u.includes('googleapis.com/youtube')) return of(u, o); const now = new Date().toISOString();
-      const j = u.includes('/channels') ? { items: [{ id: 'UCabc', snippet: { title: 'meowrin' }, contentDetails: { relatedPlaylists: { uploads: 'UUabc' } } }] } : { items: [now, now, now, '2020-01-01T00:00:00Z'].map((t) => ({ contentDetails: { videoPublishedAt: t } })) };
+      const j = u.includes('/channels') ? { items: [{ id: 'UCabc', snippet: { title: 'meowrin' }, contentDetails: { relatedPlaylists: { uploads: 'UUabc' } } }] } : u.includes('pageToken=p2') ? { items: [now, now, '2020-01-02T00:00:00Z'].map((t) => ({ contentDetails: { videoPublishedAt: t } })) } /* หน้า 2: คลิปตั้งเวลาลงวันนี้ อยู่หลังคลิปเก่า */
+        : { nextPageToken: 'p2', items: [now, '2020-01-01T00:00:00Z'].map((t) => ({ contentDetails: { videoPublishedAt: t } })) };
       return Promise.resolve(new Response(JSON.stringify(j), { status: 200 })); }; });
     await sk.goto(base + '/index.html'); await sk.waitForFunction(() => window.MWStreak && window.MW, null, { timeout: 20000 });
     const sc = await sk.evaluate(() => { const c = MWStreak.calc, f = (r) => [r.streak, r.freeze]; return [
@@ -1192,7 +1193,7 @@ try {
     await sk.fill('#stkCard [data-stk=handle]', 'meowrin'); await sk.click('#stkCard [data-stk=setup]');
     await sk.waitForFunction(() => /3\/2/.test(document.getElementById('stkCard').textContent), null, { timeout: 8000 }).catch(() => {});
     const sr = await sk.evaluate(() => { const c = document.getElementById('stkCard'), r = c.getBoundingClientRect(); return { t: c.textContent, lit: c.classList.contains('lit'), over: [...c.querySelectorAll('*')].some((x) => x.getBoundingClientRect().right > r.right + 1), st: MWStore.get('mw_streak_v1', {}) }; });
-    check('ไฟวันต่อเนื่อง: ใส่ช่องแล้วนับคลิปวันนี้จาก YouTube (3/2 ไฟติด โบนัส +1 · คลิปก่อนวันเริ่มนับไม่นับ) · การ์ดไม่ล้นจอ · ไม่มี error', sr.lit && /3\/2/.test(sr.t) && /โบนัส \+1/.test(sr.t) && sr.st.list === 'UUSHabc' && Object.keys(sr.st.days).length === 1 && !sr.over && !skErr.length, JSON.stringify(sr).slice(0, 300) + skErr.join());
+    check('ไฟวันต่อเนื่อง: ใส่ช่องแล้วนับคลิปวันนี้จาก YouTube (3/2 ไฟติด โบนัส +1 · คลิปก่อนวันเริ่มนับไม่นับ · คลิปตั้งเวลาที่อยู่หลังคลิปเก่าในหน้า 2 ก็นับ) · การ์ดไม่ล้นจอ · ไม่มี error', sr.lit && /3\/2/.test(sr.t) && /โบนัส \+1/.test(sr.t) && sr.st.list === 'UUSHabc' && Object.keys(sr.st.days).length === 1 && !sr.over && !skErr.length, JSON.stringify(sr).slice(0, 300) + skErr.join());
     await sk.evaluate(() => { MWStore.del('mw_key_v1'); MWStore.del('mw_streak_v1'); MWStore.flush(); }); await sk.waitForTimeout(300);
     await sk.close();
   }
