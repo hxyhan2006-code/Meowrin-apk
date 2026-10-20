@@ -62,6 +62,7 @@ public class StreakPlugin extends Plugin {
         e.putInt("freeze", call.getInt("freeze", 0));
         e.putInt("today", call.getInt("today", 0));
         e.putString("day", call.getString("day", StreakCore.dayKey(System.currentTimeMillis())));
+        e.putString("broke", call.getString("broke", ""));
         e.putBoolean("notify", call.getBoolean("notify", false));
         JSArray times = call.getArray("times", new JSArray());
         StringBuilder sb = new StringBuilder();
