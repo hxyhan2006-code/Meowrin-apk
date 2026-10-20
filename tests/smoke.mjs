@@ -529,6 +529,23 @@ try {
   check('จัดอัลบั้มใหม่: ปุ่มย้อนของมือถือ = ปิดหน้าจัดอัลบั้ม กลับหน้าอัลบั้ม · ไม่มี error', await og.evaluate(() => document.getElementById('orgBox').hidden && !FT.organize.isOpen() && !document.documentElement.classList.contains('orgopen')) && !ogErr.length, ogErr.join());
   await og.evaluate(async () => { await FT.store.del(['o1', 'o2', 'o3', 'o4', 'o5', 'o6']); MWStore.del('mw_albrules_v1'); }); /* คลิปจำลองมีบทพูด: ไม่ลบ = ไปโผล่ในแผงฟังเสียงของเทสต์หน้าอื่น (ใช้ฐานข้อมูลเดียวกัน) */
   await og.close();
+  // v8.89 รูปฉากในการ์ดผลค้นหาไม่แตก: เลื่อนมาถึงการ์ด → อ่านเฟรมกลางฉากจากไฟล์จริงในมือถือ 720px (แคชไว้) แทนรูปในดัชนี 240px · ไม่มีไฟล์ = ใช้รูปเดิมไม่พัง
+  const sh = await context.newPage(); const shErr = []; sh.on('pageerror', (e) => shErr.push(e.message));
+  await sh.goto(base + '/footage.html'); await sh.waitForFunction(() => window.FT && FT.ui && FT.ui.sharpen, null, { timeout: 20000 }); await sh.waitForTimeout(400);
+  await sh.evaluate(async () => {
+    const cv = document.createElement('canvas'); cv.width = 320; cv.height = 180; const x = cv.getContext('2d'), st = cv.captureStream(15), rec = new MediaRecorder(st, { mimeType: 'video/webm;codecs=vp8' }), ch = [];
+    rec.ondataavailable = (e) => ch.push(e.data); rec.start(100); let n = 0; const iv = setInterval(() => { x.fillStyle = `hsl(${n * 20 % 360},80%,50%)`; x.fillRect(0, 0, 320, 180); n++; }, 60);
+    await new Promise((r) => setTimeout(r, 2200)); clearInterval(iv); const done = new Promise((r) => { rec.onstop = r; }); rec.stop(); await done;
+    const url = URL.createObjectURL(new Blob(ch, { type: 'video/webm' }));
+    FT.ui.lib().push({ id: 'shp1', name: 'shp.webm', size: 77, album: 'x', duration: 2, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 0, e: 1.6, thumb: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', img: '', ai: { characters: ['Usopp'], summary_th: 'อุซปวิ่งหนีทดสอบรูปคม' } }] }, { id: 'shp2', name: 'none.webm', size: 78, album: 'x', duration: 2, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 0, e: 1, thumb: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', ai: { characters: ['Usopp'], summary_th: 'อุซปวิ่งหนีไม่มีไฟล์' } }] });
+    MWLocal.list = () => [{ name: 'shp.webm', size: 77, dir: '/storage/emulated/0/Pictures/Gallery/owner/x/', uri: 'file://shp', album: 'x' }]; MWLocal.fileUrl = () => url;
+    document.dispatchEvent(new CustomEvent('ft:lib'));
+  });
+  await sh.fill('#q', 'อุซปวิ่งหนี'); await sh.waitForFunction(() => document.querySelectorAll('#results img.scene').length === 2 && [...document.querySelectorAll('#results img.scene')].some((i) => /^blob:/.test(i.src)), null, { timeout: 15000 }).catch(() => {});
+  const shr = await sh.evaluate(() => [...document.querySelectorAll('#results .card')].map((c) => { const i = c.querySelector('img.scene'); return { t: c.textContent.includes('ไม่มีไฟล์') ? 'none' : 'file', blob: /^blob:/.test(i.src), w: i.naturalWidth }; }));
+  check('รูปฉากในการ์ด: คลิปที่มีไฟล์ในมือถือได้เฟรมคมจากไฟล์จริง (กว้าง 720) · คลิปที่ไม่มีไฟล์ใช้รูปเดิม · ไม่มี error', shr.length === 2 && shr.find((x) => x.t === 'file').blob && shr.find((x) => x.t === 'file').w === 720 && !shr.find((x) => x.t === 'none').blob && !shErr.length, JSON.stringify(shr) + shErr.join());
+  await sh.evaluate(() => { const l = FT.ui.lib(); for (let i = l.length - 1; i >= 0; i--) if (/^shp/.test(l[i].id)) l.splice(i, 1); });
+  await sh.close();
   // v8.52 ฟังเสียงคลิป (footage-speech.js): ถอดเสียงจริงจากไฟล์ wav จำลอง (สเตอริโอ 24 kHz → โมโน 16 kHz) · เงียบ = ไม่เรียก AI · บทพูดเข้าฉากที่ทับเวลา · แผงโชว์บทพูด
   const sp = await context.newPage(); const spErr = []; sp.on('pageerror', (e) => spErr.push(e.message));
   await sp.goto(base + '/footage.html'); await sp.waitForFunction(() => window.FT && FT.speech && document.getElementById('spTrial'), null, { timeout: 20000 }); await sp.waitForTimeout(400);

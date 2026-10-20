@@ -62,29 +62,41 @@
   function idb(){ return db || (db = new Promise(function(ok){ try{ var r = indexedDB.open("mw_thumbs_v1", 1); r.onupgradeneeded = function(){ r.result.createObjectStore("t", { keyPath:"k" }); }; r.onsuccess = function(){ ok(r.result); }; r.onerror = function(){ ok(null); }; }catch(e){ ok(null); } })); }
   async function dbGet(k){ var d = await idb(); return d ? new Promise(function(ok){ var q = d.transaction("t").objectStore("t").get(k); q.onsuccess = function(){ ok(q.result || null); }; q.onerror = function(){ ok(null); }; }) : null; }
   async function dbPut(rec){ var d = await idb(); if(d) try{ d.transaction("t", "readwrite").objectStore("t").put(rec); }catch(e){} }
-  function gen(url){ /* เฟรมกลางๆ ของคลิป → { d:ความยาว, b:JPEG } หรือ null ถ้าเปิดไม่ได้ */
+  function gen(url, at, w0){ /* เฟรมกลางๆ ของคลิป (หรือที่วินาที at) กว้าง w0 (ค่าเริ่ม 600) → { d:ความยาว, b:JPEG } หรือ null ถ้าเปิดไม่ได้ */
     return new Promise(function(ok){
       var v = document.createElement("video"), done = false, t;
       function fin(r){ if(done) return; done = true; clearTimeout(t); try{ v.removeAttribute("src"); v.load(); }catch(e){} ok(r); }
       t = setTimeout(function(){ fin(null); }, 12000);
       v.muted = true; v.playsInline = true; v.preload = "auto";
       v.onerror = function(){ fin(null); };
-      v.onloadedmetadata = function(){ v.currentTime = Math.min(1, (v.duration || 2) / 2); };
+      v.onloadedmetadata = function(){ var d = v.duration || 2; v.currentTime = at == null ? Math.min(1, d / 2) : Math.max(0.05, Math.min(at, d - 0.05)); };
       v.onseeked = function(){
-        var w = 600, h = Math.round(w * (v.videoHeight || 1) / (v.videoWidth || 1)), c = document.createElement("canvas"); c.width = w; c.height = h;
+        var w = w0 || 600, h = Math.round(w * (v.videoHeight || 1) / (v.videoWidth || 1)), c = document.createElement("canvas"); c.width = w; c.height = h;
         try{ c.getContext("2d").drawImage(v, 0, 0, w, h); c.toBlob(function(b){ fin(b ? { d:v.duration, b:b } : null); }, "image/jpeg", 0.82); }catch(e){ fin(null); }
       };
       v.src = url;
     });
   }
   var queue = [], running = 0;
-  function pump(){ while(running < 2 && queue.length){ var j = queue.shift(); running++; work(j.e).then(function(j){ return function(r){ running--; j.ok(r); pump(); }; }(j)); } }
+  function pump(){ while(running < 2 && queue.length){ var j = queue.shift(); running++; j.fn().then(function(j){ return function(r){ running--; j.ok(r); pump(); }; }(j), function(){ running--; j.ok(null); pump(); }); } }
   async function work(e){
     var rec = await dbGet("t2:" + e.k); /* t2 = ภาพย่อ 600px (รุ่นเก่า 240px ไม่ใช้แล้ว) */
     if(!rec){ var u = fileUrl(e); if(!u) return null; var g = await gen(u); if(!g) return null; rec = { k:"t2:" + e.k, d:g.d, b:g.b }; dbPut(rec); }
     return { url:urls[e.k] || (urls[e.k] = URL.createObjectURL(rec.b)), d:rec.d };
   }
-  function thumbOf(e){ return new Promise(function(ok){ queue.push({ e:e, ok:ok }); pump(); }); }
+  function thumbOf(e){ return new Promise(function(ok){ queue.push({ fn:function(){ return work(e); }, ok:ok }); pump(); }); }
+  /* รูปฉากคมๆ ในการ์ดผลค้นหา/รูปใหญ่: รูปในดัชนีกว้างแค่ 240/480px ขยายแล้วแตก → อ่านเฟรมกลางฉากจากไฟล์จริงในมือถือ 720px เก็บแคช (คิวเดียวกับภาพย่ออัลบั้ม) · ไม่มีไฟล์ = ใช้รูปเดิม */
+  async function sceneWork(c, t){
+    var e = allE.find(function(x){ return x.c && x.c.id === c.id && x.uri; }); if(!e) return null;
+    var k = "s2:" + e.k + ":" + t.toFixed(2); if(urls[k]) return urls[k];
+    var rec = await dbGet(k);
+    if(!rec){ var u = fileUrl(e); if(!u) return null; var g = await gen(u, t, 720); if(!g) return null; rec = { k:k, b:g.b }; dbPut(rec); }
+    return urls[k] || (urls[k] = URL.createObjectURL(rec.b));
+  }
+  function sceneSharp(c, sc){ if(!c || !sc || !window.MWLocal) return Promise.resolve(null); var t = Math.max(0.05, (sc.s + sc.e) / 2); return new Promise(function(ok){ queue.push({ fn:function(){ return sceneWork(c, t); }, ok:ok }); pump(); }); } /* เวลาเดียวกับที่ทำดัชนีเก็บรูปไว้ (กลางฉาก) */
+  var sio = "IntersectionObserver" in window ? new IntersectionObserver(function(list){ list.forEach(function(x){ if(!x.isIntersecting) return; sio.unobserve(x.target); sharpImg(x.target); }); }, { rootMargin:"200px" }) : null;
+  function sharpImg(el){ var h = U.shownAt(+el.dataset.k); if(!h || !h.sc) return; sceneSharp(h.c, h.sc).then(function(u){ if(u && el.isConnected) el.src = u; }); }
+  function sharpen(root){ if(!root) return; root.querySelectorAll("img.scene[data-k]").forEach(function(el){ if(sio) sio.observe(el); else sharpImg(el); }); } /* เรียกหลังวาดการ์ด (ค้นหา/ตัวกรอง/ถาม AI) · โหลดเฉพาะการ์ดที่เลื่อนมาถึง */
   var io = "IntersectionObserver" in window ? new IntersectionObserver(function(list){
     list.forEach(function(x){ if(!x.isIntersecting) return; io.unobserve(x.target); fill(x.target); });
   }, { rootMargin:"300px" }) : null;
@@ -92,9 +104,9 @@
     if(el._cands){ pickCover(el); return; }
     var e = el._e; if(!e) return;
     if(!e.uri && e.c && e.c.cover){ el.querySelector("img").src = e.c.cover; return; } /* ไม่มีไฟล์ในมือถือ = ใช้ปกจากดัชนี (240px ค่อนข้างเบลอ) */
-    thumbOf(e).then(function(t){ if(!t || !el.isConnected) return; el.querySelector("img").src = t.url; var b = el.querySelector(".dur"); if(b && !b.textContent) b.textContent = dur(e, t); });
+    thumbOf(e).then(function(t){ if(!el.isConnected) return; if(!t){ if(e.c && e.c.cover) el.querySelector("img").src = e.c.cover; return; } el.querySelector("img").src = t.url; /* อ่านเฟรมจากไฟล์ไม่ได้ = ใช้ปกจากดัชนี (เดิมช่องว่างเปล่า) */ var b = el.querySelector(".dur"); if(b && !b.textContent) b.textContent = dur(e, t); });
   }
-  function imgFor(e){ return !e.uri && e.c && e.c.cover ? Promise.resolve(e.c.cover) : thumbOf(e).then(function(t){ return t ? t.url : null; }); }
+  function imgFor(e){ return !e.uri && e.c && e.c.cover ? Promise.resolve(e.c.cover) : thumbOf(e).then(function(t){ return t ? t.url : e.c && e.c.cover || null; }); }
   function score(url){ /* ภาพที่ไม่ขาว/ดำล้วน และมีรายละเอียด (ส่วนเบี่ยงเบนของความสว่างสูง) ได้คะแนนสูง */
     return new Promise(function(ok){ var im = new Image(); im.onload = function(){ try{ var c = document.createElement("canvas"); c.width = c.height = 16; var x = c.getContext("2d"); x.drawImage(im, 0, 0, 16, 16); var d = x.getImageData(0, 0, 16, 16).data, m = 0, v = 0, L = [], i;
         for(i = 0; i < d.length; i += 4){ var l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; L.push(l); m += l; } m /= L.length; L.forEach(function(l){ v += (l - m) * (l - m); }); var sd = Math.sqrt(v / L.length); ok(m > 25 && m < 225 ? sd : sd / 4); }catch(e){ ok(0); } }; im.onerror = function(){ ok(-1); }; im.src = url; });
@@ -199,7 +211,7 @@
     if(mode !== "phone") $("alSeg").querySelector('[data-m="phone"]').click(); else renderHome();
     var i = albums.findIndex(function(a){ return a.name === name; }); if(i >= 0) openAlbum(i);
   }
-  Object.assign(U, { albumHit:albumHit, openAlbumNamed:openAlbumNamed, playAt:playAt, runIndexFor:runFor, runArcs:runArcs }); /* runIndexFor = หน้าจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ ได้เลย */
+  Object.assign(U, { sharpen:sharpen, sceneSharp:sceneSharp, albumHit:albumHit, openAlbumNamed:openAlbumNamed, playAt:playAt, runIndexFor:runFor, runArcs:runArcs }); /* runIndexFor = หน้าจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ ได้เลย */
   var wasRunning = false;
   document.addEventListener("ft:queue", function(){ /* คิวเดินอยู่: อัปเดตแค่แถบ · จบรอบค่อยวาดตารางใหม่ (ไม่ให้กะพริบทุกวินาที) */
     var r = U.queueInfo().running; build(); if(curAlbum) curAlbum = albums.find(function(a){ return a.name === curAlbum.name; }) || null; strips();

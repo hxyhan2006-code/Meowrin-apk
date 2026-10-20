@@ -327,7 +327,7 @@
       out += '<button class="btn ghost small" id="partialBtn" style="width:100%">' + (showPartial ? "ซ่อน" : "ดู") + "ที่ตรงบางส่วน (" + part.length + ")</button>";
     }
     $("findInfo").textContent = "คำค้น: " + ts.map(function(v){ return v[0]; }).join(" + ") + " · ตรงครบ " + full.length + " ฉาก · ตรงบางส่วน " + part.length + " ฉาก";
-    $("results").innerHTML = (html + out) || '<p class="empty">ไม่เจอฉากที่ตรง ลองคำอื่น หรือแตะชิปตัวละคร</p>';
+    $("results").innerHTML = (html + out) || '<p class="empty">ไม่เจอฉากที่ตรง ลองคำอื่น หรือแตะชิปตัวละคร</p>'; if(U.sharpen) U.sharpen($("results"));
   }
   $("results").addEventListener("click", function(e){
     var al = e.target.closest("[data-album]"); if(al && U.openAlbumNamed){ U.openAlbumNamed(al.dataset.album); return; }
@@ -340,7 +340,7 @@
     sc.sort(function(a, b){ return (b.c.lastModified || 0) - (a.c.lastModified || 0) || a.sc.s - b.sc.s; });
     $("findInfo").textContent = sc.length + " ฉากตามชิปที่เลือก (จากป้ายตัวละครที่ AI ติดให้) · พิมพ์คำค้นเพื่อกรองต่อ";
     $("results").innerHTML = sc.slice(0, chipMax).map(function(h){ return card(h.c, h.sc); }).join("")
-      + (sc.length > chipMax ? '<button class="btn ghost small" id="moreBtn" style="width:100%">ดูเพิ่ม 40 ฉาก</button>' : "") || '<p class="empty">ไม่มีฉาก</p>';
+      + (sc.length > chipMax ? '<button class="btn ghost small" id="moreBtn" style="width:100%">ดูเพิ่ม 40 ฉาก</button>' : "") || '<p class="empty">ไม่มีฉาก</p>'; if(U.sharpen) U.sharpen($("results"));
   }
   function strip(c){
     return '<div class="strip">' + c.scenes.map(function(s){
@@ -357,7 +357,7 @@
     var a = sc && sc.ai || {}, who = (sc ? sceneChars(sc) : []).map(enName).join(", "); /* ชื่ออังกฤษ canon เหมือนตัวกรอง */
     var kc = shown.push({ c:c, cover:true }) - 1, k = sc ? shown.push({ c:c, sc:sc }) - 1 : kc; /* แตะปก = ดูปกใหญ่ · แตะรูปฉาก = ดูรูปฉากใหญ่ */
     return '<div class="card"><div class="shots"><div class="cover" data-k="' + kc + '"><img src="' + (c.cover || "") + '" alt="ปกคลิป"><em>' + capDur(c.duration) + "</em></div>"
-      + (sc ? '<img class="scene" src="' + sc.thumb + '" alt="ฉาก" data-k="' + k + '">' : "") + '</div><div class="t">'
+      + (sc ? '<img class="scene" src="' + (sc.img || sc.thumb) + '" alt="ฉาก" data-k="' + k + '" decoding="async">' : "") + '</div><div class="t">'
       + "<b>" + esc(c.album) + "</b>" + (sc ? ' · <span class="when">ฉาก ' + tm(sc.s) + "–" + tm(sc.e) + "</span>" : " · " + c.scenes.length + " ฉาก")
       + "<p>" + (exact ? '<span class="tag ok">' + MWIcon("star") + 'ตรงเป๊ะ</span> ' : "") + (why ? '<span class="tag run">AI: ' + esc(why) + "</span> " : "") + esc(sc ? (a.summary_th || "(AI ไม่ได้อธิบายฉากนี้)") : (c.summary_th || "")) + "</p>"
       + (who ? "<p>" + MWIcon("user") + esc(who) + "</p>" : "")
@@ -406,7 +406,8 @@
   });
   function openBig(c, sc, src, text){
     bigCur = { c:c, sc:sc }; stopPlay(); renderBigChars();
-    $("bigImg").src = src; $("bigTxt").textContent = text; $("playMsg").textContent = ""; $("big").hidden = false; renderPlayBtn();
+    $("bigImg").src = src; if(sc && U.sceneSharp) U.sceneSharp(c, sc).then(function(u){ if(u && bigCur && bigCur.sc === sc) $("bigImg").src = u; }); /* รูปใหญ่: เฟรมคมจากไฟล์จริงถ้ามี */
+    $("bigTxt").textContent = text; $("playMsg").textContent = ""; $("big").hidden = false; renderPlayBtn();
   }
   function renderPlayBtn(){ var has = bigCur && hasSrc(bigCur.c); $("playBtn").innerHTML = MWIcon("play") + (has ? "ดูฉากนี้" : "ดูฉากนี้ (เลือกไฟล์)"); $("loopSc").parentNode.hidden = !(bigCur && bigCur.sc); }
   var playDone = null;

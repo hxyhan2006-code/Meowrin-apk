@@ -75,7 +75,7 @@
       out('<div class="askans">' + U.esc(r.answer || (picks.length ? "เจอ " + picks.length + " ฉาก" : "ไม่เจอฉากที่ตรง")) + '<small>ค้นจาก ' + cs.length + " ฉากผู้สมัคร" + (cs.semN ? " (รวมที่ค้นตามความหมาย " + cs.semN + " ฉาก)" : "") + (cs.semErr ? " · ค้นตามความหมายไม่ได้: " + U.esc(cs.semErr) : "") + " · ใช้ไป " + U.money(cost) + " · รูปด้านล่างตรวจเองได้ ป้าย AI ผิดได้</small></div>");
       $("findInfo").textContent = r.none || !picks.length ? "" : "คำตอบของ AI: " + picks.length + " ฉาก (แตะรูปดูใหญ่/เล่น)";
       shown = picks.length > 0;
-      $("results").innerHTML = picks.length ? picks.map(function(p){ var x = cs[p.n - 1]; return U.card(x.c, x.sc, false, U.tm(x.sc.s) + (p.why ? " · " + p.why : "")); }).join("") : '<p class="empty">AI ดูแล้วไม่มีฉากไหนตรงจริง</p>';
+      $("results").innerHTML = picks.length ? picks.map(function(p){ var x = cs[p.n - 1]; return U.card(x.c, x.sc, false, U.tm(x.sc.s) + (p.why ? " · " + p.why : "")); }).join("") : '<p class="empty">AI ดูแล้วไม่มีฉากไหนตรงจริง</p>'; if(U.sharpen) U.sharpen($("results"));
     }catch(err){ say("ถาม AI ไม่ได้: " + err.message); }
     finally { U.addCost(cost); busy = false; $("askBtn").disabled = false; } /* finally: เดิมคำตอบ "ไม่เจอเลย" return ออกก่อน ปุ่มค้างกดไม่ได้จนโหลดหน้าใหม่ */
   }
