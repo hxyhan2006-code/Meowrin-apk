@@ -2,7 +2,8 @@
    นับจากคลิปที่ลงจริงบนช่องของ Han ผ่าน YouTube Data API (playlist Shorts UUSH… · videoPublishedAt) ไม่มีปุ่มกดนับเอง = โกงไม่ได้
    กติกา: วันละ GOAL คลิป = ไฟติด · คลิปเกิน GOAL ทุก 2 คลิป = กันไฟดับ 1 อัน (เก็บได้ MAX_FREEZE) · วันที่ไม่ครบใช้กันไฟดับอัตโนมัติ ไม่มีเหลือ = ไฟดับเริ่มนับใหม่
    คำนวณสตรีคใหม่ทั้งหมดจากจำนวนคลิปรายวัน (days) ทุกครั้ง ไม่เก็บตัวนับที่คลาดได้ · เก็บใน MWStore key mw_streak_v1
-   ข้อความแจ้งเตือน/วิดเจ็ตอยู่ใน streak-msgs.js (MWStreakMsgs)
+   ข้อความแจ้งเตือน/วิดเจ็ตอยู่ใน streak-msgs.js (MWStreakMsgs) · Han วางชุดของตัวเองได้ (แถบ "ข้อความของฉัน": คำตอบจาก AI นอกแอพ หัวหมวด [11:00] [w_d] …)
+   เก็บใน mw_streak_msgs_v1 { raw ข้อความที่วาง, pools หมวดที่แยกได้, at } · หมวดที่ไม่ได้วางใช้ของเดิม · ลบทั้งหมด = กลับไปใช้ชุดเริ่มต้น
    { handle, chId, title, list, since:"YYYY-MM-DD" วันเริ่มนับ, days:{ "YYYY-MM-DD": จำนวนคลิป }, syncedAt, sprint: เวลาเริ่มจับ 10 นาที, cheered: วันที่ฉลองไฟติดแล้ว }
    notif: { on, times:["HH:MM"] } แจ้งเตือน (ส่งเฉพาะวันที่ยังไม่ครบ)
    วิดเจ็ต/แจ้งเตือนอยู่ฝั่งเนทีฟ (ปลั๊กอิน Streak ใน APK · ซอร์ส tools/android/) — ที่นี่ส่ง base (สตรีคถึงเมื่อวาน) + กันไฟดับ + ยอดวันนี้ + ข้อความไปให้ (sync)
@@ -20,6 +21,32 @@
   var btn = document.getElementById("stkBtn"), page = document.getElementById("stkPage");
   var st = MWStore.get(KEY, null) || {};
   var busy = false, err = "", tick = 0, view = null, prevHook = null, nst = null, sent = "", nOpen = false; /* nOpen = แถบ วิดเจ็ต+แจ้งเตือน เปิดอยู่ไหม (วาดหน้าใหม่แล้วไม่หุบเอง) */
+  /* ค่าที่เก็บไว้ผิดรูป (ไม่ใช่ { raw, pools:{หมวด:[ข้อความ]} }) = ทิ้งส่วนที่เสีย ไม่ให้หน้าไฟพังทั้งหน้า */
+  function cleanMy(v){
+    if(!v || typeof v !== "object" || !v.pools || typeof v.pools !== "object") return null;
+    var pools = {};
+    Object.keys(v.pools).forEach(function(k){ var a = Array.isArray(v.pools[k]) ? v.pools[k].filter(function(t){ return typeof t === "string" && t.trim(); }) : []; if(a.length) pools[k] = a; });
+    return Object.keys(pools).length ? { raw: typeof v.raw === "string" ? v.raw : "", pools: pools, at: v.at || 0 } : null;
+  }
+  var MKEY = "mw_streak_msgs_v1", my = cleanMy(MWStore.get(MKEY, null)), draft = my ? my.raw : "", mOpen = false, mMsg = "", mErr = false;
+  function msgs(){ return Object.assign({}, window.MWStreakMsgs || {}, my ? my.pools : {}); } /* ชุดของ Han ทับเฉพาะหมวดที่วาง (cleanMy รับประกันว่าเป็นอาร์เรย์ไม่ว่าง) */
+  function vis(t){ return t.replace(/\{streak\}/g, "000").replace(/\{\w+\}/g, "0").replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, "").length; } /* ความยาวที่มองเห็น ไม่นับสระบน/ล่าง วรรณยุกต์ */
+  /* แยกคำตอบจาก AI: บรรทัด [หมวด] = หัว (มี ** ครอบได้) · บรรทัดถัดไป = ข้อความ (ตัดเลขข้อ/ขีด/จุด/เครื่องหมายคำพูดออก) · หัวที่ไม่รู้จัก = ข้ามทั้งหมวด */
+  function parseMsgs(raw){
+    var known = Object.keys(window.MWStreakMsgs || {}), pools = {}, cur = null, unknown = [], n = 0, long = 0;
+    String(raw || "").split(/\r?\n/).forEach(function(line){
+      var t = line.trim(); if(!t) return;
+      var h = /^[*#\s]*\[\s*([^\]]+?)\s*\][*\s]*$/.exec(t);
+      if(h){ var k = known.filter(function(x){ return x.toLowerCase() === h[1].toLowerCase(); })[0]; cur = k || null; if(!k && unknown.indexOf(h[1]) < 0) unknown.push(h[1]); return; }
+      if(!cur) return;
+      t = t.replace(/^(\d+[.)]\s*|[-*•]\s*)/, "").replace(/^["“'](.*)["”']$/, "$1").trim();
+      if(!t) return;
+      var a = pools[cur] || (pools[cur] = []);
+      if(a.indexOf(t) >= 0) return;
+      a.push(t); n++; if(vis(t) > (/^w_/.test(cur) ? 16 : 36)) long++;
+    });
+    return { pools: pools, n: n, cats: Object.keys(pools).length, unknown: unknown, long: long };
+  }
   function plugin(){ return window.MWNative && MWNative.plug ? MWNative.plug("Streak") : null; }
   function notif(){ return st.notif || { on: true, times: TIMES.slice() }; }
 
@@ -146,7 +173,7 @@
   function pushNative(s, today){
     var P = plugin(); if(!P || !P.sync) return;
     var n = notif(), arg = { key: st.list ? MWSync.getKey() : "", list: st.list || "", goal: GOAL, base: s ? (s.done ? s.streak - 1 : s.streak) : 0,
-      freeze: s ? s.freeze : 0, today: s ? s.today : 0, day: today, notify: !!n.on, times: n.on ? n.times : [], msgs: window.MWStreakMsgs || {}, broke: s && s.broke ? today : "" };
+      freeze: s ? s.freeze : 0, today: s ? s.today : 0, day: today, notify: !!n.on, times: n.on ? n.times : [], msgs: msgs(), broke: s && s.broke ? today : "" };
     var k = JSON.stringify(arg); if(k === sent) return; sent = k;
     P.sync(arg).then(function(r){ nst = r; if(page && !page.hidden) render(); }).catch(function(){ sent = ""; });
   }
@@ -168,6 +195,17 @@
         + '<p class="hint tip">มือถือเช็กยอดวันนี้เองทุก 30 นาที (10:00–23:30) แม้ไม่ได้เปิดแอพ · ทำครบแล้วแจ้งเตือนที่เหลือของวันนั้นเงียบเอง · ข้อความสุ่มไม่ซ้ำ</p>';
     }
     return '<details class="fold top stk-fold" id="stkNotif"' + (nOpen ? " open" : "") + '><summary><span>วิดเจ็ต + แจ้งเตือน</span><em class="state ' + kind + '">' + tag + '</em></summary><div class="fbody">' + body + '</div></details>';
+  }
+
+  function myBox(){
+    var cnt = 0; if(my) Object.keys(my.pools).forEach(function(k){ cnt += my.pools[k].length; });
+    return '<details class="fold top stk-fold" id="stkMsgs"' + (mOpen ? " open" : "") + '><summary><span>ข้อความของฉัน</span><em class="state idle">' + (my ? "ชุดของคุณ" : "") + '</em></summary><div class="fbody">'
+      + '<p class="hint tip">วางคำตอบจาก AI (ที่มีหัวหมวด [11:00] [any] [w_d] …) แล้วกด ใช้ข้อความนี้ · หมวดที่ไม่ได้วางใช้ของเดิม · ลบทั้งหมด = กลับไปใช้ชุดเริ่มต้นของแอพ</p>'
+      + '<textarea data-stk="mtext" rows="8" spellcheck="false" placeholder="[11:00]&#10;ข้อความ&#10;ข้อความ&#10;[w_d]&#10;ข้อความ" aria-label="ข้อความของฉัน">' + MW.esc(draft) + '</textarea>'
+      + '<div class="row stk-act"><button type="button" class="btn ghost" data-stk="mpaste">วาง</button><button type="button" class="btn ghost" data-stk="mclear">ลบทั้งหมด</button></div>'
+      + '<button type="button" class="btn stk-wide" data-stk="msave">ใช้ข้อความนี้</button>'
+      + (mMsg ? '<div class="msg' + (mErr ? " err" : "") + '">' + MW.esc(mMsg) + '</div>' : "")
+      + '<p class="hint">ตอนนี้ใช้: ' + (my ? "ชุดของคุณ " + Object.keys(my.pools).length + " หมวด · " + cnt + " ข้อความ (หมวดอื่นใช้ของเดิม)" : "ชุดเริ่มต้นของแอพ") + '</p></div></details>';
   }
 
   function renderBtn(s){
@@ -209,7 +247,7 @@
       + '<div class="stk-box"><h3>กันไฟดับ ' + s.freeze + '/' + MAX_FREEZE + '</h3><div class="stk-frz">' + snow + '</div>'
       + '<p class="hint tip">วันที่ลงไม่ครบ ' + GOAL + ' คลิป แอพใช้กันไฟดับให้เอง ไฟไม่ดับ · ได้เพิ่มจากการลงเกินวันละ ' + GOAL + ' คลิป ทุก ' + BONUS_PER_FREEZE + ' คลิป = 1 อัน'
       + (s.freeze < MAX_FREEZE ? ' · อีก ' + (BONUS_PER_FREEZE - s.bonus) + ' คลิปได้อันต่อไป' : ' · เต็มแล้ว') + '</p></div>'
-      + notifBox()
+      + notifBox() + myBox()
       + '<div class="stk-foot">' + esc(st.handle) + ' · ' + (busy ? "กำลังเช็ก..." : st.syncedAt ? "เช็กล่าสุด " + ago(st.syncedAt) : "ยังไม่ได้เช็ก") + '<button type="button" class="stk-link" data-stk="change">เปลี่ยนช่อง</button></div>';
   }
 
@@ -252,6 +290,18 @@
       else if(a === "perm") askNotify();
       else if(a === "settings") plugin().openSettings();
       else if(a === "pin") plugin().pinWidget().then(function(r){ if(!r || !r.ok) MW.toast("เพิ่มจากแอพไม่ได้ กดค้างที่หน้าจอหลัก → วิดเจ็ต → Meowrin App", true, 4500); else setTimeout(refreshStatus, 4000); });
+      else if(a === "mpaste"){
+        try{ var t = await navigator.clipboard.readText(); if(!t){ MW.toast("คลิปบอร์ดว่างอยู่", true); return; } draft = t; mMsg = ""; render(); }
+        catch(e2){ MW.toast("ปุ่มวางใช้ไม่ได้ในเครื่องนี้ กดค้างในช่องแล้วเลือก วาง แทน", true, 4000); }
+      }
+      else if(a === "mclear") MW.confirmTap(b, "ลบทั้งหมด", function(){ draft = ""; my = null; MWStore.del(MKEY); mMsg = "ลบแล้ว กลับไปใช้ชุดเริ่มต้นของแอพ"; mErr = false; render(); });
+      else if(a === "msave"){
+        var r = parseMsgs(draft);
+        if(!r.n){ mMsg = "ไม่เจอข้อความใต้หัวหมวดที่รู้จัก เช่น [11:00] [any] [w_d] · เช็กว่าวางครบทั้งคำตอบ" + (r.unknown.length ? " · หัวที่ไม่รู้จัก: " + r.unknown.join(", ") : "") + " · ข้อความเดิมยังใช้อยู่"; mErr = true; render(); return; }
+        my = { raw: draft, pools: r.pools, at: Date.now() }; MWStore.set(MKEY, my);
+        mMsg = "ใช้แล้ว " + r.cats + " หมวด " + r.n + " ข้อความ" + (r.long ? " · ยาวเกิน " + r.long + " อัน (บนจอจะถูกตัดด้วย …)" : "") + (r.unknown.length ? " · ข้ามหัวที่ไม่รู้จัก: " + r.unknown.join(", ") : "");
+        mErr = false; render();
+      }
       else if(a === "wtest"){
         var P = plugin();
         if(nst && !nst.widgets){ MW.toast("ยังไม่มีวิดเจ็ตบนหน้าจอหลัก กดเพิ่มวิดเจ็ตก่อน", true, 3500); return; }
@@ -266,7 +316,8 @@
         st = { notif: st.notif }; err = ""; save(); render();
       }
     });
-    page.addEventListener("toggle", function(e){ if(e.target.id === "stkNotif") nOpen = e.target.open; }, true); /* toggle ไม่ลอยขึ้น ต้องดักตอนจับ */
+    page.addEventListener("toggle", function(e){ if(e.target.id === "stkNotif") nOpen = e.target.open; if(e.target.id === "stkMsgs") mOpen = e.target.open; }, true); /* toggle ไม่ลอยขึ้น ต้องดักตอนจับ */
+    page.addEventListener("input", function(e){ if(e.target.dataset.stk === "mtext") draft = e.target.value; }); /* จำที่พิมพ์/วางไว้ วาดหน้าใหม่แล้วไม่หาย */
     page.addEventListener("keydown", function(e){ if(e.key === "Enter" && e.target.dataset.stk === "handle") setup(e.target.value); });
     document.addEventListener("visibilitychange", function(){ if(!document.hidden){ render(); check(false); if(!page.hidden) refreshStatus(); } }); /* กลับจากหน้าตั้งค่าแอพ = อ่านสิทธิ์ใหม่ */ /* กลับจาก CapCut/YouTube = เช็กยอดวันนี้ใหม่ (เว้น 3 นาที) */
     render(); check(false);

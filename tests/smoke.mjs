@@ -1225,7 +1225,13 @@ try {
     await nv.click('#stkPage [data-stk=time][data-t="13:00"]'); await nv.waitForTimeout(300);
     const n2 = await nv.evaluate(() => ({ times: (__sk[__sk.length - 1].times || []).join(), saved: (MWStore.get('mw_streak_v1', {}).notif || {}).times }));
     check('ไฟวันต่อเนื่อง (เนทีฟ): แตะเวลาปิด 13:00 → ส่งเวลาใหม่ให้มือถือ + จำไว้', n2.times === '11:00,16:30,21:00' && String(n2.saved) === '11:00,16:30,21:00', JSON.stringify(n2));
-    await nv.evaluate(() => { MWStore.del('mw_streak_v1'); MWStore.flush(); }); await nv.waitForTimeout(300); await nv.close();
+    await nv.click('#stkMsgs summary'); await nv.fill('#stkMsgs textarea', '**[w_d]**\n1. เท่ว่ะ\n- "สุดยอด"\n\n[foo]\nข้ามอันนี้\n[11:00]\nตื่นดิ'); await nv.click('#stkMsgs [data-stk=msave]'); await nv.waitForTimeout(300);
+    const my1 = await nv.evaluate(() => { const m = __sk[__sk.length - 1].msgs; return { wd: m.w_d, m11: m['11:00'], wz: m.w_z.length, saved: !!MWStore.get('mw_streak_msgs_v1', null), msg: document.querySelector('#stkMsgs .msg').textContent, open: document.querySelector('#stkMsgs').open }; });
+    check('ข้อความของฉัน: วางคำตอบ AI → แยกตามหัวหมวด (ตัดเลขข้อ/ขีด/คำพูด, ข้ามหัวที่ไม่รู้จัก) ส่งให้มือถือ · หมวดที่ไม่ได้วางใช้ของเดิม', JSON.stringify(my1.wd) === '["เท่ว่ะ","สุดยอด"]' && JSON.stringify(my1.m11) === '["ตื่นดิ"]' && my1.wz === 20 && my1.saved && /2 หมวด 3 ข้อความ/.test(my1.msg) && /foo/.test(my1.msg) && my1.open, JSON.stringify(my1));
+    await nv.click('#stkMsgs [data-stk=mclear]'); await nv.click('#stkMsgs [data-stk=mclear]'); await nv.waitForTimeout(300);
+    const my2 = await nv.evaluate(() => ({ wd: __sk[__sk.length - 1].msgs.w_d.length, saved: MWStore.get('mw_streak_msgs_v1', null), text: document.querySelector('#stkMsgs textarea').value }));
+    check('ข้อความของฉัน: ลบทั้งหมด (แตะสองครั้ง) = ล้างช่อง + กลับไปใช้ชุดเริ่มต้น', my2.wd === 20 && my2.saved === null && my2.text === '', JSON.stringify(my2));
+    await nv.evaluate(() => { MWStore.del('mw_streak_v1'); MWStore.del('mw_streak_msgs_v1'); MWStore.flush(); }); await nv.waitForTimeout(300); await nv.close();
     const np = await context.newPage(); await np.goto(base + '/index.html'); await np.waitForFunction(() => window.MWStreak, null, { timeout: 20000 });
     await np.evaluate(() => { MWStore.set('mw_streak_v1', { handle: '@x', list: 'UUSHx', since: '2026-01-01', days: {}, syncedAt: Date.now() }); }); await np.reload(); await np.waitForFunction(() => window.MWStreak, null, { timeout: 20000 });
     await np.click('#stkBtn'); await np.waitForTimeout(300);
