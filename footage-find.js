@@ -389,8 +389,9 @@
   }
   /* ---------- แก้ตัวละครของฉากเอง (AI ติดป้ายพลาด/ขาด) · แตะชิป = เพิ่ม/เอาออก · เก็บ ai.fixed ไว้ ไม่ให้การอัปเกรดดัชนีทับ ---------- */
   function renderBigChars(){
-    var el = $("bigChars"); el.hidden = !(bigCur && bigCur.sc); $("bigCharsHint").hidden = el.hidden; if(el.hidden) return;
-    var cur = sceneChars(bigCur.sc), keys = cur.concat(NAMEX.map(function(n){ return n.key; }).filter(function(k){ return cur.indexOf(k) < 0; }));
+    var el = $("bigChars"); el.hidden = !(bigCur && bigCur.sc); $("bigCharsHint").hidden = el.hidden; $("bigDet").hidden = el.hidden; if(el.hidden) return;
+    var cur = sceneChars(bigCur.sc); $("bigDetS").textContent = "ตัวละคร: " + (cur.map(enName).join(", ") || "ยังไม่มี") + " · แตะแก้";
+    var keys = cur.concat(NAMEX.map(function(n){ return n.key; }).filter(function(k){ return cur.indexOf(k) < 0; }));
     el.innerHTML = keys.map(function(k){ return '<button class="chip' + (cur.indexOf(k) >= 0 ? " on" : "") + '" data-bc="' + esc(k) + '">' + esc(enName(k)) + "</button>"; }).join("");
   }
   $("bigChars").addEventListener("click", async function(e){
@@ -411,7 +412,7 @@
   }
   function renderPlayBtn(){ var has = bigCur && hasSrc(bigCur.c); $("playBtn").innerHTML = MWIcon("play") + (has ? "ดูฉากนี้" : "ดูฉากนี้ (เลือกไฟล์)"); $("loopSc").parentNode.hidden = !(bigCur && bigCur.sc); }
   var playDone = null;
-  function stopPlay(){ var v = $("bigVid"); v.pause(); if(window.MWLocal) MWLocal.release(v); if(playDone){ playDone(); playDone = null; } if(v.src){ v.removeAttribute("src"); v.load(); } v.hidden = true; $("bigImg").hidden = false; v.ontimeupdate = v.onloadedmetadata = null; }
+  function stopPlay(){ var v = $("bigVid"); v.pause(); if(window.MWLocal) MWLocal.release(v); if(playDone){ playDone(); playDone = null; } if(v.src){ v.removeAttribute("src"); v.load(); } v.hidden = true; $("bigImg").hidden = false; v.ontimeupdate = v.onloadedmetadata = v.onseeking = null; }
   async function playScene(){
     if(!bigCur || !hasSrc(bigCur.c)){ $("playFiles").click(); return; } /* ไม่มีในเครื่องและไม่อยู่ในคลัง → ให้เลือกไฟล์ (ต้องเรียกตอนแตะ ก่อน await) */
     var cur = bigCur, v = $("bigVid"), s = cur.sc ? cur.sc.s : 0, e = cur.sc ? cur.sc.e : Infinity;
@@ -421,7 +422,9 @@
     if(window.MWLocal) MWLocal.seekable(v, function(m){ $("playMsg").textContent = m; }); /* เริ่มที่ฉากกลางคลิป/กรอแล้วเด้งไป 0:00 = โหลดเป็น Blob ให้กรอได้ */
     playDone = src.done; v.src = src.url; v.hidden = false; $("bigImg").hidden = true; $("playMsg").textContent = "";
     v.onloadedmetadata = function(){ v.currentTime = Math.min(s, Math.max(0, v.duration - 0.1)); v.play().catch(function(){ $("playMsg").textContent = "กดปุ่มเล่นที่ตัวเล่นเพื่อเริ่ม"; }); };
-    v.ontimeupdate = function(){ if(v.currentTime >= e - 0.05){ if($("loopSc").checked && bigCur.sc) v.currentTime = s; else v.pause(); } }; /* ฉากนี้เท่านั้น ไม่เล่นเลยไปฉากอื่น */
+    var free = false; /* ผู้ใช้กรอออกนอกฉากเอง = เล่นอิสระ (เดิมตัวล็อกท้ายฉากดีดกลับ/หยุดทุกครั้งที่กรอเลยท้ายฉาก → กรอไม่ได้เลย) */
+    v.onseeking = function(){ var t = v.currentTime; free = t < s - 0.3 || t > e + 0.3; };
+    v.ontimeupdate = function(){ if(!free && v.currentTime >= e - 0.05){ if($("loopSc").checked && bigCur.sc) v.currentTime = s; else v.pause(); } }; /* เล่นถึงท้ายฉากเอง: วนซ้ำฉาก/หยุด ไม่เลยไปฉากอื่น */
     v.onerror = function(){ $("playMsg").textContent = "เบราว์เซอร์เล่นไฟล์นี้ไม่ได้ (รูปแบบไฟล์ไม่รองรับ?)"; };
   }
   function addPlayFiles(files){
@@ -442,7 +445,6 @@
   $("playFiles").addEventListener("change", function(){ addPlayFiles(this.files); this.value = ""; });
   $("pickDocs").addEventListener("change", function(){ addPlayFiles(this.files); this.value = ""; });
   $("bigX").addEventListener("click", closeBig);
-  $("big").addEventListener("click", function(e){ if(e.target === this) closeBig(); }); /* แตะพื้นหลังปิด ไม่ปิดเมื่อแตะวิดีโอ/ปุ่ม */
   function closeBig(){ stopPlay(); $("big").hidden = true; bigCur = null; }
 
   function charKey(name){ var low = String(name).toLowerCase().trim(), n = NAMEX.find(function(x){ return x.en.test(low) || x.ths.indexOf(name) >= 0; }); return n ? n.key : low; } /* ชื่อที่ AI ตอบ → key เดียวกับ sceneChars */

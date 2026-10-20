@@ -168,7 +168,7 @@
     else {
       var b = [];
       if(plan.todo.length) b.push('<button class="btn' + (plan.seen ? " ghost" : "") + '" id="orgTry" type="button">ลองก่อน ' + Math.min(TRY_N, plan.todo.length) + " คลิป</button>");
-      if(plan.todo.length > TRY_N || plan.seen && plan.todo.length) b.push('<button class="btn" id="orgAiAll" type="button">ดูที่เหลือ ' + plan.todo.length + "</button>");
+      if(plan.todo.length > TRY_N || plan.seen && plan.todo.length) b.push('<button class="btn' + (plan.seen ? "" : " ghost") + '" id="orgAiAll" type="button">ดูที่เหลือ ' + plan.todo.length + "</button>"); /* ปุ่มหลักมีปุ่มเดียวต่อช่วง: ยังไม่เคยลอง = ลองก่อน · ลองแล้ว = ดูที่เหลือ */
       if(plan.stale.length) b.push('<button class="btn ghost" id="orgStale" type="button">ดูใหม่ตามกติกาใหม่ (' + plan.stale.length + ")</button>");
       if(plan.noIdx.length) b.push('<button class="btn ghost" id="orgIdx" type="button">ทำดัชนีที่เหลือ (' + plan.noIdx.length + ")</button>");
       if(b.length) h += '<div class="orgbtns">' + b.join("") + "</div>";
@@ -197,9 +197,12 @@
     h += "</section>";
     /* 3) กติกา */
     var al = plan.albums;
-    h += '<section class="orgsec"><h3>3. กติกาจัดอัลบั้ม</h3><p class="hint tip">AI ใช้ข้อความพวกนี้ตัดสิน แก้ได้ตลอด (บันทึกเอง) · แก้แล้วกด ดูใหม่ตามกติกาใหม่ ถ้าอยากให้คลิปที่ดูแล้วถูกดูใหม่</p>';
-    h += '<label class="orglab">กติการวม</label><textarea class="orgta" rows="6" data-gen="1">' + esc(R.general) + "</textarea>";
-    h += al.map(function(a){ var st = stateOf(R, a.name); return '<div class="orgal"><div class="orgalh"><b>' + esc(a.name) + " <em>" + a.n + '</em></b><button type="button" class="orgst st-' + st + '" data-st="' + esc(a.name) + '">' + STATES[st] + "</button></div>" + (st === "use" ? '<textarea class="orgta" rows="2" data-desc="' + esc(a.name) + '" placeholder="อัลบั้มนี้เก็บฉากแบบไหน (ว่าง = AI เดาจากชื่อ)">' + esc(R.desc[low(a.name)] || "") + "</textarea>" : "") + "</div>"; }).join("");
+    var nUse = al.filter(function(a){ return stateOf(R, a.name) === "use"; }).length;
+    h += '<section class="orgsec"><h3>3. กติกาจัดอัลบั้ม</h3><p class="hint">AI ใช้ข้อความพวกนี้ตัดสิน · ใช้ ' + nUse + "/" + al.length + " อัลบั้ม</p>"
+      + '<button type="button" class="orgtg" data-g="rules" style="width:100%">' + (openG.rules ? "ย่อกติกา" : "เปิดดู/แก้กติกา") + "<span>" + (openG.rules ? "ย่อ" : "แก้ได้ตลอด บันทึกเอง") + "</span></button>";
+    if(openG.rules) h += '<p class="hint tip">แก้แล้วกด ดูใหม่ตามกติกาใหม่ ถ้าอยากให้คลิปที่ดูแล้วถูกดูใหม่</p>'
+      + '<label class="orglab">กติการวม</label><textarea class="orgta" rows="6" data-gen="1">' + esc(R.general) + "</textarea>"
+      + al.map(function(a){ var st = stateOf(R, a.name); return '<div class="orgal"><div class="orgalh"><b>' + esc(a.name) + " <em>" + a.n + '</em></b><button type="button" class="orgst st-' + st + '" data-st="' + esc(a.name) + '">' + STATES[st] + "</button></div>" + (st === "use" ? '<textarea class="orgta" rows="2" data-desc="' + esc(a.name) + '" placeholder="อัลบั้มนี้เก็บฉากแบบไหน (ว่าง = AI เดาจากชื่อ)">' + esc(R.desc[low(a.name)] || "") + "</textarea>" : "") + "</div>"; }).join("");
     h += "</section>";
     var box = $("orgBox"), y = box.scrollTop; box.innerHTML = h; box.scrollTop = y;
   }

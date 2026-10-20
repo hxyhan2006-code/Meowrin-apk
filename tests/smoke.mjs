@@ -486,6 +486,7 @@ try {
     document.getElementById('orgBtn').hidden = false;
   });
   await og.click('#orgBtn'); await og.waitForFunction(() => document.querySelector('#orgBox #orgTry'), null, { timeout: 8000 });
+  await og.click('#orgBox [data-g="rules"]'); // กติกาพับเก็บอยู่ · เปิดก่อนเช็กช่องคำอธิบาย
   const og0 = await og.evaluate(() => { const b = document.getElementById('orgBox').getBoundingClientRect(); return { t: document.getElementById('orgBox').textContent, full: b.top <= 1 && b.height >= innerHeight - 1 && getComputedStyle(document.getElementById('orgBox')).position === 'fixed', ov: document.getElementById('orgBox').scrollWidth > document.getElementById('orgBox').clientWidth + 1, rules: document.querySelectorAll('#orgBox [data-desc]').length, oda: [...document.querySelectorAll('#orgBox [data-st]')].find((x) => x.dataset.st === 'Oda').textContent }; });
   check('จัดอัลบั้มใหม่: เปิดเป็นหน้าเต็มจอ ไม่ล้นจอ · บอกยังไม่ทำดัชนี 1 · ไม่แตะอัลบั้มล็อก (Oda) · กติกามีช่องคำอธิบายเฉพาะอัลบั้มที่ใช้ (luffy zoro sanji = 3)', og0.full && !og0.ov && /ยังไม่ทำดัชนี 1 คลิป/.test(og0.t) && /ไม่แตะ 1 คลิปในอัลบั้มที่ล็อก/.test(og0.t) && og0.rules === 3 && /ล็อก/.test(og0.oda), JSON.stringify(og0).slice(0, 400));
   await og.click('#orgIdx');
@@ -544,6 +545,19 @@ try {
   await sh.fill('#q', 'อุซปวิ่งหนี'); await sh.waitForFunction(() => document.querySelectorAll('#results img.scene').length === 2 && [...document.querySelectorAll('#results img.scene')].some((i) => /^blob:/.test(i.src)), null, { timeout: 15000 }).catch(() => {});
   const shr = await sh.evaluate(() => [...document.querySelectorAll('#results .card')].map((c) => { const i = c.querySelector('img.scene'); return { t: c.textContent.includes('ไม่มีไฟล์') ? 'none' : 'file', blob: /^blob:/.test(i.src), w: i.naturalWidth }; }));
   check('รูปฉากในการ์ด: คลิปที่มีไฟล์ในมือถือได้เฟรมคมจากไฟล์จริง (กว้าง 720) · คลิปที่ไม่มีไฟล์ใช้รูปเดิม · ไม่มี error', shr.length === 2 && shr.find((x) => x.t === 'file').blob && shr.find((x) => x.t === 'file').w === 720 && !shr.find((x) => x.t === 'none').blob && !shErr.length, JSON.stringify(shr) + shErr.join());
+  // v8.91 ตัวดูฉาก: กรอออกนอกฉากได้ (เดิมกรอเลยท้ายฉาก = ดีดกลับต้นฉาก/หยุดทันที) · เล่นถึงท้ายฉากเอง = วนซ้ำ · สื่อเต็มความกว้าง ปุ่มเล่นติดล่างไม่ทับข้อความ · แตะพื้นดำไม่ปิด · ตัวละครพับเก็บ
+  await sh.evaluate(() => { MWLocal.urlOf = (c) => c.id === 'shp1' ? MWLocal.fileUrl() : null; });
+  await sh.click('#results .card img.scene'); await sh.waitForTimeout(300);
+  const bg0 = await sh.evaluate(() => { const m = document.querySelector('#big .bigmedia img, #big #bigImg').getBoundingClientRect(), f = document.querySelector('.bigfoot').getBoundingClientRect(), t = document.getElementById('bigTxt').getBoundingClientRect(), d = document.getElementById('bigDet'); return { w: Math.round(m.width), fw: innerWidth, footTop: Math.round(f.top), txtBottom: Math.round(t.bottom), detOpen: d.open, detHidden: d.hidden, sum: document.getElementById('bigDetS').textContent, ov: document.documentElement.scrollWidth > innerWidth + 1 }; });
+  await sh.click('#playBtn'); await sh.waitForFunction(() => !document.getElementById('bigVid').hidden && document.getElementById('bigVid').readyState >= 1, null, { timeout: 10000 });
+  const bg1 = await sh.evaluate(() => { const v = document.getElementById('bigVid'); let t = 0.2, paused = 0, jumps = []; Object.defineProperty(v, 'currentTime', { get: () => t, set: (x) => { t = x; jumps.push(x); v.onseeking && v.onseeking(); }, configurable: true }); v.pause = () => { paused++; };
+    v.onloadedmetadata = null; const sc = FT.ui.lib().find((c) => c.id === 'shp1').scenes[0], e = sc.e;
+    jumps.length = 0; t = e + 3; v.onseeking(); v.ontimeupdate(); /* ผู้ใช้กรอเลยท้ายฉาก */ const free = { jumps: jumps.slice(), paused };
+    t = 0.5; jumps.length = 0; v.onseeking(); t = e + 0.01; v.ontimeupdate(); /* กรอกลับเข้าฉาก แล้วเล่นถึงท้ายฉากเอง = วนซ้ำ */ const loop = { jumps: jumps.slice(), paused };
+    document.getElementById('loopSc').checked = false; t = 0.5; v.onseeking(); t = e + 0.01; v.ontimeupdate(); return { free, loop, off: paused, big: !document.getElementById('big').hidden }; });
+  await sh.mouse.click(4, 400); await sh.waitForTimeout(200);
+  const bg2 = await sh.evaluate(() => !document.getElementById('big').hidden);
+  check('ตัวดูฉาก: กรอเลยท้ายฉาก = ไม่ดีดกลับ/ไม่หยุด · เล่นถึงท้ายฉากเอง = วนซ้ำฉาก · ปิดวนซ้ำ = หยุด · สื่อเต็มความกว้างจอ · ข้อความอยู่เหนือปุ่มเล่น (ไม่ทับ) · ตัวละครพับเก็บและบอกชื่อ · แตะพื้นดำข้างวิดีโอไม่ปิด', bg1.free.jumps.length === 0 && bg1.free.paused === 0 && bg1.loop.jumps.length === 1 && bg1.loop.jumps[0] === 0 && bg1.off === 1 && bg0.w >= bg0.fw - 2 && bg0.txtBottom <= bg0.footTop && !bg0.detOpen && !bg0.detHidden && /Usopp/.test(bg0.sum) && !bg0.ov && bg1.big && bg2 && !shErr.length, JSON.stringify([bg0, bg1, bg2]) + shErr.join());
   await sh.evaluate(() => { const l = FT.ui.lib(); for (let i = l.length - 1; i >= 0; i--) if (/^shp/.test(l[i].id)) l.splice(i, 1); });
   await sh.close();
   // v8.52 ฟังเสียงคลิป (footage-speech.js): ถอดเสียงจริงจากไฟล์ wav จำลอง (สเตอริโอ 24 kHz → โมโน 16 kHz) · เงียบ = ไม่เรียก AI · บทพูดเข้าฉากที่ทับเวลา · แผงโชว์บทพูด
