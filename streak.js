@@ -273,8 +273,9 @@
     render(); check(false);
     /* แตะวิดเจ็ต/แจ้งเตือน = เปิดหน้าวันต่อเนื่อง (เปิดแอพใหม่ = consumeOpen · แอพเปิดค้างอยู่ = event open) */
     var P0 = plugin();
-    if(P0 && P0.addListener) P0.addListener("open", function(){ if(page.hidden) open(); });
-    if(P0 && P0.consumeOpen) P0.consumeOpen().then(function(r){ if(r && r.open && page.hidden) open(); }).catch(function(){});
+    function takeOpen(){ if(P0 && P0.consumeOpen) P0.consumeOpen().then(function(r){ if(r && r.open && page.hidden) open(); }).catch(function(){}); } /* อ่านแล้วล้าง = ไม่เปิดซ้ำตอนโหลดหน้าใหม่ */
+    if(P0 && P0.addListener) P0.addListener("open", takeOpen);
+    takeOpen(); document.addEventListener("visibilitychange", function(){ if(!document.hidden) takeOpen(); });
   }
 
   window.MWStreak = { calc: calc, check: check, open: open, GOAL: GOAL };

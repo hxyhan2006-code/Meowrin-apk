@@ -8,12 +8,14 @@ import android.content.Intent;
 public class StreakAlarm extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
+        String a = intent == null ? null : intent.getAction();
+        if (!StreakCore.ACTION.equals(a) && !Intent.ACTION_BOOT_COMPLETED.equals(a) && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(a)) return;
         final Context c = context.getApplicationContext();
         final PendingResult r = goAsync();
         new Thread(new Runnable() {
             @Override
             public void run() {
-                try { StreakCore.tick(c); } catch (Exception ignored) { } finally { r.finish(); }
+                try { StreakCore.tick(c); } catch (Throwable ignored) { } finally { r.finish(); }
             }
         }).start();
     }

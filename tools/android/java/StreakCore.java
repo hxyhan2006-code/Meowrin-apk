@@ -69,42 +69,47 @@ final class StreakCore {
         p.edit().putInt("base", base).putInt("freeze", freeze).putInt("today", 0).putString("day", today).apply();
     }
 
-    /* นับคลิปที่ลงวันนี้ (หน้าแรกของ playlist 50 คลิป = พอสำหรับวันละไม่กี่คลิป) · พลาด = คืน -1 ไม่แตะยอดเดิม */
-    static int fetchToday(SharedPreferences p) {
+    /* หน้าแรกของ playlist (50 คลิปล่าสุด = พอสำหรับวันละไม่กี่คลิป) · พลาด = null ไม่แตะยอดเดิม
+       timeout สั้น: goAsync ให้เวลาราว 10 วินาที */
+    static JSONArray fetchItems(SharedPreferences p) {
         String key = p.getString("key", ""), list = p.getString("list", "");
-        if (key.isEmpty() || list.isEmpty()) return -1;
+        if (key.isEmpty() || list.isEmpty()) return null;
         HttpURLConnection con = null;
         try {
             URL u = new URL("https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=50&playlistId="
                     + URLEncoder.encode(list, "UTF-8") + "&key=" + URLEncoder.encode(key, "UTF-8"));
             con = (HttpURLConnection) u.openConnection();
-            con.setConnectTimeout(8000);
-            con.setReadTimeout(8000);
+            con.setConnectTimeout(4000);
+            con.setReadTimeout(4000);
             con.setRequestProperty("Referer", "https://localhost/"); /* key ที่จำกัดโดเมนไว้ให้ตัวแอพ (WebView ส่ง localhost) ใช้ได้เหมือนกัน */
-            if (con.getResponseCode() != 200) return -1;
+            if (con.getResponseCode() != 200) return null;
             InputStream in = con.getInputStream();
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buf = new byte[8192];
             for (int r; (r = in.read(buf)) > 0; ) out.write(buf, 0, r);
-            JSONArray items = new JSONObject(out.toString("UTF-8")).optJSONArray("items");
-            if (items == null) return -1;
-            SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
-            iso.setTimeZone(TimeZone.getTimeZone("UTC"));
-            String today = dayKey(System.currentTimeMillis());
-            int n = 0;
-            for (int i = 0; i < items.length(); i++) {
+            return new JSONObject(out.toString("UTF-8")).optJSONArray("items");
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (con != null) con.disconnect();
+        }
+    }
+
+    /* จำนวนคลิปที่ลงในวัน day (เวลาในมือถือ) */
+    static int countDay(JSONArray items, String day) {
+        SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
+        iso.setTimeZone(TimeZone.getTimeZone("UTC"));
+        int n = 0;
+        for (int i = 0; i < items.length(); i++) {
+            try {
                 JSONObject cd = items.getJSONObject(i).optJSONObject("contentDetails");
                 String at = cd == null ? "" : cd.optString("videoPublishedAt", "");
                 if (at.length() < 19) continue;
                 Date d = iso.parse(at.substring(0, 19));
-                if (d != null && today.equals(dayKey(d.getTime()))) n++;
-            }
-            return n;
-        } catch (Exception e) {
-            return -1;
-        } finally {
-            if (con != null) con.disconnect();
+                if (d != null && day.equals(dayKey(d.getTime()))) n++;
+            } catch (Exception ignored) { }
         }
+        return n;
     }
 
     static PendingIntent openApp(Context c, int req) {
@@ -190,11 +195,12 @@ final class StreakCore {
         try { String[] t = hhmm.split(":"); return Integer.parseInt(t[0]) * 60 + Integer.parseInt(t[1]); } catch (Exception e) { return -1; }
     }
 
-    /* รอบปลุก: 00:01 (ข้ามวันให้วิดเจ็ต) + ทุก 30 นาทีช่วง 10:00–23:30 + เวลาแจ้งเตือนที่ตั้งไว้ */
+    /* รอบปลุก: 00:01 (ข้ามวันให้วิดเจ็ต) + ทุก 30 นาทีช่วง 10:00–23:30 + 23:55 + เวลาแจ้งเตือนที่ตั้งไว้ */
     static long nextAt(SharedPreferences p, long now) {
         ArrayList<Integer> slots = new ArrayList<>();
         slots.add(1);
         for (int m = 10 * 60; m <= 23 * 60 + 30; m += 30) slots.add(m);
+        slots.add(23 * 60 + 55);
         for (String t : p.getString("times", "").split(",")) { int m = minutes(t); if (m >= 0) slots.add(m); }
         long best = Long.MAX_VALUE;
         for (int dayOff = 0; dayOff <= 1; dayOff++) {
@@ -224,33 +230,39 @@ final class StreakCore {
         am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, t, pi); /* ไม่ใช้นาฬิกาปลุกแบบตรงเวลา (ต้องขอสิทธิ์พิเศษ) · ช้าได้ไม่กี่นาที */
     }
 
-    /* ทำงานในเธรดเบื้องหลัง (StreakAlarm.goAsync) */
+    /* ทำงานในเธรดเบื้องหลัง (StreakAlarm.goAsync) · ตั้งรอบถัดไปก่อนต่อเน็ต (ระบบฆ่าโปรเซสกลางทาง = รอบปลุกยังอยู่) */
     static void tick(Context c) {
         SharedPreferences p = prefs(c);
+        schedule(c);
         try {
+            if (p.getString("list", "").isEmpty()) return;
+            long now = System.currentTimeMillis();
+            String today = dayKey(now), day = p.getString("day", "");
+            JSONArray items = fetchItems(p);
+            /* ข้ามวัน: นับยอดของวันที่ค้างไว้ก่อน (คลิปที่ลงหลังรอบเช็กสุดท้ายก่อนเที่ยงคืนจะได้ไม่หาย) แล้วค่อยเลื่อนวัน */
+            if (items != null && !day.isEmpty() && day.compareTo(today) < 0) p.edit().putInt("today", countDay(items, day)).apply();
             rollover(p);
-            if (!p.getString("list", "").isEmpty()) {
-                int n = fetchToday(p);
-                if (n >= 0) p.edit().putInt("today", n).putLong("checkedAt", System.currentTimeMillis()).apply();
-                renderWidgets(c);
-                int goal = p.getInt("goal", 2);
-                if (p.getBoolean("notify", false) && p.getInt("today", 0) < goal && canNotify(c)) {
-                    long now = System.currentTimeMillis();
-                    Calendar cal = Calendar.getInstance();
-                    cal.setTimeInMillis(now);
-                    int nowM = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE);
-                    String today = dayKey(now), done = p.getString("notified", "");
-                    for (String t : p.getString("times", "").split(",")) {
-                        int m = minutes(t);
-                        if (m < 0 || nowM < m || (nowM - m) * 60_000L > LATE_MS) continue;
-                        String tag = today + "|" + t;
-                        if (done.contains(tag)) continue;
-                        p.edit().putString("notified", tag + ";" + (done.length() > 200 ? "" : done)).apply();
-                        notifyNow(c, t);
-                        break;
-                    }
+            if (items != null) p.edit().putInt("today", countDay(items, today)).putLong("checkedAt", now).apply();
+            renderWidgets(c);
+            boolean fresh = now - p.getLong("checkedAt", 0) < 40 * 60_000L; /* เช็กไม่ได้ (เน็ต/โควต้า) และยอดเก่า = ไม่เตือนมั่ว */
+            int goal = p.getInt("goal", 2);
+            if (fresh && p.getBoolean("notify", false) && p.getInt("today", 0) < goal && canNotify(c)) {
+                Calendar cal = Calendar.getInstance();
+                cal.setTimeInMillis(now);
+                int nowM = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE);
+                String done = p.getString("notified", "");
+                if (!done.startsWith(today)) done = ""; /* เก็บเฉพาะของวันนี้ */
+                for (String t : p.getString("times", "").split(",")) {
+                    int m = minutes(t);
+                    if (m < 0 || nowM < m || (nowM - m) * 60_000L > LATE_MS) continue;
+                    String tag = today + "|" + t;
+                    if (done.contains(tag)) continue;
+                    p.edit().putString("notified", done.isEmpty() ? tag : done + ";" + tag).apply();
+                    notifyNow(c, t);
+                    break;
                 }
             }
+        } catch (Throwable ignored) {
         } finally {
             schedule(c);
         }
