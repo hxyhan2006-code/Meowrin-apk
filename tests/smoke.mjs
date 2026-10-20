@@ -530,6 +530,36 @@ try {
   check('จัดอัลบั้มใหม่: ปุ่มย้อนของมือถือ = ปิดหน้าจัดอัลบั้ม กลับหน้าอัลบั้ม · ไม่มี error', await og.evaluate(() => document.getElementById('orgBox').hidden && !FT.organize.isOpen() && !document.documentElement.classList.contains('orgopen')) && !ogErr.length, ogErr.join());
   await og.evaluate(async () => { await FT.store.del(['o1', 'o2', 'o3', 'o4', 'o5', 'o6']); MWStore.del('mw_albrules_v1'); }); /* คลิปจำลองมีบทพูด: ไม่ลบ = ไปโผล่ในแผงฟังเสียงของเทสต์หน้าอื่น (ใช้ฐานข้อมูลเดียวกัน) */
   await og.close();
+  // v8.92 ลบคลิปที่ไม่ใช้ (footage-trash.js): คลิปที่ไฟล์หายโผล่ในรายการ → เลือกย้ายเข้าถังขยะ (ซ่อนจากค้นหา/อัลบั้ม ดัชนียังอยู่) → คืนกลับ/ลบถาวร (ลบแค่ดัชนี) · ไฟล์กลับมา = คืนเอง · ซ่อนฟุตซ้ำคนละเรื่องกัน · ยังไม่สแกน = บอกให้สแกนก่อน
+  const tr = await context.newPage(); const trErr = []; tr.on('pageerror', (e) => trErr.push(e.message));
+  await tr.goto(base + '/footage.html'); await tr.waitForFunction(() => window.FT && FT.ui && document.getElementById('trOut'), null, { timeout: 20000 }); await tr.waitForTimeout(400);
+  await tr.evaluate(async () => {
+    const mk = (id, name, size, who) => ({ id, name, size, album: 'luffy', duration: 12, status: 'done', lastModified: 1, cover: '', scenes: [{ s: 0, e: 3, thumb: '', ai: { characters: [who], summary_th: 'ทดสอบถังขยะ ' + id } }] });
+    const cl = [mk('tr1', 'keep.mp4', 501, 'Luffy'), mk('tr2', 'gone_a.mp4', 502, 'Luffy'), mk('tr3', 'gone_b.mp4', 503, 'Luffy'), Object.assign(mk('tr4', 'dup.mp4', 504, 'Luffy'), { hide: true })]; await FT.store.putMany(cl); FT.ui.lib().push(...cl); /* บันทึกลงฐานด้วย: ลบถาวรแล้วโหลดคลังใหม่จากฐาน */
+    window.__files = { 'keep.mp4': 1 }; MWLocal.native = () => true; MWLocal.list = () => [{ name: 'keep.mp4', size: 501, dir: '/storage/emulated/0/Pictures/Gallery/owner/luffy/', uri: 'file://k' }]; MWLocal.urlOf = (c) => window.__files[c.name] ? 'file://x' : null;
+    document.dispatchEvent(new CustomEvent('ft:lib'));
+  });
+  const tr0 = await tr.evaluate(() => ({ t: document.getElementById('trOut').textContent, tag: document.getElementById('tagTr').textContent, rows: [...document.querySelectorAll('#trOut .trrow')].map((r) => r.querySelector('b').textContent).join() }));
+  await tr.click('.tabs [data-p=set]'); await tr.evaluate(() => { document.getElementById('trFold').open = true; });
+  await tr.click('#trOut .trrow >> text=gone_a.mp4'); await tr.click('#trOut [data-act=trash]'); await tr.waitForTimeout(300);
+  const tr1 = await tr.evaluate(() => { const a = FT.ui.lib().find((c) => c.id === 'tr2'), b = FT.ui.lib().find((c) => c.id === 'tr3'); return { a: a.hide, at: !!a.trashAt, b: b.hide, t: document.getElementById('trOut').textContent, ov: document.documentElement.scrollWidth > innerWidth + 1 }; });
+  await tr.click('.tabs [data-p=album]'); await tr.fill('#q', 'ทดสอบถังขยะ'); await tr.waitForTimeout(600);
+  const tr2 = await tr.evaluate(() => document.querySelectorAll('#results .card').length);
+  await tr.fill('#q', ''); await tr.click('.tabs [data-p=set]'); await tr.waitForTimeout(300);
+  await tr.click('#trOut .trlist[data-l=t] .trrow'); await tr.click('#trOut [data-act=restore]'); await tr.waitForTimeout(300);
+  const tr3 = await tr.evaluate(() => ({ a: FT.ui.lib().find((c) => c.id === 'tr2').hide, at: FT.ui.lib().find((c) => c.id === 'tr2').trashAt }));
+  await tr.click('#trOut .trrow >> text=gone_a.mp4'); await tr.click('#trOut [data-act=trash]'); await tr.waitForTimeout(250);
+  await tr.evaluate(() => { window.__files['gone_a.mp4'] = 1; document.dispatchEvent(new CustomEvent('ft:files', { detail: 1 })); }); await tr.waitForTimeout(400);
+  const tr4 = await tr.evaluate(() => ({ a: FT.ui.lib().find((c) => c.id === 'tr2').hide, dupKept: FT.ui.lib().find((c) => c.id === 'tr4').hide, msg: document.getElementById('trOut').textContent.includes('เจอไฟล์ในมือถืออีกครั้ง') }));
+  await tr.evaluate(() => { window.__files['gone_a.mp4'] = 0; document.dispatchEvent(new CustomEvent('ft:lib')); }); await tr.click('#trOut .trrow >> text=gone_a.mp4'); await tr.click('#trOut .trrow >> text=gone_b.mp4'); await tr.click('#trOut [data-act=trash]'); await tr.waitForTimeout(250);
+  await tr.click('#trOut .trlist[data-l=t] .trrow >> nth=0'); await tr.click('#trOut [data-act=purge]'); await tr.getByRole('button', { name: 'ลบถาวร', exact: true }).click(); await tr.waitForTimeout(500);
+  const tr5 = await tr.evaluate(() => ({ ids: FT.ui.lib().map((c) => c.id).filter((i) => /^tr\d/.test(i)).sort().join(), trashN: FT.ui.lib().filter((c) => c.hide === 'trash').length, kept: !!FT.ui.lib().find((c) => c.id === 'tr1') }));
+  await tr.evaluate(() => { MWLocal.list = () => []; document.dispatchEvent(new CustomEvent('ft:lib')); });
+  const tr6 = await tr.evaluate(() => document.getElementById('trOut').textContent);
+  check('ลบคลิปที่ไม่ใช้: ไฟล์หายโผล่ในรายการ (gone_a/gone_b ไม่รวมคลิปที่ไฟล์ยังอยู่/ซ่อนฟุตซ้ำ) · ย้ายเข้าถังขยะ = ซ่อนจากค้นหา · คืนกลับได้ · ไฟล์กลับมา = คืนเอง · ลบถาวรลบแค่ดัชนีคลิปที่เลือก · ยังไม่สแกน = บอกให้สแกนก่อน · ไม่แตะซ่อนฟุตซ้ำ',
+    /gone_a\.mp4/.test(tr0.rows) && /gone_b\.mp4/.test(tr0.rows) && !/keep\.mp4/.test(tr0.rows) && !/dup\.mp4/.test(tr0.rows) && /ไฟล์หาย \d/.test(tr0.tag) /* คลิปจากเทสต์ก่อนหน้าในฐานเดียวกันก็นับว่าไฟล์หาย (จำลองสแกนว่าง) */ && tr1.a === 'trash' && tr1.at && !tr1.b && tr1.t.includes('ถังขยะ 1 คลิป') && !tr1.ov && tr2 === 2 && !tr3.a && !tr3.at && !tr4.a && tr4.dupKept === true && tr4.msg && tr5.trashN === 1 && tr5.ids.split(',').length === 3 && /tr1/.test(tr5.ids) && /tr4/.test(tr5.ids) && tr5.kept && /ยังไม่เคยสแกน/.test(tr6) && !trErr.length, JSON.stringify([tr0, tr1, tr2, tr3, tr4, tr5, tr6.slice(0, 80)]) + trErr.join());
+  await tr.evaluate(async () => { await FT.store.del(['tr1', 'tr2', 'tr3', 'tr4']); const l = FT.ui.lib(); for (let i = l.length - 1; i >= 0; i--) if (/^tr\d$/.test(l[i].id)) l.splice(i, 1); });
+  await tr.close();
   // v8.89 รูปฉากในการ์ดผลค้นหาไม่แตก: เลื่อนมาถึงการ์ด → อ่านเฟรมกลางฉากจากไฟล์จริงในมือถือ 720px (แคชไว้) แทนรูปในดัชนี 240px · ไม่มีไฟล์ = ใช้รูปเดิมไม่พัง
   const sh = await context.newPage(); const shErr = []; sh.on('pageerror', (e) => shErr.push(e.message));
   await sh.goto(base + '/footage.html'); await sh.waitForFunction(() => window.FT && FT.ui && FT.ui.sharpen, null, { timeout: 20000 }); await sh.waitForTimeout(400);

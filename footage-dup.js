@@ -60,19 +60,19 @@
   function gb(n){ return n >= 1073741824 ? (n / 1073741824).toFixed(1) + " GB" : (n / 1048576).toFixed(0) + " MB"; }
   function render(){
     var box = $("dupOut"); if(!groups){ box.innerHTML = ""; return; }
-    var hidden = U.lib().filter(function(c){ return c.hide; });
+    var hidden = U.lib().filter(function(c){ return c.hide === true; }); /* "trash" = ถังขยะ (footage-trash.js) ไม่ใช่ของหน้านี้ */
     var dupClips = 0, bytes = 0; groups.forEach(function(g){ g.items.forEach(function(it){ if(it.c !== g.keep){ dupClips++; bytes += it.c.size || 0; } }); });
     box.innerHTML = (groups.length ? '<p class="hint"><b>พบ ' + groups.length + " กลุ่ม</b> · คลิปที่ซ้ำ " + dupClips + " คลิป (ราว " + gb(bytes) + ") · ตัวที่ติดป้าย \"เก็บ\" คือตัวที่ยาว/ครอบคลุมที่สุด</p>"
       + '<button class="btn" id="dupHideAll" style="width:100%">' + MWIcon("hide") + 'ซ่อนตัวที่ซ้ำทั้งหมด (' + dupClips + " คลิป)</button>"
       : '<p class="hint">ไม่พบฟุตซ้ำ (ที่ฉากเหมือนกัน ≥ 40%)</p>')
       + groups.map(function(g, gi){
         return '<div class="dupg"><div class="dupr">' + g.items.map(function(it){ var c = it.c, keep = c === g.keep;
-          return '<div class="dupc' + (c.hide ? " off" : "") + '"><img src="' + (c.cover || "") + '" alt=""><b class="' + (keep ? "ok" : "bad") + '">' + (keep ? MWIcon("check") + "เก็บ" : c.hide ? "ซ่อนแล้ว" : "ซ้ำ") + "</b><span>" + esc(c.name.length > 22 ? c.name.slice(0, 20) + "…" : c.name) + "<br>" + U.capDur(c.duration) + " · " + gb(c.size || 0) + "<br>" + esc(c.album) + "</span></div>"; }).join("") + "</div>"
-          + '<button class="btn ghost small" data-dg="' + gi + '" style="width:100%;margin-top:6px">' + (g.items.every(function(it){ return it.c === g.keep || it.c.hide; }) ? "↩ คืนตัวที่ซ่อนในกลุ่มนี้" : MWIcon("hide") + "ซ่อนตัวที่ซ้ำในกลุ่มนี้") + "</button></div>"; }).join("")
+          return '<div class="dupc' + (c.hide === true ? " off" : "") + '"><img src="' + (c.cover || "") + '" alt=""><b class="' + (keep ? "ok" : "bad") + '">' + (keep ? MWIcon("check") + "เก็บ" : c.hide === true ? "ซ่อนแล้ว" : "ซ้ำ") + "</b><span>" + esc(c.name.length > 22 ? c.name.slice(0, 20) + "…" : c.name) + "<br>" + U.capDur(c.duration) + " · " + gb(c.size || 0) + "<br>" + esc(c.album) + "</span></div>"; }).join("") + "</div>"
+          + '<button class="btn ghost small" data-dg="' + gi + '" style="width:100%;margin-top:6px">' + (g.items.every(function(it){ return it.c === g.keep || it.c.hide === true; }) ? "↩ คืนตัวที่ซ่อนในกลุ่มนี้" : MWIcon("hide") + "ซ่อนตัวที่ซ้ำในกลุ่มนี้") + "</button></div>"; }).join("")
       + (hidden.length ? '<p class="hint" style="margin-top:12px">ซ่อนอยู่ทั้งหมด ' + hidden.length + ' คลิป (ไม่โผล่ในค้นหา/ผู้กำกับ · ไฟล์ในคลังยังอยู่)</p><button class="btn ghost small" id="dupShowAll" style="width:100%">↩ คืนทุกคลิปที่ซ่อน</button>' : "");
   }
   async function setHide(clips, on){
-    clips.forEach(function(c){ if(on) c.hide = true; else delete c.hide; });
+    clips.forEach(function(c){ if(on){ if(!c.hide) c.hide = true; } else if(c.hide === true) delete c.hide; }); /* ถังขยะไม่ถูกทับ/คืนจากหน้านี้ */
     await FT.store.putMany(clips); render(); if(U.search) U.search();
   }
   $("dupBtn").addEventListener("click", async function(){
@@ -87,9 +87,9 @@
   $("dupOut").addEventListener("click", function(e){
     var b = e.target.closest("button"); if(!b || !groups) return;
     if(b.id === "dupHideAll"){ var all = []; groups.forEach(function(g){ g.items.forEach(function(it){ if(it.c !== g.keep) all.push(it.c); }); }); setHide(all, true); }
-    else if(b.id === "dupShowAll"){ setHide(U.lib().filter(function(c){ return c.hide; }), false); }
+    else if(b.id === "dupShowAll"){ setHide(U.lib().filter(function(c){ return c.hide === true; }), false); }
     else if(b.dataset.dg !== undefined){ var g = groups[+b.dataset.dg], others = g.items.filter(function(it){ return it.c !== g.keep; }).map(function(it){ return it.c; });
-      setHide(others, !others.every(function(c){ return c.hide; })); }
+      setHide(others, !others.every(function(c){ return c.hide === true; })); }
   });
   U.dupHash = hashOf; /* ให้เทสต์/ไฟล์อื่นใช้ */
 })();

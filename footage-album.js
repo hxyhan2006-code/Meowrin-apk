@@ -26,7 +26,7 @@
         if(es){ hit = true; es.forEach(function(e){ if(U.clipFor(e.name, e.size) === c) e.c = c; }); } /* หลายคลิปกุญแจเดียวกัน = ให้ไฟล์ได้คลิปที่ U.clipFor เลือก (ตรงกับทุกที่) */ /* ทุกไฟล์ที่ซ้ำกันนับว่าทำดัชนีแล้ว (เดิมติดแค่ตัวสุดท้าย → อีกตัวค้าง "ยังไม่ทำ" และกดทำใหม่ไม่ได้เพราะดัชนีมีอยู่แล้ว) */
         else if(other[kk]){ hit = true; other[kk].c = c; byKey[kk] = [other[kk]]; out.push(other[kk]); }
       });
-      if(!hit) out.push({ k:k, name:c.name, size:c.size, album:loc.length ? MISSING : (c.album || "ไม่ระบุ"), uri:null, c:c });
+      if(!hit && c.hide !== "trash") out.push({ k:k, name:c.name, size:c.size, album:loc.length ? MISSING : (c.album || "ไม่ระบุ"), uri:null, c:c });
     });
     allE = out; albums = groupFor(mode);
   }
