@@ -59,12 +59,11 @@ final class StreakCore {
         String today = dayKey(System.currentTimeMillis()), day = p.getString("day", "");
         if (day.isEmpty() || day.compareTo(today) >= 0) return;
         int base = p.getInt("base", 0), freeze = p.getInt("freeze", 0), n = p.getInt("today", 0), goal = p.getInt("goal", 2);
-        boolean broke = false;
+        boolean broke = false; /* ช่วงที่ข้ามมามีวันที่ไฟดับตอนมีไฟอยู่ไหม (ไม่ใช่แค่วันสุดท้าย) */
         for (int guard = 0; day.compareTo(today) < 0 && guard < 400; guard++) {
-            broke = false;
             if (n >= goal) base++;
             else if (freeze > 0) freeze--;
-            else { base = 0; broke = true; }
+            else { if (base > 0) broke = true; base = 0; }
             n = 0;
             day = nextDay(day);
         }
@@ -133,8 +132,8 @@ final class StreakCore {
         int hour = cal.get(Calendar.HOUR_OF_DAY), half = hour * 2 + cal.get(Calendar.MINUTE) / 30;
         String today = dayKey(System.currentTimeMillis()), key;
         if (lit) key = n > goal ? "w_b" : "w_d";
-        else if (hour >= 19) key = "w_e";
-        else if (today.equals(p.getString("broke", ""))) key = "w_r";
+        else if (today.equals(p.getString("broke", ""))) key = "w_r"; /* ไฟเพิ่งดับวันนี้ = ข้อความให้กำลังใจ ไม่ใช่ "ไฟจะดับ" */
+        else if (hour >= 19 && p.getInt("base", 0) > 0) key = "w_e";
         else key = n >= 1 ? "w_h" : "w_z";
         JSONArray a = pool(p, key);
         if (a.length() == 0) return "";
@@ -188,6 +187,7 @@ final class StreakCore {
         ArrayList<String> recent = new ArrayList<>();
         try { JSONArray r = new JSONArray(p.getString("recent", "[]")); for (int i = 0; i < r.length(); i++) recent.add(r.optString(i, "")); } catch (Exception ignored) { }
         for (String m : all) if (!m.isEmpty() && !recent.contains(m)) fresh.add(m);
+        if (fresh.isEmpty()) { String last = recent.isEmpty() ? "" : recent.get(recent.size() - 1); for (String m : all) if (!m.isEmpty() && !m.equals(last)) fresh.add(m); }
         if (fresh.isEmpty()) for (String m : all) if (!m.isEmpty()) fresh.add(m);
         String msg = fresh.isEmpty() ? "วันนี้ยังไม่ได้ทำงาน {n}/{goal}" : fresh.get(new Random().nextInt(fresh.size()));
         recent.add(msg);
@@ -263,10 +263,16 @@ final class StreakCore {
         am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, t, pi); /* ไม่ใช้นาฬิกาปลุกแบบตรงเวลา (ต้องขอสิทธิ์พิเศษ) · ช้าได้ไม่กี่นาที */
     }
 
+    static final Object LOCK = new Object(); /* รอบปลุกซ้อนกัน/ทดสอบแจ้งเตือนพร้อมกัน = ทำทีละรอบ (กันแจ้งเตือนซ้ำ) */
+
     /* ทำงานในเธรดเบื้องหลัง (StreakAlarm.goAsync) · ตั้งรอบถัดไปก่อนต่อเน็ต (ระบบฆ่าโปรเซสกลางทาง = รอบปลุกยังอยู่) */
     static void tick(Context c) {
         SharedPreferences p = prefs(c);
         schedule(c);
+        synchronized (LOCK) { tickLocked(c, p); }
+    }
+
+    static void tickLocked(Context c, SharedPreferences p) {
         try {
             if (p.getString("list", "").isEmpty()) return;
             long now = System.currentTimeMillis();
@@ -275,12 +281,14 @@ final class StreakCore {
             /* ข้ามวัน: นับยอดของวันที่ค้างไว้ก่อน (คลิปที่ลงหลังรอบเช็กสุดท้ายก่อนเที่ยงคืนจะได้ไม่หาย) แล้วค่อยเลื่อนวัน */
             if (items != null && !day.isEmpty() && day.compareTo(today) < 0) p.edit().putInt("today", countDay(items, day)).apply();
             rollover(p);
+            int prevToday = p.getInt("today", 0);
+            boolean prevOk = p.getLong("checkedAt", 0) > 0 && today.equals(dayKey(p.getLong("checkedAt", 0))); /* รอบก่อนเช็กวันนี้ไว้แล้ว */
             if (items != null) p.edit().putInt("today", countDay(items, today)).putLong("checkedAt", now).apply();
             renderWidgets(c);
             boolean fresh = now - p.getLong("checkedAt", 0) < 40 * 60_000L; /* เช็กไม่ได้ (เน็ต/โควต้า) และยอดเก่า = ไม่เตือนมั่ว */
             int goal = p.getInt("goal", 2);
-            /* ไฟเพิ่งติดวันนี้ = ชมหนึ่งครั้ง (หลักไมล์ใช้ชุด ms) */
-            if (fresh && p.getBoolean("notify", false) && p.getInt("today", 0) >= goal && !today.equals(p.getString("praised", "")) && canNotify(c)) {
+            /* ไฟเพิ่งติด (รอบก่อนยังไม่ครบ รอบนี้ครบ) = ชมหนึ่งครั้ง (หลักไมล์ใช้ชุด ms) · ติดตั้งใหม่/ครบอยู่แล้ว/เปิดแอพเห็นเองแล้ว = ไม่ชมย้อนหลัง */
+            if (items != null && prevOk && prevToday < goal && p.getInt("today", 0) >= goal && p.getBoolean("notify", false) && !today.equals(p.getString("praised", "")) && canNotify(c)) {
                 int shown = p.getInt("base", 0) + 1;
                 p.edit().putString("praised", today).apply();
                 notifyPool(c, new String[] { isMilestone(shown) ? "ms" : "praise" }, shown, "ไฟติดแล้ว · " + shown + " วัน");
