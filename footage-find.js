@@ -51,7 +51,7 @@
     return false;
   }
   function terms(q){ /* คืนกลุ่มคำ [[คำที่ความหมายเดียวกัน...]] แต่ละกลุ่ม = 1 เงื่อนไขที่ต้องตรง · เงื่อนไขคำธรรมดามี .chunk = ก้อนที่พิมพ์ติดกัน (ใช้กู้เมื่อตัวตัดคำตัดผิด) */
-    var out = [], rest = nzk(q);
+    var out = [], rest = nzk(q).split(nzk("เรื่อง")).join(" "); /* v8.83 nzk ตัดวรรณยุกต์ → เรื่อง=เรือง ซึ่งมี "เรือ" (กลุ่มคำพ้องความหมายของเรือ) ทำให้ทุกคำถามที่มี "เรื่อง" ค้นหาฉากเรือ/พายเรือไปด้วย · เรื่อง เป็นคำเติม (อยู่ใน STOP) ตัดทิ้งก่อนจับกลุ่มคำพ้อง */
     NAMES.concat(SYN).forEach(function(v){ if(v.some(function(n){ return rest.indexOf(nzk(n)) >= 0; })){ out.push(v); v.forEach(function(n){ rest = rest.split(nzk(n)).join(" "); }); } });
     rest.split(/[\s,]+/).filter(Boolean).forEach(function(p){
       if(/[฀-๿]/.test(p) && seg){
