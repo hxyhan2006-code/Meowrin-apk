@@ -1175,6 +1175,27 @@ try {
     await fp.evaluate(() => { MWStore.del('mw_openrouter_key_v1'); });
     await fp.close();
   }
+  // ไฟวันต่อเนื่อง (streak.js): สตรีค/กันไฟดับคำนวณจากจำนวนคลิปรายวัน · การ์ดนับคลิปที่ลงวันนี้จาก YouTube (ปลอม fetch) · ไม่ล้นจอ
+  {
+    const sk = await context.newPage(); const skErr = []; sk.on('pageerror', (e) => skErr.push(e.message));
+    await sk.addInitScript(() => { const of = window.fetch; window.fetch = (u, o) => { u = String(u); if (!u.includes('googleapis.com/youtube')) return of(u, o); const now = new Date().toISOString();
+      const j = u.includes('/channels') ? { items: [{ id: 'UCabc', snippet: { title: 'meowrin' }, contentDetails: { relatedPlaylists: { uploads: 'UUabc' } } }] } : { items: [now, now, now, '2020-01-01T00:00:00Z'].map((t) => ({ contentDetails: { videoPublishedAt: t } })) };
+      return Promise.resolve(new Response(JSON.stringify(j), { status: 200 })); }; });
+    await sk.goto(base + '/index.html'); await sk.waitForFunction(() => window.MWStreak && window.MW, null, { timeout: 20000 });
+    const sc = await sk.evaluate(() => { const c = MWStreak.calc, f = (r) => [r.streak, r.freeze]; return [
+      f(c({ since: '2026-01-01', days: { '2026-01-01': 2, '2026-01-02': 2 } }, '2026-01-03')),
+      f(c({ since: '2026-01-01', days: { '2026-01-01': 2, '2026-01-03': 2 } }, '2026-01-04')),
+      f(c({ since: '2026-01-01', days: { '2026-01-01': 2, '2026-01-04': 2 } }, '2026-01-05')),
+      f(c({ since: '2026-01-01', days: { '2026-01-01': 4, '2026-01-02': 1, '2026-01-04': 2 } }, '2026-01-04'))]; });
+    check('ไฟวันต่อเนื่อง: ครบ 2 คลิป = ไฟติด · พลาดวันเดียวใช้กันไฟดับ · พลาดเกินกันไฟดับ = ไฟดับ · ทำเกิน 2 คลิป = กันไฟดับ +1', JSON.stringify(sc) === '[[2,1],[2,0],[1,0],[2,0]]', JSON.stringify(sc));
+    await sk.evaluate(() => MWStore.set('mw_key_v1', 'x'));
+    await sk.fill('#stkCard [data-stk=handle]', 'meowrin'); await sk.click('#stkCard [data-stk=setup]');
+    await sk.waitForFunction(() => /3\/2/.test(document.getElementById('stkCard').textContent), null, { timeout: 8000 }).catch(() => {});
+    const sr = await sk.evaluate(() => { const c = document.getElementById('stkCard'), r = c.getBoundingClientRect(); return { t: c.textContent, lit: c.classList.contains('lit'), over: [...c.querySelectorAll('*')].some((x) => x.getBoundingClientRect().right > r.right + 1), st: MWStore.get('mw_streak_v1', {}) }; });
+    check('ไฟวันต่อเนื่อง: ใส่ช่องแล้วนับคลิปวันนี้จาก YouTube (3/2 ไฟติด โบนัส +1 · คลิปก่อนวันเริ่มนับไม่นับ) · การ์ดไม่ล้นจอ · ไม่มี error', sr.lit && /3\/2/.test(sr.t) && /โบนัส \+1/.test(sr.t) && sr.st.list === 'UUSHabc' && Object.keys(sr.st.days).length === 1 && !sr.over && !skErr.length, JSON.stringify(sr).slice(0, 300) + skErr.join());
+    await sk.evaluate(() => { MWStore.del('mw_key_v1'); MWStore.del('mw_streak_v1'); MWStore.flush(); }); await sk.waitForTimeout(300);
+    await sk.close();
+  }
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

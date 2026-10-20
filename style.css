@@ -285,6 +285,36 @@ label{
 }
 .panel .msg{background:var(--field)}
 
+/* ไฟวันต่อเนื่อง (streak.js) — ส้มไฟเป็นสีของสตรีค ไม่ใช่ความหมายเตือน */
+.stk{--fire:#ff8a3d;--frost:#7cc4ff}
+.stk.lit{border-color:rgba(255,138,61,.45);background:linear-gradient(160deg,rgba(255,138,61,.14),var(--surface) 60%)}
+.stk.cheer{animation:stkPop .6s ease}
+@keyframes stkPop{40%{transform:scale(1.03)}}
+.stk-top{display:flex;align-items:center;gap:12px}
+.stk-fire .ic{width:44px;height:44px;margin:0;color:var(--muted);opacity:.55}
+.stk.lit .stk-fire .ic{color:var(--fire);opacity:1;fill:rgba(255,138,61,.25)}
+.stk-title{font:500 16px Mitr,sans-serif}
+.stk-num{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.05}
+.stk-num b{font:600 34px Mitr,sans-serif}
+.stk.lit .stk-num b{color:var(--fire)}
+.stk-num small{color:var(--muted);font-size:12.5px;margin-top:2px}
+.stk-goal{position:relative;width:56px;height:56px;flex:none}
+.stk-ring{width:56px;height:56px}
+.stk-ring circle{fill:none;stroke-width:5;stroke-linecap:round}
+.stk-ring .bg{stroke:var(--line-strong)}
+.stk-ring .fg{stroke:var(--fire)}
+.stk-goal span{position:absolute;inset:0;display:grid;place-items:center;font:600 14px Mitr,sans-serif}
+.stk-line{margin-top:10px;font-size:14px}
+.stk-note{margin-top:4px;font-size:12.5px;color:var(--frost)}
+.stk-frz{display:flex;align-items:center;gap:4px;margin-top:8px}
+.stk-frz small{color:var(--muted);font-size:12.5px;margin-left:4px}
+.stk-snow .ic{width:20px;height:20px;margin:0;color:var(--line-strong)}
+.stk-snow.on .ic{color:var(--frost)}
+.stk-act{margin-top:12px}
+.stk-act .btn:not(.sq){flex:1;min-width:0}
+.stk-foot{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted)}
+.stk-link{margin-left:auto;background:none;border:0;padding:4px 0;color:var(--muted);font:inherit;text-decoration:underline;cursor:pointer}
+
 .fchips{
   display:flex;gap:8px;
   overflow-x:auto;
