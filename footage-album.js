@@ -193,7 +193,13 @@
     }catch(err){ arcMsg = (err.budget ? "ถึงเพดานงบ: " : "ไม่สำเร็จ: ") + (err.message || err) + " · ทำไปแล้ว " + n + " คลิป (กดใหม่ทำต่อ)"; }
     arcRun = false; await U.wake(false); build(); if(view === "home") renderHome(); document.dispatchEvent(new CustomEvent("ft:lib")); /* แผงจัดอัลบั้มใหม่/ตัวกรองภาค เห็นภาคใหม่ */
   }
-  Object.assign(U, { playAt:playAt, runIndexFor:runFor, runArcs:runArcs, arcTodoCount:function(){ return arcTodo().length; } }); /* ให้แผงจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ / ให้ AI ดูภาค ได้เลย */
+  function albumHit(n){ n = String(n).toLowerCase(); var a = groupFor("phone").find(function(x){ return x.name !== MISSING && x.name.toLowerCase().split(/\s+/).indexOf(n) >= 0; }); return a ? { name:a.name, n:a.items.length } : null; } /* "nami" เจอ "nami robin" */
+  function openAlbumNamed(name){ /* ล้างคำค้น → ตารางอัลบั้มแบบในมือถือ → เปิดอัลบั้มนั้น */
+    $("q").value = ""; if(U.search) U.search();
+    if(mode !== "phone") $("alSeg").querySelector('[data-m="phone"]').click(); else renderHome();
+    var i = albums.findIndex(function(a){ return a.name === name; }); if(i >= 0) openAlbum(i);
+  }
+  Object.assign(U, { albumHit:albumHit, openAlbumNamed:openAlbumNamed, playAt:playAt, runIndexFor:runFor, runArcs:runArcs, arcTodoCount:function(){ return arcTodo().length; } }); /* ให้แผงจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ / ให้ AI ดูภาค ได้เลย */
   var wasRunning = false;
   document.addEventListener("ft:queue", function(){ /* คิวเดินอยู่: อัปเดตแค่แถบ · จบรอบค่อยวาดตารางใหม่ (ไม่ให้กะพริบทุกวินาที) */
     var r = U.queueInfo().running; build(); if(curAlbum) curAlbum = albums.find(function(a){ return a.name === curAlbum.name; }) || null; strips();

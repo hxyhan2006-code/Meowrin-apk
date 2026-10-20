@@ -64,12 +64,12 @@ input[type="range"]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;b
 .tag.ok{background:var(--ok-soft);color:var(--ok)}.tag.err{background:var(--err-soft);color:var(--err)}.tag.run{background:var(--accent-soft);color:var(--accent)}
 /* ผลค้นหา: หน้าตาเหมือนช่องใน CapCut (ปก + ความยาว) */
 .res{display:flex;flex-direction:column;gap:10px;margin-top:12px}
-.card{display:flex;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px}
+.card{display:flex;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px}
 .shots{display:flex;gap:6px;flex:none}
-.cover{position:relative;width:76px;height:76px;flex:none}
-.cover img{width:100%;height:100%;object-fit:cover;border-radius:8px;background:var(--field)}
+.cover{position:relative;width:84px;height:84px;flex:none;align-self:flex-start}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px;background:var(--field)}
 .cover em{position:absolute;right:4px;bottom:3px;font-style:normal;font-size:11px;font-weight:600;color:#fff;text-shadow:0 1px 3px #000}
-.scene{width:76px;height:76px;object-fit:cover;border-radius:8px;background:var(--field);border:2px solid var(--accent)}
+.scene{flex:1;min-width:0;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:var(--field);border:2px solid var(--accent)}
 .card .t{flex:1;min-width:0;font-size:13px}
 .card .t b{font-size:14px;font-weight:600}
 .card .t p{margin:2px 0;color:var(--muted)}
@@ -239,6 +239,9 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 .mode-plan .tabs{display:none}
 #alMain[hidden],#results[hidden]{display:none}
 #p-album>.panel{margin-bottom:16px}
+.sbar{display:flex;gap:8px;align-items:stretch}.sbar #q{flex:1 1 0;min-width:0;width:auto}.sbar .btn{flex:none;min-height:48px;margin:0;padding:0 14px;white-space:nowrap}
+.chips:not(.wrap){-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 30px),transparent)} /* ขอบจางขวา = เลื่อนต่อได้ */
+.albanner{display:flex;align-items:center;gap:8px;width:100%;margin:0;padding:12px 14px;border-radius:var(--r);border:1px solid rgba(57,217,138,.55);background:var(--accent-soft);color:var(--accent);font:inherit;font-weight:600;text-align:left}.albanner .ic{margin:0}.albanner span{margin-left:auto;font-weight:400;color:var(--muted)}
 
 .askans{background:var(--field);border:1px solid var(--line-strong);border-radius:12px;padding:12px;margin-top:10px;line-height:1.55;white-space:pre-wrap}
 .askans small{display:block;margin-top:6px;color:var(--muted);font-size:12px}

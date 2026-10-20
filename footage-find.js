@@ -5,7 +5,7 @@
   var FT = window.FT, U = FT && FT.ui; if(!U) return;
   var esc = U.esc, tm = U.tm, capDur = U.capDur;
   var $ = function(id){ return document.getElementById(id); };
-  function day(ms){ return new Date(ms).toLocaleDateString("th-TH", { day:"numeric", month:"short", year:"2-digit" }); }
+  function day(ms){ return new Date(ms).toLocaleDateString("th-TH", { day:"numeric", month:"short", year:"numeric" }); }
 
   /* ---------- ค้นหา (ในเครื่อง ไม่เรียก AI) ---------- */
   var NAMES = [ /* ชื่อไทย/อังกฤษที่สะกดได้หลายแบบ — เจอในคำค้น/ป้ายของ AI จะนับเป็นตัวเดียวกัน (ตัวแรก = key) */
@@ -319,7 +319,8 @@
     hits.sort(function(a, b){ return b.hit - a.hit || b.score - a.score; }); /* ตรงเป๊ะ (ตัวละครเป็นคนมีอารมณ์นั้น) ได้คะแนนพิเศษ จึงขึ้นก่อน */
     var full = hits.filter(function(h){ return h.hit === ts.length; }), part = hits.filter(function(h){ return h.hit < ts.length; });
     if(q !== lastQ){ lastQ = q; showPartial = !full.length; } /* คำค้นใหม่ = ซ่อนที่ตรงบางส่วนไว้ก่อน (ถ้ามีตรงครบ) */
-    var list = full.slice(0, 60), html = full.length ? '<p class="hint">ตรงครบทุกคำ ' + full.length + " ฉาก" + (full.length > 60 ? " (โชว์ 60 อันดับแรก)" : "") + "</p>" : "";
+    var ab = ts.length === 1 && names.length === 1 && U.albumHit ? U.albumHit(names[0][0]) : null; /* ค้นชื่อตัวละครตัวเดียว = มีทางลัดไปอัลบั้มของเขา (ผลค้นเป็นร้อยฉากไม่ช่วยอะไร) */
+    var list = full.slice(0, 60), html = (ab ? '<button type="button" class="albanner" data-album="' + esc(ab.name) + '">' + MWIcon("folder") + "อัลบั้ม " + esc(ab.name) + " · " + ab.n + " คลิป<span>เปิด</span></button>" : "") + (full.length ? '<p class="hint">ตรงครบทุกคำ ' + full.length + " ฉาก" + (full.length > 60 ? " (โชว์ 60 อันดับแรก)" : "") + "</p>" : "");
     var out = list.map(function(h){ return card(h.c, h.sc, h.exact); }).join("");
     if(part.length){
       if(showPartial) out += '<p class="hint">ตรงบางส่วน (มีแค่บางคำ) ' + part.length + " ฉาก</p>" + part.slice(0, 40).map(function(h){ return card(h.c, h.sc, false); }).join("");
@@ -329,6 +330,7 @@
     $("results").innerHTML = (html + out) || '<p class="empty">ไม่เจอฉากที่ตรง ลองคำอื่น หรือแตะชิปตัวละคร</p>';
   }
   $("results").addEventListener("click", function(e){
+    var al = e.target.closest("[data-album]"); if(al && U.openAlbumNamed){ U.openAlbumNamed(al.dataset.album); return; }
     if(e.target.closest("#partialBtn")){ showPartial = !showPartial; search(); }
     if(e.target.closest("#moreBtn")){ chipMax += 40; search(); }
   });
@@ -363,7 +365,7 @@
       + (sc && window.FT && FT.basket ? '<button type="button" class="bskadd' + (FT.basket.has(c, sc) ? " on" : "") + '" data-bk="' + k + '">' + MWIcon("star") + (FT.basket.has(c, sc) ? "ในตะกร้า" : "เก็บฉาก") + "</button>" : "") /* v8.64 ตะกร้าฉาก (footage-basket.js) */
       + (sc && (a.shot || a.intensity || a.event || a.multi) ? '<p class="meta">' + MWIcon("film") + esc([SHOT[a.shot], a.intensity ? "แรง " + a.intensity + "/5" : "", a.event || a.arc, (a.issues || []).length ? "ปัญหาภาพ: " + a.issues.map(function(x){ return /screen/.test(x) ? "อัดจากหน้าจอ" : x; }).join(", ") : "", a.multi ? "หลายช็อตปน" : "", a.usable && a.usable <= 2 ? "คุณภาพต่ำ" : ""].filter(Boolean).join(" · ")) + "</p>" : "") /* ป้ายดัชนีรุ่นละเอียด */
       + (sc ? "" : strip(c)) /* โหมดดูทั้งคลิป: แถบรูปทุกฉาก แตะดูรูปใหญ่ + คำอธิบายฉากนั้น */
-      + '<p>' + day(c.lastModified) + '</p><div class="fname">' + esc(c.name) + "</div></div></div>";
+      + '<div class="fname">' + day(c.lastModified) + " · " + esc(c.name) + "</div></div></div>";
   }
   document.querySelector("main").addEventListener("click", function(e){ /* การ์ดในทุกหน้า (ค้นหา/ผลที่ AI เลือก/วางแผนฉาก) */
     var w = e.target.closest(".spwho[data-cid]"); if(w){ /* v8.62 แตะชื่อคนพูดบนการ์ด = แก้ชื่อ แล้ววาดกล่องบทพูดของการ์ดนั้นใหม่ (ไม่ค้นใหม่ ผลถาม AI ไม่หาย) */

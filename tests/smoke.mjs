@@ -370,6 +370,14 @@ try {
   await sq.fill('#q', ''); await sq.waitForTimeout(500);
   const sq2 = await sq.evaluate(() => ({ main: !document.getElementById('alMain').hidden, res: document.getElementById('results').hidden }));
   check('ค้นหาในหน้าอัลบั้ม: ไม่พิมพ์ = ตารางอัลบั้ม · พิมพ์ "ลูฟี่หัวเราะภาคสกายเปีย" = เจอฉากเดียวที่ตรง (ไม่ใช่ฉากโซโร/ภาคอื่น) · ล้างแล้วกลับตารางอัลบั้ม', sq0.main && sq0.res && sq1.main && sq1.cards === 1 && sq1.txt && sq2.main && sq2.res && !sqErr.length, JSON.stringify([sq0, sq1, sq2]) + sqErr.join());
+  // v8.84 ค้นชื่อตัวละครตัวเดียว = มีป้ายทางลัดไปอัลบั้ม · การ์ดผลค้นหาเรียงแนวตั้ง รูปฉากกว้างกว่าเดิม ไม่ล้นจอ · ช่องค้นหากับปุ่มถาม AI อยู่แถวเดียวกัน
+  await sq.evaluate(() => document.dispatchEvent(new CustomEvent('ft:lib')));
+  await sq.fill('#q', 'ลูฟี่'); await sq.waitForTimeout(700);
+  const bn = await sq.evaluate(() => { const b = document.querySelector('#results .albanner'), sc = document.querySelector('#results .card .scene, #results .card .cover'), q = document.getElementById('q').getBoundingClientRect(), a = document.getElementById('askBtn').getBoundingClientRect(); return { txt: b ? b.textContent : '', cardW: document.querySelector('#results .card') ? document.querySelector('#results .card').getBoundingClientRect().width : 0, tW: document.querySelector('#results .card .t') ? document.querySelector('#results .card .t').getBoundingClientRect().width : 0, sameRow: Math.abs(q.top - a.top) < 6, over: document.documentElement.scrollWidth > innerWidth + 1, has: !!sc }; });
+  await sq.click('#results .albanner'); await sq.waitForTimeout(400);
+  const bn2 = await sq.evaluate(() => ({ view: !document.getElementById('alView').hidden, title: document.getElementById('alvTitle').textContent, q: document.getElementById('q').value }));
+  check('ค้น "ลูฟี่" = มีป้าย "อัลบั้ม luffy" กดแล้วเปิดอัลบั้มนั้น (ล้างคำค้น) · การ์ดข้อความกว้างเกือบเต็มการ์ด · ช่องค้นหา+ปุ่มถาม AI แถวเดียว · ไม่ล้นจอ', /luffy/.test(bn.txt) && bn.sameRow && !bn.over && bn.tW > bn.cardW * 0.8 && bn2.view && bn2.title === 'luffy' && !bn2.q && !sqErr.length, JSON.stringify([bn, bn2]) + sqErr.join());
+  await sq.click('#alBack'); await sq.waitForTimeout(300); // ปิดอัลบั้ม กลับตาราง ให้เทสต์ถัดไปเริ่มจากหน้ารวม
   // ถาม AI หาฟุต (footage-ask.js): คำถามไทย → AI แปลงเป็นตัวละคร+คำค้น → ค้นดัชนีในเครื่อง (ฉากซันจิเท่านั้นเข้า AI) → AI เลือก → การ์ดฉาก · ไม่เจอเลย = บอกว่าไม่เจอโดยไม่เรียก AI ขั้นเลือก · AI บอกไม่ตรง = ไม่โชว์ฉากหลอก
   const ak = await context.newPage(); const akErr = []; ak.on('pageerror', (e) => akErr.push(e.message));
   await ak.goto(base + '/footage.html'); await ak.waitForFunction(() => window.FT && FT.ui && document.getElementById('askBtn'), null, { timeout: 20000 }); await ak.waitForTimeout(400);
