@@ -328,20 +328,19 @@ body.stk-open{overflow:hidden}
 .stk-calh .btn .ic{margin:0}
 .stk-grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:8px}
 .stk-grid .wd{text-align:center;font-size:12.5px;color:var(--muted);font-weight:500}
-.stk-grid .day{position:relative;height:40px;display:grid;place-items:center}
-.stk-grid .day i{font:600 14.5px "IBM Plex Sans Thai",sans-serif;font-style:normal;z-index:1}
-.stk-grid .day small{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:10px;line-height:1.2;color:var(--muted);z-index:1}
-.stk-grid .day i{margin-bottom:6px}
+.stk-grid .day{position:relative;height:50px} /* วันที่อยู่กลางวง (สูง 40 บน) เลขจำนวนคลิปอยู่ใต้วง */
+.stk-grid .day i{position:absolute;top:20px;left:50%;transform:translate(-50%,-50%);font:600 14.5px/1 "IBM Plex Sans Thai",sans-serif;font-style:normal;z-index:1}
+.stk-grid .day small{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:10px;line-height:1.2;color:var(--muted);z-index:1}
 .stk-grid .day.lit{background:linear-gradient(180deg,var(--fire),var(--fire-2))}
 .stk-grid .day.lit i{color:#2a0d00}
 .stk-grid .day.lit small{color:#5a2200}
 .stk-grid .day.l{border-radius:20px 0 0 20px;margin-left:2px}
 .stk-grid .day.r{border-radius:0 20px 20px 0;margin-right:2px}
 .stk-grid .day.l.r{border-radius:20px}
-.stk-grid .day.frz::before{content:"";position:absolute;width:36px;height:36px;border-radius:50%;background:rgba(124,196,255,.22);border:1.5px solid var(--frost)}
+.stk-grid .day.frz::before{content:"";position:absolute;top:20px;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;box-sizing:border-box;background:rgba(124,196,255,.22);border:1.5px solid var(--frost)}
 .stk-grid .day.miss i{color:var(--muted);opacity:.6}
 .stk-grid .day.off i{color:var(--muted);opacity:.45}
-.stk-grid .day.now::after{content:"";position:absolute;width:38px;height:38px;border-radius:50%;border:2px solid var(--text);opacity:.55}
+.stk-grid .day.now::after{content:"";position:absolute;top:20px;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;box-sizing:border-box;border:2px solid var(--text);opacity:.55}
 .stk-legend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-top:12px;padding:0 6px;font-size:12px;color:var(--muted)}
 .stk-legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .stk-legend .lit::before{background:var(--fire)}
