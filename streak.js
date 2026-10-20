@@ -13,6 +13,7 @@
   var KEY = "mw_streak_v1", GOAL = 2, BONUS_PER_FREEZE = 2, MAX_FREEZE = 2, START_FREEZE = 1;
   var SPRINT_MS = 10 * 60e3, AUTO_MS = 3 * 60e3, MAX_PAGES = 20;
   var MILESTONES = [3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000];
+  var WTEST = [["z", "ยังไม่ได้ทำ"], ["h", "ทำไปครึ่งทาง"], ["d", "ไฟติดแล้ว"], ["b", "ทำเกินโควตา"], ["e", "ค่ำ ไฟจะดับ"], ["r", "ไฟเพิ่งดับ"]], wtI = 0; /* ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ */
   var TIMES = ["11:00", "13:00", "16:30", "21:00"];
   var WD = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
   var MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
@@ -162,8 +163,8 @@
       if(n.on) body += '<div class="stk-times">' + TIMES.map(function(t){ return '<button type="button" class="stk-chip' + (n.times.indexOf(t) >= 0 ? " on" : "") + '" data-stk="time" data-t="' + t + '">' + t + '</button>'; }).join("") + '</div>';
       if(needPerm) body += '<div class="stk-warn">' + MWIcon("warn") + '<span>ยังไม่ได้อนุญาตแจ้งเตือน</span><button class="btn small" data-stk="perm">อนุญาต</button></div>';
       if(needBat) body += '<div class="stk-warn">' + MWIcon("warn") + '<span>แอพถูกจำกัดแบต แจ้งเตือน/วิดเจ็ตอาจไม่อัปเดต · ตั้งค่าแอพ → แบตเตอรี่ → ไม่จำกัด/อนุญาตทำงานเบื้องหลัง</span><button class="btn small ghost" data-stk="settings">เปิด</button></div>';
-      body += '<div class="row stk-act">' + (nst && nst.widgets ? '<span class="stk-ok">' + MWIcon("check") + 'มีวิดเจ็ตบนหน้าจอแล้ว</span>'
-          : '<button class="btn ghost" data-stk="pin">เพิ่มวิดเจ็ตบนหน้าจอ</button>') + '<button class="btn ghost" data-stk="test">ทดสอบแจ้งเตือน</button></div>'
+      body += '<div class="row stk-act">' + (nst && nst.widgets ? '<span class="stk-ok">' + MWIcon("check") + 'มีวิดเจ็ตบนหน้าจอแล้ว</span>' : '<button class="btn ghost" data-stk="pin">เพิ่มวิดเจ็ตบนหน้าจอ</button>') + '</div>'
+        + '<div class="row stk-act"><button class="btn ghost" data-stk="test">ทดสอบแจ้งเตือน</button><button class="btn ghost" data-stk="wtest">ทดสอบวิดเจ็ต</button></div>'
         + '<p class="hint tip">มือถือเช็กยอดวันนี้เองทุก 30 นาที (10:00–23:30) แม้ไม่ได้เปิดแอพ · ทำครบแล้วแจ้งเตือนที่เหลือของวันนั้นเงียบเอง · ข้อความสุ่มไม่ซ้ำ</p>';
     }
     return '<details class="fold top stk-fold" id="stkNotif"' + (nOpen ? " open" : "") + '><summary><span>วิดเจ็ต + แจ้งเตือน</span><em class="state ' + kind + '">' + tag + '</em></summary><div class="fbody">' + body + '</div></details>';
@@ -251,6 +252,13 @@
       else if(a === "perm") askNotify();
       else if(a === "settings") plugin().openSettings();
       else if(a === "pin") plugin().pinWidget().then(function(r){ if(!r || !r.ok) MW.toast("เพิ่มจากแอพไม่ได้ กดค้างที่หน้าจอหลัก → วิดเจ็ต → Meowrin App", true, 4500); else setTimeout(refreshStatus, 4000); });
+      else if(a === "wtest"){
+        var P = plugin();
+        if(nst && !nst.widgets){ MW.toast("ยังไม่มีวิดเจ็ตบนหน้าจอหลัก กดเพิ่มวิดเจ็ตก่อน", true, 3500); return; }
+        if(!P.testWidget){ MW.toast("ต้องลง APK ใหม่ (สร้างหลัง v9.00) ถึงจะทดสอบวิดเจ็ตได้", true, 4000); return; }
+        var st1 = WTEST[wtI++ % WTEST.length];
+        P.testWidget({ state: st1[0] }).then(function(){ MW.toast("วิดเจ็ตโชว์ตัวอย่าง \"" + st1[1] + "\" · กดโฮมไปดู ค้าง 20 วินาที · กดอีกทีเพื่อดูแบบถัดไป", false, 4500); }).catch(function(){ MW.toast("ทดสอบวิดเจ็ตไม่ได้", true); });
+      }
       else if(a === "test"){ if(nst && !nst.notify){ askNotify(); return; } plugin().test({ slot: "any" }); }
       else if(a === "prev" || a === "next"){ var d = new Date(view.y, view.m + (a === "next" ? 1 : -1), 1); view = { y: d.getFullYear(), m: d.getMonth() }; render(); }
       else if(a === "change"){

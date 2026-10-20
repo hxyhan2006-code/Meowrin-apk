@@ -1203,10 +1203,10 @@ try {
   // ไฟวันต่อเนื่อง ฝั่งเนทีฟ (ปลั๊กอิน Streak ปลอม): ส่ง base/กันไฟดับ/ยอดวันนี้/ข้อความให้วิดเจ็ต · แตะวิดเจ็ตแล้วเปิดหน้าไฟเอง · ตั้งเวลาแจ้งเตือน · เตือนสิทธิ์/แบต · ไม่มีปลั๊กอิน = บอกให้ลง APK ใหม่
   {
     const nv = await context.newPage(); const nvErr = []; nv.on('pageerror', (e) => nvErr.push(e.message));
-    await nv.addInitScript(() => { window.__sk = []; const st = { notify: false, battery: false, widgets: 0, canPin: true };
+    await nv.addInitScript(() => { window.__sk = []; const st = { notify: false, battery: false, widgets: 1, canPin: true }; window.__tw = [];
       window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: (n) => n === 'Streak', Plugins: { Streak: {
         sync: async (a) => { __sk.push(a); return st; }, status: async () => st, consumeOpen: async () => ({ open: true }), addListener: () => {},
-        requestNotify: async () => st, openSettings: async () => {}, pinWidget: async () => ({ ok: true }), test: async () => {} } } }; });
+        requestNotify: async () => st, openSettings: async () => {}, pinWidget: async () => ({ ok: true }), test: async () => {}, testWidget: async (a) => { __tw.push(a.state); } } } }; });
     await nv.goto(base + '/index.html'); await nv.waitForFunction(() => window.MWStreak && window.MW, null, { timeout: 20000 });
     await nv.evaluate(() => { const d = new Date(), k = (o) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + o); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
       MWStore.set('mw_streak_v1', { handle: '@x', list: 'UUSHx', since: k(-3), days: { [k(-3)]: 2, [k(-2)]: 2, [k(-1)]: 2, [k(0)]: 1 }, syncedAt: Date.now() }); MWStore.flush(); });
@@ -1215,11 +1215,13 @@ try {
     check('ไฟวันต่อเนื่อง (เนทีฟ): ส่งสตรีคถึงเมื่อวาน 3 + ยอดวันนี้ 1 + แจ้งเตือน 11:00/13:00/16:30/21:00 + ข้อความทุกช่วง · แตะวิดเจ็ตเปิดหน้าไฟเอง · เตือนสิทธิ์+แบต · ไม่ล้นจอ',
       n1.base === 3 && n1.today === 1 && n1.list === 'UUSHx' && n1.notify && n1.times === '11:00,13:00,16:30,21:00' && n1.slots === '11:00,13:00,16:30,21:00,any,praise,ms,w_z,w_h,w_d,w_b,w_e,w_r' && n1.broke === '' && n1.open && n1.chips === 4 && n1.warn === 2 && n1.folded && !n1.over && !nvErr.length, JSON.stringify(n1) + nvErr.join());
     const mg = await nv.evaluate(() => { const M = window.MWStreakMsgs || {}, all = Object.entries(M).flatMap(([k, a]) => a.map((t) => [k, t])), seen = new Set(), dup = [], long = [], bad = [], ph = [];
-      for (const [k, t] of all) { if (seen.has(t)) dup.push(t); seen.add(t); if (/^w_/.test(k) && t.length > 28) long.push(t); if (/คลิป|ช่อง|อนิเมะ|ยูทูป/.test(t)) bad.push(t); for (const m of t.matchAll(/\{(\w+)\}/g)) if (!['n', 'goal', 'left', 'streak', 'frz'].includes(m[1])) ph.push(t); }
+      for (const [k, t] of all) { if (seen.has(t)) dup.push(t); seen.add(t); if (/^w_/.test(k) && t.replace(/\{streak\}/g, '000').replace(/\{\w+\}/g, '0').replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length > 16) long.push(t); if (!/^w_/.test(k) && t.replace(/\{streak\}/g, '000').replace(/\{\w+\}/g, '0').replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '').length > 42) long.push(t); if (/คลิป|ช่อง|อนิเมะ|ยูทูป/.test(t)) bad.push(t); for (const m of t.matchAll(/\{(\w+)\}/g)) if (!['n', 'goal', 'left', 'streak', 'frz'].includes(m[1])) ph.push(t); }
       return { total: all.length, dup, long, bad, ph, notif: all.filter(([k]) => !/^w_/.test(k)).length, wid: all.filter(([k]) => /^w_/.test(k)).length }; });
-    check('ข้อความแจ้งเตือน/วิดเจ็ต: มีครบหลายร้อย (แจ้งเตือน ≥110 · วิดเจ็ต ≥75) ไม่ซ้ำกัน · ข้อความวิดเจ็ตสั้นพอ (≤28 ตัวอักษร) · ไม่เรียกตรงๆ ว่าคลิป/ช่อง · ตัวแปร {…} ถูกต้อง', mg.notif >= 110 && mg.wid >= 75 && !mg.dup.length && !mg.long.length && !mg.bad.length && !mg.ph.length, JSON.stringify(mg));
+    check('ข้อความแจ้งเตือน/วิดเจ็ต: มีครบหลายร้อย (แจ้งเตือน ≥110 · วิดเจ็ต ≥75) ไม่ซ้ำกัน · ข้อความวิดเจ็ตสั้นพอ (≤16 ตัวอักษรที่มองเห็น ไม่นับสระ/วรรณยุกต์) · ไม่เรียกตรงๆ ว่าคลิป/ช่อง · ตัวแปร {…} ถูกต้อง', mg.notif >= 110 && mg.wid >= 75 && !mg.dup.length && !mg.long.length && !mg.bad.length && !mg.ph.length, JSON.stringify(mg));
     await nv.click('#stkNotif summary'); await nv.waitForTimeout(200); await nv.evaluate(() => document.getElementById('stkBtn').click()); /* เปิดแถบแล้ววาดหน้าใหม่ = ไม่หุบเอง */ const keep = await nv.evaluate(async () => { await MWStreak.check(true); return document.querySelector('details#stkNotif').open && document.querySelectorAll('#stkNotif .stk-chip.on').length === 4 && document.querySelectorAll('#stkNotif .stk-warn').length === 2; });
     check('ไฟวันต่อเนื่อง: แถบ วิดเจ็ต+แจ้งเตือน พับได้ (ปิดไว้ก่อน มีป้ายเตือนที่หัวแถบ) · แตะเปิดแล้วเห็นเวลา 4 อัน + เตือนสิทธิ์/แบต · วาดหน้าใหม่แล้วไม่หุบเอง', keep);
+    await nv.click('#stkPage [data-stk=wtest]'); await nv.click('#stkPage [data-stk=wtest]'); await nv.waitForTimeout(200);
+    check('ไฟวันต่อเนื่อง (เนทีฟ): ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ (ยังไม่ทำ → ครึ่งทาง → …)', JSON.stringify(await nv.evaluate(() => __tw)) === '["z","h"]');
     await nv.click('#stkPage [data-stk=time][data-t="13:00"]'); await nv.waitForTimeout(300);
     const n2 = await nv.evaluate(() => ({ times: (__sk[__sk.length - 1].times || []).join(), saved: (MWStore.get('mw_streak_v1', {}).notif || {}).times }));
     check('ไฟวันต่อเนื่อง (เนทีฟ): แตะเวลาปิด 13:00 → ส่งเวลาใหม่ให้มือถือ + จำไว้', n2.times === '11:00,16:30,21:00' && String(n2.saved) === '11:00,16:30,21:00', JSON.stringify(n2));

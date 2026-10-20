@@ -1,85 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- วิดเจ็ตไฟวันต่อเนื่อง (StreakCore.renderWidgets) · ขนาดประมาณวิดเจ็ต Duolingo 2×1 ยืดได้ · บรรทัดล่าง = ข้อความสั้นสุ่มตามสถานการณ์ (streak-msgs.js w_*) -->
+<!-- วิดเจ็ตไฟวันต่อเนื่อง (StreakCore.draw) · แถวบน: ไฟ+ตัวเลข+วันนี้ x/2+กันไฟดับ · แถวล่าง: ข้อความสั้นสุ่มตามสถานการณ์ (streak-msgs.js w_*) บรรทัดเดียวเต็มความกว้าง
+     สูงรวมราว 60dp → พอดีวิดเจ็ตสูง 1 ช่อง ไม่บังตัวเลข -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/stk_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/stk_bg"
     android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingStart="10dp"
+    android:orientation="vertical"
+    android:paddingStart="12dp"
     android:paddingTop="6dp"
-    android:paddingEnd="10dp"
+    android:paddingEnd="12dp"
     android:paddingBottom="6dp">
 
-    <ImageView
-        android:id="@+id/stk_flame"
-        android:layout_width="38dp"
-        android:layout_height="38dp"
-        android:contentDescription="ไฟ"
-        android:src="@drawable/stk_flame_off" />
-
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/stk_num"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:includeFontPadding="false"
-                android:text="-"
-                android:textColor="#8B8F8D"
-                android:textSize="26sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/stk_today"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:maxLines="1"
-                android:text="0/2"
-                android:textColor="#D4D4D8"
-                android:textSize="13sp" />
-
-            <ImageView
-                android:layout_width="13dp"
-                android:layout_height="13dp"
-                android:layout_marginStart="8dp"
-                android:contentDescription="กันไฟดับ"
-                android:src="@drawable/stk_snow" />
-
-            <TextView
-                android:id="@+id/stk_frz"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="2dp"
-                android:text="0"
-                android:textColor="#7CC4FF"
-                android:textSize="13sp" />
-        </LinearLayout>
+        <ImageView
+            android:id="@+id/stk_flame"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:contentDescription="ไฟ"
+            android:src="@drawable/stk_flame_off" />
 
         <TextView
-            android:id="@+id/stk_msg"
-            android:layout_width="match_parent"
+            android:id="@+id/stk_num"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:text=""
-            android:textColor="#D4D4D8"
-            android:textSize="12.5sp"
+            android:layout_marginStart="8dp"
+            android:includeFontPadding="false"
+            android:text="-"
+            android:textColor="#8B8F8D"
+            android:textSize="24sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/stk_today"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:maxLines="1"
+            android:text="0/2"
+            android:textColor="#D4D4D8"
+            android:textSize="13sp" />
+
+        <ImageView
+            android:layout_width="13dp"
+            android:layout_height="13dp"
+            android:layout_marginStart="8dp"
+            android:contentDescription="กันไฟดับ"
+            android:src="@drawable/stk_snow" />
+
+        <TextView
+            android:id="@+id/stk_frz"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:text="0"
+            android:textColor="#7CC4FF"
+            android:textSize="13sp" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/stk_msg"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text=""
+        android:textColor="#D4D4D8"
+        android:textSize="12.5sp"
+        android:textStyle="bold" />
 </LinearLayout>

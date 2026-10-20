@@ -13,6 +13,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.RemoteViews;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -126,31 +128,29 @@ final class StreakCore {
     }
 
     /* ข้อความบนวิดเจ็ต: เลือกคงที่ตลอดครึ่งชั่วโมง (วาดใหม่กี่รอบก็ไม่กะพริบเปลี่ยน) เปลี่ยนเมื่อสถานการณ์/ครึ่งชั่วโมงเปลี่ยน */
+    static String widgetKey(SharedPreferences p, boolean lit, int n, int goal) {
+        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        if (lit) return n > goal ? "w_b" : "w_d";
+        if (dayKey(System.currentTimeMillis()).equals(p.getString("broke", ""))) return "w_r"; /* ไฟเพิ่งดับวันนี้ = ข้อความให้กำลังใจ ไม่ใช่ "ไฟจะดับ" */
+        if (hour >= 19 && p.getInt("base", 0) > 0) return "w_e";
+        return n >= 1 ? "w_h" : "w_z";
+    }
+
     static String widgetMsg(SharedPreferences p, boolean set, boolean lit, int n, int goal, int streakShown) {
         if (!set) return "เปิดแอพแล้วตั้งค่าก่อน";
         Calendar cal = Calendar.getInstance();
-        int hour = cal.get(Calendar.HOUR_OF_DAY), half = hour * 2 + cal.get(Calendar.MINUTE) / 30;
-        String today = dayKey(System.currentTimeMillis()), key;
-        if (lit) key = n > goal ? "w_b" : "w_d";
-        else if (today.equals(p.getString("broke", ""))) key = "w_r"; /* ไฟเพิ่งดับวันนี้ = ข้อความให้กำลังใจ ไม่ใช่ "ไฟจะดับ" */
-        else if (hour >= 19 && p.getInt("base", 0) > 0) key = "w_e";
-        else key = n >= 1 ? "w_h" : "w_z";
+        int half = cal.get(Calendar.HOUR_OF_DAY) * 2 + cal.get(Calendar.MINUTE) / 30;
+        String key = widgetKey(p, lit, n, goal);
         JSONArray a = pool(p, key);
         if (a.length() == 0) return "";
-        int idx = (((today + "|" + half + "|" + key).hashCode() % a.length()) + a.length()) % a.length(); /* floorMod ใช้ไม่ได้ใน Android 6 */
-        return fill(a.optString(idx, ""), p, streakShown);
+        int idx = (((dayKey(System.currentTimeMillis()) + "|" + half + "|" + key).hashCode() % a.length()) + a.length()) % a.length(); /* floorMod ใช้ไม่ได้ใน Android 6 */
+        return fill(a.optString(idx, ""), n, goal, streakShown, p.getInt("freeze", 0));
     }
 
-    static void renderWidgets(Context c) {
+    static void draw(Context c, boolean set, boolean lit, int n, int goal, int streak, int freeze, String msg) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         int[] ids = m.getAppWidgetIds(new ComponentName(c, StreakWidget.class));
         if (ids == null || ids.length == 0) return;
-        SharedPreferences p = prefs(c);
-        rollover(p);
-        boolean set = !p.getString("list", "").isEmpty();
-        int goal = p.getInt("goal", 2), n = p.getInt("today", 0), freeze = p.getInt("freeze", 0);
-        boolean lit = set && n >= goal;
-        int streak = p.getInt("base", 0) + (lit ? 1 : 0);
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.streak_widget);
         v.setImageViewResource(R.id.stk_flame, lit ? R.drawable.stk_flame_on : R.drawable.stk_flame_off);
         v.setTextViewText(R.id.stk_num, set ? String.valueOf(streak) : "-");
@@ -158,10 +158,37 @@ final class StreakCore {
         v.setTextViewText(R.id.stk_today, set ? n + "/" + goal : "");
         v.setTextColor(R.id.stk_today, lit ? 0xFFFFC08A : 0xFFD4D4D8);
         v.setTextViewText(R.id.stk_frz, String.valueOf(freeze));
-        v.setTextViewText(R.id.stk_msg, widgetMsg(p, set, lit, n, goal, streak));
+        v.setTextViewText(R.id.stk_msg, msg);
         v.setTextColor(R.id.stk_msg, lit ? 0xFFFFC08A : 0xFFD4D4D8);
         v.setOnClickPendingIntent(R.id.stk_root, openApp(c, 7));
         m.updateAppWidget(ids, v);
+    }
+
+    static void renderWidgets(Context c) {
+        SharedPreferences p = prefs(c);
+        rollover(p);
+        boolean set = !p.getString("list", "").isEmpty();
+        int goal = p.getInt("goal", 2), n = p.getInt("today", 0);
+        boolean lit = set && n >= goal;
+        int streak = p.getInt("base", 0) + (lit ? 1 : 0);
+        draw(c, set, lit, n, goal, streak, p.getInt("freeze", 0), widgetMsg(p, set, lit, n, goal, streak));
+    }
+
+    /* ทดสอบวิดเจ็ต: โชว์ตัวอย่างสถานการณ์ที่เลือก (z ยังไม่ทำ · h ครึ่งทาง · d ไฟติด · b โบนัส · e ค่ำไฟจะดับ · r ไฟเพิ่งดับ) พร้อมข้อความสุ่มจริงจากชุดนั้น
+       ค้าง 20 วินาทีแล้ววาดค่าจริงกลับ (ไม่แตะข้อมูลจริง) */
+    static void previewWidget(final Context c, String state) {
+        SharedPreferences p = prefs(c);
+        int goal = p.getInt("goal", 2), base = p.getInt("base", 0) > 0 ? p.getInt("base", 0) : 12, frz = p.getInt("freeze", 1);
+        boolean lit = "d".equals(state) || "b".equals(state);
+        int n = "h".equals(state) ? 1 : "d".equals(state) ? goal : "b".equals(state) ? goal + 1 : 0;
+        int streak = "r".equals(state) ? 0 : lit ? base + 1 : base;
+        JSONArray a = pool(p, "w_" + state);
+        String msg = a.length() == 0 ? "ยังไม่มีข้อความ (เปิดแอพให้ซิงก์ก่อน)" : fill(a.optString(new Random().nextInt(a.length()), ""), n, goal, streak, frz);
+        draw(c, true, lit, n, goal, streak, frz, msg);
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() { renderWidgets(c); }
+        }, 20_000L);
     }
 
     static boolean canNotify(Context c) {
@@ -171,10 +198,13 @@ final class StreakCore {
     }
 
     static String fill(String s, SharedPreferences p, int streakShown) {
-        int goal = p.getInt("goal", 2), n = p.getInt("today", 0);
+        return fill(s, p.getInt("today", 0), p.getInt("goal", 2), streakShown, p.getInt("freeze", 0));
+    }
+
+    static String fill(String s, int n, int goal, int streakShown, int frz) {
         return s.replace("{n}", String.valueOf(n)).replace("{left}", String.valueOf(Math.max(goal - n, 0)))
                 .replace("{goal}", String.valueOf(goal)).replace("{streak}", String.valueOf(streakShown))
-                .replace("{frz}", String.valueOf(p.getInt("freeze", 0)));
+                .replace("{frz}", String.valueOf(frz));
     }
 
     static final int RECENT = 10; /* ไม่ซ้ำ 10 ข้อความล่าสุด */
