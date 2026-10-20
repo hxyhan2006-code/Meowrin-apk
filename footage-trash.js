@@ -24,9 +24,10 @@
     if(!window.MWLocal || !MWLocal.native || !MWLocal.native()) h += '<p class="hint">ใช้ได้เฉพาะในแอพ APK (ต้องสแกนหาไฟล์ในมือถือ)</p>';
     else if(!scanned()) h += '<p class="hint">ยังไม่เคยสแกนวิดีโอในมือถือ · กด สแกนวิดีโอในมือถือ ก่อน แล้วกลับมาที่นี่</p>';
     else {
-      h += '<h3 class="trh">ไฟล์หาย ' + M.length + " คลิป</h3>";
+      var many = M.length > Math.max(20, U.lib().filter(function(c){ return c.status === "done"; }).length * 0.2); /* หายเกิน ~20% ของคลัง = น่าจะสแกนไม่ครบมากกว่าลบจริง */
+      h += '<h3 class="trh">ไฟล์หาย ' + M.length + " คลิป</h3>" + (many ? '<p class="hint warn">ไฟล์หายเยอะผิดปกติ · น่าจะสแกนได้ไม่ครบ (สิทธิ์อ่านไฟล์/การ์ดความจำ) กด สแกนวิดีโอในมือถือ อีกรอบก่อน แล้วเลือกเฉพาะคลิปที่ลบจริง</p>' : "");
       if(!M.length) h += '<p class="hint">ไม่มีคลิปที่ไฟล์หาย (ลบไฟล์ในแอพรูปภาพแล้วสแกนใหม่ จะโผล่ที่นี่)</p>';
-      else h += '<div class="trbtns"><button class="btn ghost small" type="button" data-all="m">' + (nm === M.length ? "ไม่เลือกเลย" : "เลือกทั้งหมด") + '</button><button class="btn small" type="button" data-act="trash"' + (nm ? "" : " disabled") + ">" + MWIcon("trash") + "ย้ายเข้าถังขยะ" + (nm ? " (" + nm + ")" : "") + "</button></div>"
+      else h += '<div class="trbtns"><button class="btn ghost small" type="button" data-all="m"' + (many && nm !== M.length ? " disabled" : "") + ">" + (nm === M.length ? "ไม่เลือกเลย" : "เลือกทั้งหมด") + "</button>" + '<button class="btn small" type="button" data-act="trash"' + (nm ? "" : " disabled") + ">" + MWIcon("trash") + "ย้ายเข้าถังขยะ" + (nm ? " (" + nm + ")" : "") + "</button></div>"
         + '<div class="trlist" data-l="m">' + M.map(function(c){ return row(c, !!selM[c.id], (c.album || "ไม่ระบุ") + (dur(c) ? " · " + dur(c) : "")); }).join("") + "</div>"
         + '<p class="hint tip">ถ้าไฟล์ยังอยู่แต่ขึ้นที่นี่ (ถูกเปลี่ยนชื่อ/อยู่โฟลเดอร์ที่สแกนไม่เจอ) อย่าเลือก</p>';
     }
@@ -38,8 +39,8 @@
     if(msg) h += '<p class="hint ok">' + esc(msg) + "</p>";
     $("trOut").innerHTML = h;
   }
-  async function save(clips, text){
-    busy = true; try{ await FT.store.putMany(clips); msg = text; }catch(err){ msg = "บันทึกไม่ได้: " + (err.message || err); } busy = false;
+  async function save(clips, text, undo){
+    busy = true; try{ await FT.store.putMany(clips); msg = text; }catch(err){ if(undo) undo(); msg = "บันทึกไม่ได้: " + (err.message || err); } busy = false; /* บันทึกไม่ได้ = ย้อนสถานะในหน่วยความจำ ไม่ให้ค้นหาเห็นว่าอยู่ถังขยะแต่ฐานไม่ใช่ */
     render(); document.dispatchEvent(new CustomEvent("ft:lib")); if(U.search) U.search(); /* หน้าอัลบั้ม/ค้นหา/จัดอัลบั้มเห็นสถานะใหม่ */
   }
   function pickedOf(sel){ return U.lib().filter(function(c){ return sel[c.id]; }); }
@@ -49,12 +50,18 @@
     if(r){ var sel = r.closest(".trlist").dataset.l === "m" ? selM : selT, k = r.dataset.k; if(sel[k]) delete sel[k]; else sel[k] = 1; msg = ""; render(); return; }
     var b = e.target.closest("button"); if(!b) return;
     if(b.dataset.all){ var isM = b.dataset.all === "m", list = isM ? missing() : trashed(), s = isM ? selM : selT, all = count(s) === list.length; Object.keys(s).forEach(function(k){ delete s[k]; }); if(!all) list.forEach(function(c){ s[c.id] = 1; }); msg = ""; render(); return; }
-    if(b.dataset.act === "trash"){ var cs = pickedOf(selM).filter(function(c){ return !c.hide; }); if(!cs.length) return; var now = Date.now(); cs.forEach(function(c){ c.hide = "trash"; c.trashAt = now; c.trashFrom = c.album || ""; }); selM = {}; await save(cs, "ย้าย " + cs.length + " คลิปเข้าถังขยะแล้ว"); }
-    else if(b.dataset.act === "restore"){ var rs = pickedOf(selT).filter(function(c){ return c.hide === "trash"; }); if(!rs.length) return; rs.forEach(function(c){ delete c.hide; delete c.trashAt; delete c.trashFrom; }); selT = {}; await save(rs, "คืน " + rs.length + " คลิปกลับแล้ว"); }
+    if(b.dataset.act === "trash"){ var cs = pickedOf(selM).filter(function(c){ return !c.hide; }); if(!cs.length) return; var now = Date.now(); cs.forEach(function(c){ c.hide = "trash"; c.trashAt = now; c.trashFrom = c.album || ""; }); selM = {}; await save(cs, "ย้าย " + cs.length + " คลิปเข้าถังขยะแล้ว", function(){ cs.forEach(function(c){ delete c.hide; delete c.trashAt; delete c.trashFrom; }); }); }
+    else if(b.dataset.act === "restore"){ var rs = pickedOf(selT).filter(function(c){ return c.hide === "trash"; }); if(!rs.length) return; var rsOld = rs.map(function(c){ return [c, c.trashAt, c.trashFrom]; }); rs.forEach(function(c){ delete c.hide; delete c.trashAt; delete c.trashFrom; }); selT = {}; await save(rs, "คืน " + rs.length + " คลิปกลับแล้ว", function(){ rsOld.forEach(function(x){ x[0].hide = "trash"; x[0].trashAt = x[1]; x[0].trashFrom = x[2]; }); }); }
     else if(b.dataset.act === "purge"){
-      var ids = pickedOf(selT).filter(function(c){ return c.hide === "trash"; }).map(function(c){ return c.id; }); if(!ids.length) return;
-      if(!await MWDialog.confirm("ลบดัชนีของ " + ids.length + " คลิปถาวร?\n\nภาพฉาก บทพูด ตัวละครที่ AI ทำไว้จะหายและกู้ไม่ได้ (ไฟล์ในมือถือไม่ถูกแตะ)", { ok:"ลบถาวร", cancel:"ยกเลิก" })) return;
-      busy = true; try{ await FT.store.del(ids); selT = {}; msg = "ลบถาวร " + ids.length + " คลิปแล้ว"; if(U.refresh) await U.refresh(); }catch(err){ msg = "ลบไม่ได้: " + (err.message || err); } busy = false; render(); document.dispatchEvent(new CustomEvent("ft:lib"));
+      var n0 = pickedOf(selT).filter(function(c){ return c.hide === "trash"; }).length; if(!n0) return;
+      busy = true; /* กันสแกน/คืนเองแทรกระหว่างรอยืนยัน */
+      var ok = await MWDialog.confirm("ลบดัชนีของ " + n0 + " คลิปถาวร?\n\nภาพฉาก บทพูด ตัวละครที่ AI ทำไว้จะหายและกู้ไม่ได้ (ไฟล์ในมือถือไม่ถูกแตะ)", { ok:"ลบถาวร", cancel:"ยกเลิก" });
+      var ids = ok ? pickedOf(selT).filter(function(c){ return c.hide === "trash" && !hasFile(c); }).map(function(c){ return c.id; }) : []; /* เช็กใหม่หลังยืนยัน: คลิปที่ไฟล์กลับมาแล้ว/ถูกคืนไปแล้ว ไม่ลบ */
+      var del = false;
+      if(ids.length){ try{ await FT.store.del(ids); del = true; selT = {}; msg = "ลบถาวร " + ids.length + " คลิปแล้ว" + (ids.length < n0 ? " (ข้าม " + (n0 - ids.length) + " คลิปที่เจอไฟล์แล้ว)" : ""); }catch(err){ msg = "ลบไม่ได้: " + (err.message || err); } }
+      else if(ok) msg = "ไม่ได้ลบ: คลิปที่เลือกเจอไฟล์ในมือถือแล้ว";
+      if(del && U.refresh){ try{ await U.refresh(); }catch(err){} } /* รีเฟรชคลังพลาด ≠ ลบพลาด */
+      busy = false; render(); document.dispatchEvent(new CustomEvent("ft:lib"));
     }
   });
   /* ไฟล์กลับมา (กู้จากถังขยะแกลเลอรี/ก๊อปกลับ) = คืนจากถังให้เองตอนสแกนเสร็จ */

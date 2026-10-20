@@ -558,6 +558,16 @@ try {
   const tr6 = await tr.evaluate(() => document.getElementById('trOut').textContent);
   check('ลบคลิปที่ไม่ใช้: ไฟล์หายโผล่ในรายการ (gone_a/gone_b ไม่รวมคลิปที่ไฟล์ยังอยู่/ซ่อนฟุตซ้ำ) · ย้ายเข้าถังขยะ = ซ่อนจากค้นหา · คืนกลับได้ · ไฟล์กลับมา = คืนเอง · ลบถาวรลบแค่ดัชนีคลิปที่เลือก · ยังไม่สแกน = บอกให้สแกนก่อน · ไม่แตะซ่อนฟุตซ้ำ',
     /gone_a\.mp4/.test(tr0.rows) && /gone_b\.mp4/.test(tr0.rows) && !/keep\.mp4/.test(tr0.rows) && !/dup\.mp4/.test(tr0.rows) && /ไฟล์หาย \d/.test(tr0.tag) /* คลิปจากเทสต์ก่อนหน้าในฐานเดียวกันก็นับว่าไฟล์หาย (จำลองสแกนว่าง) */ && tr1.a === 'trash' && tr1.at && !tr1.b && tr1.t.includes('ถังขยะ 1 คลิป') && !tr1.ov && tr2 === 2 && !tr3.a && !tr3.at && !tr4.a && tr4.dupKept === true && tr4.msg && tr5.trashN === 1 && tr5.ids.split(',').length === 3 && /tr1/.test(tr5.ids) && /tr4/.test(tr5.ids) && tr5.kept && /ยังไม่เคยสแกน/.test(tr6) && !trErr.length, JSON.stringify([tr0, tr1, tr2, tr3, tr4, tr5, tr6.slice(0, 80)]) + trErr.join());
+  // ลบถาวร: ระหว่างรอกล่องยืนยัน ไฟล์กลับมา (สแกนเสร็จ) → ไม่ลบคลิปนั้น (เช็กใหม่หลังยืนยัน) · หายเยอะผิดปกติ = เตือนและปิดเลือกทั้งหมด
+  await tr.evaluate(() => { MWLocal.list = () => [{ name: 'keep.mp4', size: 501, dir: '/x/', uri: 'file://k' }]; document.dispatchEvent(new CustomEvent('ft:lib')); });
+  const rcName = await tr.evaluate(() => { const t = FT.ui.lib().find((c) => c.hide === 'trash' && /^tr\d$/.test(c.id)); return t ? t.name : ''; });
+  await tr.click('#trOut .trlist[data-l=t] .trrow >> text=' + rcName); await tr.click('#trOut [data-act=purge]'); await tr.evaluate((n) => { window.__files[n] = 1; }, rcName);
+  await tr.getByRole('button', { name: 'ลบถาวร', exact: true }).click(); await tr.waitForTimeout(500);
+  const rc = await tr.evaluate((n) => ({ still: FT.ui.lib().some((c) => c.name === n), msg: document.getElementById('trOut').textContent.includes('ไม่ได้ลบ') }), rcName);
+  await tr.evaluate(() => { const l = FT.ui.lib(); const mk = (i) => ({ id: 'trm' + i, name: 'trm' + i + '.mp4', size: 900 + i, album: 'x', duration: 5, status: 'done', lastModified: 1, cover: '', scenes: [] }); for (let i = 0; i < 40; i++) l.push(mk(i)); window.__files = {}; document.dispatchEvent(new CustomEvent('ft:lib')); });
+  const many = await tr.evaluate(() => ({ warn: /ไฟล์หายเยอะผิดปกติ/.test(document.getElementById('trOut').textContent), dis: document.querySelector('#trOut [data-all=m]').disabled }));
+  check('ลบถาวร: คลิปที่ไฟล์กลับมาระหว่างรอยืนยัน ไม่ถูกลบ (บอกว่าไม่ได้ลบ) · หายเกิน ~20% ของคลัง = เตือนว่าสแกนไม่ครบ และปิดปุ่มเลือกทั้งหมด', rc.still && rc.msg && many.warn && many.dis && !trErr.length, JSON.stringify([rcName, rc, many]) + trErr.join());
+  await tr.evaluate(() => { const l = FT.ui.lib(); for (let i = l.length - 1; i >= 0; i--) if (/^trm\d+$/.test(l[i].id)) l.splice(i, 1); });
   await tr.evaluate(async () => { await FT.store.del(['tr1', 'tr2', 'tr3', 'tr4']); const l = FT.ui.lib(); for (let i = l.length - 1; i >= 0; i--) if (/^tr\d$/.test(l[i].id)) l.splice(i, 1); });
   await tr.close();
   // v8.89 รูปฉากในการ์ดผลค้นหาไม่แตก: เลื่อนมาถึงการ์ด → อ่านเฟรมกลางฉากจากไฟล์จริงในมือถือ 720px (แคชไว้) แทนรูปในดัชนี 240px · ไม่มีไฟล์ = ใช้รูปเดิมไม่พัง
