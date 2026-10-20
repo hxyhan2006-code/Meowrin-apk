@@ -1200,6 +1200,30 @@ try {
     await sk.evaluate(() => { MWStore.del('mw_key_v1'); MWStore.del('mw_streak_v1'); MWStore.flush(); }); await sk.waitForTimeout(300);
     await sk.close();
   }
+  // ไฟวันต่อเนื่อง ฝั่งเนทีฟ (ปลั๊กอิน Streak ปลอม): ส่ง base/กันไฟดับ/ยอดวันนี้/ข้อความให้วิดเจ็ต · แตะวิดเจ็ตแล้วเปิดหน้าไฟเอง · ตั้งเวลาแจ้งเตือน · เตือนสิทธิ์/แบต · ไม่มีปลั๊กอิน = บอกให้ลง APK ใหม่
+  {
+    const nv = await context.newPage(); const nvErr = []; nv.on('pageerror', (e) => nvErr.push(e.message));
+    await nv.addInitScript(() => { window.__sk = []; const st = { notify: false, battery: false, widgets: 0, canPin: true };
+      window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: (n) => n === 'Streak', Plugins: { Streak: {
+        sync: async (a) => { __sk.push(a); return st; }, status: async () => st, consumeOpen: async () => ({ open: true }), addListener: () => {},
+        requestNotify: async () => st, openSettings: async () => {}, pinWidget: async () => ({ ok: true }), test: async () => {} } } }; });
+    await nv.goto(base + '/index.html'); await nv.waitForFunction(() => window.MWStreak && window.MW, null, { timeout: 20000 });
+    await nv.evaluate(() => { const d = new Date(), k = (o) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + o); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+      MWStore.set('mw_streak_v1', { handle: '@x', list: 'UUSHx', since: k(-3), days: { [k(-3)]: 2, [k(-2)]: 2, [k(-1)]: 2, [k(0)]: 1 }, syncedAt: Date.now() }); MWStore.flush(); });
+    await nv.reload(); await nv.waitForFunction(() => window.__sk && __sk.length > 0, null, { timeout: 8000 }).catch(() => {}); await nv.waitForTimeout(600);
+    const n1 = await nv.evaluate(() => { const a = __sk[__sk.length - 1] || {}; const pg = document.getElementById('stkPage'); return { base: a.base, today: a.today, freeze: a.freeze, list: a.list, notify: a.notify, times: (a.times || []).join(), slots: Object.keys(a.msgs || {}).join(), open: !pg.hidden, chips: pg.querySelectorAll('.stk-chip.on').length, warn: pg.querySelectorAll('.stk-warn').length, over: [...pg.querySelectorAll('*')].some((x) => x.getBoundingClientRect().right > innerWidth + 1) }; });
+    check('ไฟวันต่อเนื่อง (เนทีฟ): ส่งสตรีคถึงเมื่อวาน 3 + ยอดวันนี้ 1 + แจ้งเตือน 11:00/13:00/16:30/21:00 + ข้อความทุกช่วง · แตะวิดเจ็ตเปิดหน้าไฟเอง · เตือนสิทธิ์+แบต · ไม่ล้นจอ',
+      n1.base === 3 && n1.today === 1 && n1.list === 'UUSHx' && n1.notify && n1.times === '11:00,13:00,16:30,21:00' && n1.slots === '11:00,13:00,16:30,21:00,any' && n1.open && n1.chips === 4 && n1.warn === 2 && !n1.over && !nvErr.length, JSON.stringify(n1) + nvErr.join());
+    await nv.click('#stkPage [data-stk=time][data-t="13:00"]'); await nv.waitForTimeout(300);
+    const n2 = await nv.evaluate(() => ({ times: (__sk[__sk.length - 1].times || []).join(), saved: (MWStore.get('mw_streak_v1', {}).notif || {}).times }));
+    check('ไฟวันต่อเนื่อง (เนทีฟ): แตะเวลาปิด 13:00 → ส่งเวลาใหม่ให้มือถือ + จำไว้', n2.times === '11:00,16:30,21:00' && String(n2.saved) === '11:00,16:30,21:00', JSON.stringify(n2));
+    await nv.evaluate(() => { MWStore.del('mw_streak_v1'); MWStore.flush(); }); await nv.waitForTimeout(300); await nv.close();
+    const np = await context.newPage(); await np.goto(base + '/index.html'); await np.waitForFunction(() => window.MWStreak, null, { timeout: 20000 });
+    await np.evaluate(() => { MWStore.set('mw_streak_v1', { handle: '@x', list: 'UUSHx', since: '2026-01-01', days: {}, syncedAt: Date.now() }); }); await np.reload(); await np.waitForFunction(() => window.MWStreak, null, { timeout: 20000 });
+    await np.click('#stkBtn'); await np.waitForTimeout(300);
+    check('ไฟวันต่อเนื่อง: ไม่มีปลั๊กอิน (เว็บ/APK เก่า) = บอกให้ลง APK ใหม่ ไม่มีปุ่มที่กดแล้วพัง', await np.evaluate(() => /ต้องลง APK ใหม่/.test(document.getElementById('stkPage').textContent) && !document.querySelector('#stkPage [data-stk=test]')));
+    await np.evaluate(() => { MWStore.del('mw_streak_v1'); MWStore.flush(); }); await np.waitForTimeout(300); await np.close();
+  }
 } finally { await browser.close(); server.close(); }
 const bad = results.filter((x) => !x.ok);
 console.log(`\n${bad.length ? 'มี ' + bad.length + ' ข้อไม่ผ่าน' : 'ผ่านทั้งหมด'} (${results.length} ข้อ)`);

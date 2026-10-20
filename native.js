@@ -87,5 +87,5 @@
       } finally { busy = false; }
     });
   })();
-  window.MWNative = { goBack:goBack, isNative:isNative, save:save, share:share, canShare:canShare };
+  window.MWNative = { goBack:goBack, isNative:isNative, save:save, share:share, canShare:canShare, plug:plug }; /* plug("ชื่อ") = ปลั๊กอินเนทีฟ (null ถ้าไม่มี/APK เก่า) */
 })();

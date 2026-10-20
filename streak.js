@@ -3,17 +3,40 @@
    กติกา: วันละ GOAL คลิป = ไฟติด · คลิปเกิน GOAL ทุก 2 คลิป = กันไฟดับ 1 อัน (เก็บได้ MAX_FREEZE) · วันที่ไม่ครบใช้กันไฟดับอัตโนมัติ ไม่มีเหลือ = ไฟดับเริ่มนับใหม่
    คำนวณสตรีคใหม่ทั้งหมดจากจำนวนคลิปรายวัน (days) ทุกครั้ง ไม่เก็บตัวนับที่คลาดได้ · เก็บใน MWStore key mw_streak_v1
    { handle, chId, title, list, since:"YYYY-MM-DD" วันเริ่มนับ, days:{ "YYYY-MM-DD": จำนวนคลิป }, syncedAt, sprint: เวลาเริ่มจับ 10 นาที, cheered: วันที่ฉลองไฟติดแล้ว }
+   notif: { on, times:["HH:MM"] } แจ้งเตือน (ส่งเฉพาะวันที่ยังไม่ครบ)
+   วิดเจ็ต/แจ้งเตือนอยู่ฝั่งเนทีฟ (ปลั๊กอิน Streak ใน APK · ซอร์ส tools/android/) — ที่นี่ส่ง base (สตรีคถึงเมื่อวาน) + กันไฟดับ + ยอดวันนี้ + ข้อความไปให้ (sync)
+   APK เก่าไม่มีปลั๊กอิน = บอกตรงๆ ในหน้านี้ว่าต้องลง APK ใหม่
    วันตัดตามเวลาในมือถือ (ไทย) · โหลดหลัง app.js (ใช้ MW.toast/MW.esc) */
 (function(){
   "use strict";
   var KEY = "mw_streak_v1", GOAL = 2, BONUS_PER_FREEZE = 2, MAX_FREEZE = 2, START_FREEZE = 1;
   var SPRINT_MS = 10 * 60e3, AUTO_MS = 3 * 60e3, MAX_PAGES = 20;
   var MILESTONES = [3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000];
+  var TIMES = ["11:00", "13:00", "16:30", "21:00"];
+  /* ข้อความแจ้งเตือน (Han ขอแบบแซวแรงๆ หยาบได้ ใช้คำว่า "ทำงาน") สุ่มจากชุดของเวลานั้น + ชุด any · {n} ยอดวันนี้ {left} ที่ขาด {goal} {streak} ไฟถึงเมื่อวาน {frz} กันไฟดับ */
+  var MSGS = {
+    "11:00": ["ตื่นยังไอสัส สายแล้ว ไปทำงานได้แล้ว", "11 โมงแล้วมึง งานวันนี้ยังเป็น 0 อยู่เลย", "จะนอนเล่นถึงไหนวะ ลุกไปทำงานเดี๋ยวนี้",
+      "ไฟ {streak} วันของมึงรออยู่ อย่าให้กูต้องเตือนรอบสอง", "เช้านี้ทำอะไรไปแล้วบ้าง? งานยัง {n}/{goal} นะไอควาย", "ไถมือถือพอได้แล้ว เปิดแอพแล้วไปทำงาน",
+      "ช่วงนี้แหละที่มึงชอบลงคลิป ยังไม่เริ่มอีกเหรอ", "ตื่นมาก็ไปทำงานเลย ไม่ต้องรอฟีล"],
+    "13:00": ["บ่ายโมงแล้วไอสัส งานยัง {n}/{goal} อยู่เลย", "กินข้าวเสร็จแล้วก็ไปทำงานดิ จะรออะไร", "ขี้เกียจตอนบ่ายอีกแล้วใช่ปะ กูรู้ทันมึงนะ",
+      "อีก {left} งาน ไฟก็ติดแล้ว ทำไมยังไม่ทำวะ", "มึงบอกเองว่าทำแค่ชั่วโมงเดียว แล้วไหนล่ะ", "10 นาทีพอ เริ่มก่อน ไม่ต้องคิดเยอะ ไปทำงาน",
+      "นอนกลางวันอยู่ใช่ปะไอควาย ลุก"],
+    "16:30": ["สี่โมงครึ่งแล้วไอควาย งานยังไม่ครบ", "จะดองไปทำตอนดึกอีกแล้วใช่ปะ ไปทำงานเดี๋ยวนี้", "เหลือ {left} งาน ไฟ {streak} วันกำลังสั่นแล้วนะมึง",
+      "เดดไลน์มึงคือหนึ่งทุ่มครึ่งไม่ใช่เหรอ ขยับตัวได้แล้ว", "คนอื่นเขาลงกันไปแล้ว มึงยังนั่งเฉยอยู่", "ลุกไปทำงานไอสัส อย่าให้ไฟดับเพราะความขี้เกียจ",
+      "ยัง {n}/{goal} อยู่อีก มึงจะเอายังไงกับชีวิต"],
+    "21:00": ["สามทุ่มแล้วไอสัส ไฟ {streak} วันจะดับตอนเที่ยงคืน", "อีก 3 ชั่วโมงไฟดับ มึงจะปล่อยจริงดิ", "เหลือ {left} งาน ทำให้จบก่อนนอน ไม่งั้นอย่าหลับ",
+      "ไฟ {streak} วันที่สร้างมา จะทิ้งเพราะขี้เกียจคืนเดียวเหรอ", "กันไฟดับเหลือ {frz} อัน อย่าใช้มันพร่ำเพรื่อไอควาย", "ยังทันนะมึง ลุกไปทำงานเดี๋ยวนี้",
+      "วันนี้มึงทำงานไป {n} จาก {goal} แค่นั้นอะ? น่าอาย"],
+    any: ["วันนี้มึงยังไม่ได้ทำงานเลยไอควาย", "มึงไปทำงานเดี๋ยวนี้ไอสัส", "งานวันนี้ {n}/{goal} น่าอายไหมวะ", "ขี้เกียจไม่ได้ทำให้ช่องโตนะมึง",
+      "เลิกไถแล้วไปทำงาน", "ไฟไม่ได้ติดเองนะไอสัส ต้องทำงาน", "เปิดแอพแล้วไปทำงาน อย่ามาทำเป็นไม่เห็น"]
+  };
   var WD = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
   var MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
   var btn = document.getElementById("stkBtn"), page = document.getElementById("stkPage");
   var st = MWStore.get(KEY, null) || {};
-  var busy = false, err = "", tick = 0, view = null, prevHook = null;
+  var busy = false, err = "", tick = 0, view = null, prevHook = null, nst = null, sent = "";
+  function plugin(){ return window.MWNative && MWNative.plug ? MWNative.plug("Streak") : null; }
+  function notif(){ return st.notif || { on: true, times: TIMES.slice() }; }
 
   function save(){ MWStore.set(KEY, st); }
   function pad(n){ return (n < 10 ? "0" : "") + n; }
@@ -87,9 +110,10 @@
       var list = "UUSH" + it.id.slice(2); /* playlist Shorts ล้วนของช่อง · ไม่มี (ช่องใหม่มาก) ถอยไปใช้อัปโหลดทั้งหมด */
       try{ var t = await MWSync.yt("playlistItems", { part: "contentDetails", playlistId: list, maxResults: 1 }); if(!(t.items || []).length) throw 0; }
       catch(e2){ if(e2 && MWSync.fatal(e2)) throw e2; list = it.contentDetails.relatedPlaylists.uploads; }
-      st = { handle: h, chId: it.id, title: it.snippet.title, list: list, since: dayKey(Date.now()), days: {}, syncedAt: 0, sprint: 0, cheered: "" };
+      st = { handle: h, chId: it.id, title: it.snippet.title, list: list, since: dayKey(Date.now()), days: {}, syncedAt: 0, sprint: 0, cheered: "", notif: st.notif };
       save(); busy = false;
       await check(true);
+      if(notif().on) askNotify(); /* Android 13+ ถามสิทธิ์แจ้งเตือนครั้งแรก */
     }catch(e){ err = e.message; busy = false; render(); }
   }
 
@@ -133,6 +157,28 @@
       + '<small>' + n + '/' + next + ' วัน · อีก ' + (next - n) + ' วัน</small></div>';
   }
 
+  /* ส่งค่าให้วิดเจ็ต/แจ้งเตือนฝั่งเนทีฟ (เฉพาะตอนค่าเปลี่ยน) · base = สตรีคถึงเมื่อวาน (เนทีฟบวก 1 เองเมื่อวันนี้ครบ) */
+  function pushNative(s, today){
+    var P = plugin(); if(!P || !P.sync) return;
+    var n = notif(), arg = { key: st.list ? MWSync.getKey() : "", list: st.list || "", goal: GOAL, base: s ? (s.done ? s.streak - 1 : s.streak) : 0,
+      freeze: s ? s.freeze : 0, today: s ? s.today : 0, day: today, notify: !!n.on, times: n.on ? n.times : [], msgs: MSGS };
+    var k = JSON.stringify(arg); if(k === sent) return; sent = k;
+    P.sync(arg).then(function(r){ nst = r; if(page && !page.hidden) render(); }).catch(function(){ sent = ""; });
+  }
+  function refreshStatus(){ var P = plugin(); if(P && P.status) P.status().then(function(r){ nst = r; render(); }).catch(function(){}); }
+
+  function notifBox(){
+    var P = plugin(), n = notif(), h = '<div class="stk-box"><h3>วิดเจ็ต + แจ้งเตือน</h3>';
+    if(!P) return h + '<p class="hint tip">ต้องลง APK ใหม่ (สร้างหลัง v8.98) ถึงจะมีวิดเจ็ตบนหน้าจอหลักและแจ้งเตือนเรียกตัว · GitHub → Actions → build-apk → Run workflow</p></div>';
+    h += '<label class="stk-sw"><input type="checkbox" data-stk="on"' + (n.on ? " checked" : "") + '> แจ้งเตือนเมื่อวันนี้ยังทำงานไม่ครบ</label>';
+    if(n.on) h += '<div class="stk-times">' + TIMES.map(function(t){ return '<button type="button" class="stk-chip' + (n.times.indexOf(t) >= 0 ? " on" : "") + '" data-stk="time" data-t="' + t + '">' + t + '</button>'; }).join("") + '</div>';
+    if(nst && n.on && !nst.notify) h += '<div class="stk-warn">' + MWIcon("warn") + '<span>ยังไม่ได้อนุญาตแจ้งเตือน</span><button class="btn small" data-stk="perm">อนุญาต</button></div>';
+    if(nst && !nst.battery) h += '<div class="stk-warn">' + MWIcon("warn") + '<span>แอพถูกจำกัดแบต แจ้งเตือน/วิดเจ็ตอาจไม่อัปเดต · ตั้งค่าแอพ → แบตเตอรี่ → ไม่จำกัด/อนุญาตทำงานเบื้องหลัง</span><button class="btn small ghost" data-stk="settings">เปิด</button></div>';
+    h += '<div class="row stk-act">' + (nst && nst.widgets ? '<span class="stk-ok">' + MWIcon("check") + 'มีวิดเจ็ตบนหน้าจอแล้ว</span>'
+        : '<button class="btn ghost" data-stk="pin">เพิ่มวิดเจ็ตบนหน้าจอ</button>') + '<button class="btn ghost" data-stk="test">ทดสอบแจ้งเตือน</button></div>';
+    return h + '<p class="hint tip">มือถือเช็กยอดวันนี้เองทุก 30 นาที (10:00–23:30) แม้ไม่ได้เปิดแอพ · ทำครบแล้วแจ้งเตือนที่เหลือของวันนั้นเงียบเอง · ข้อความสุ่มไม่ซ้ำ</p></div>';
+  }
+
   function renderBtn(s){
     if(!btn) return;
     btn.classList.toggle("lit", !!(s && s.done));
@@ -172,6 +218,7 @@
       + '<div class="stk-box"><h3>กันไฟดับ ' + s.freeze + '/' + MAX_FREEZE + '</h3><div class="stk-frz">' + snow + '</div>'
       + '<p class="hint tip">วันที่ลงไม่ครบ ' + GOAL + ' คลิป แอพใช้กันไฟดับให้เอง ไฟไม่ดับ · ได้เพิ่มจากการลงเกินวันละ ' + GOAL + ' คลิป ทุก ' + BONUS_PER_FREEZE + ' คลิป = 1 อัน'
       + (s.freeze < MAX_FREEZE ? ' · อีก ' + (BONUS_PER_FREEZE - s.bonus) + ' คลิปได้อันต่อไป' : ' · เต็มแล้ว') + '</p></div>'
+      + notifBox()
       + '<div class="stk-foot">' + esc(st.handle) + ' · ' + (busy ? "กำลังเช็ก..." : st.syncedAt ? "เช็กล่าสุด " + ago(st.syncedAt) : "ยังไม่ได้เช็ก") + '<button type="button" class="stk-link" data-stk="change">เปลี่ยนช่อง</button></div>';
   }
 
@@ -179,7 +226,7 @@
     var today = dayKey(Date.now()), s = st.list ? calc(st, today) : null;
     if(st.sprint && sprintLeft() <= 0){ st.sprint = 0; save(); MW.toast("ครบ 10 นาทีแล้ว! ไปต่ออีกนิดไหม"); }
     if(s && s.done && st.cheered !== today){ st.cheered = today; save(); MW.toast("ไฟติดแล้ว! วันที่ " + s.streak, false, 3500); if(btn){ btn.classList.add("cheer"); } }
-    renderBtn(s);
+    renderBtn(s); pushNative(s, today);
     clearInterval(tick); tick = 0;
     if(!page || page.hidden) return;
     var y = page.scrollTop; renderPage(s, today); page.scrollTop = y;
@@ -192,9 +239,10 @@
 
   function open(){
     var d = new Date(); view = { y: d.getFullYear(), m: d.getMonth() };
-    page.hidden = false; document.body.classList.add("stk-open"); page.scrollTop = 0; render(); check(false);
+    page.hidden = false; document.body.classList.add("stk-open"); page.scrollTop = 0; render(); check(false); refreshStatus();
     prevHook = window.MWBackHook; window.MWBackHook = function(){ if(!page.hidden){ close(); return true; } return prevHook ? prevHook() : false; }; /* ปุ่มย้อนของมือถือปิดหน้านี้ก่อน */
   }
+  function askNotify(){ var P = plugin(); if(P && P.requestNotify) P.requestNotify().then(function(r){ nst = r; render(); if(r && !r.notify) MW.toast("ยังไม่ได้อนุญาต เปิดเองได้ที่ ตั้งค่าแอพ → การแจ้งเตือน", true, 4000); }).catch(function(){}); }
   function close(){ if(page.hidden) return; page.hidden = true; document.body.classList.remove("stk-open"); window.MWBackHook = prevHook; render(); }
 
   if(btn && page){
@@ -208,15 +256,25 @@
       else if(a === "refresh") check(true);
       else if(a === "sprint"){ st.sprint = Date.now(); save(); render(); }
       else if(a === "stop"){ st.sprint = 0; save(); render(); }
+      else if(a === "on"){ var n = notif(); n.on = b.checked; st.notif = n; save(); render(); if(n.on && nst && !nst.notify) askNotify(); }
+      else if(a === "time"){ var n2 = notif(), t = b.dataset.t, i = n2.times.indexOf(t); if(i >= 0) n2.times.splice(i, 1); else n2.times = TIMES.filter(function(x){ return x === t || n2.times.indexOf(x) >= 0; }); st.notif = n2; save(); render(); }
+      else if(a === "perm") askNotify();
+      else if(a === "settings") plugin().openSettings();
+      else if(a === "pin") plugin().pinWidget().then(function(r){ if(!r || !r.ok) MW.toast("เพิ่มจากแอพไม่ได้ กดค้างที่หน้าจอหลัก → วิดเจ็ต → Meowrin App", true, 4500); else setTimeout(refreshStatus, 4000); });
+      else if(a === "test"){ if(nst && !nst.notify){ askNotify(); return; } plugin().test({ slot: "any" }); }
       else if(a === "prev" || a === "next"){ var d = new Date(view.y, view.m + (a === "next" ? 1 : -1), 1); view = { y: d.getFullYear(), m: d.getMonth() }; render(); }
       else if(a === "change"){
         if(!await MWDialog.confirm("เปลี่ยนช่อง = เริ่มนับไฟวันต่อเนื่องใหม่ตั้งแต่วันนี้ ตกลงไหม?")) return;
-        st = {}; err = ""; save(); render();
+        st = { notif: st.notif }; err = ""; save(); render();
       }
     });
     page.addEventListener("keydown", function(e){ if(e.key === "Enter" && e.target.dataset.stk === "handle") setup(e.target.value); });
-    document.addEventListener("visibilitychange", function(){ if(!document.hidden){ render(); check(false); } }); /* กลับจาก CapCut/YouTube = เช็กยอดวันนี้ใหม่ (เว้น 3 นาที) */
+    document.addEventListener("visibilitychange", function(){ if(!document.hidden){ render(); check(false); if(!page.hidden) refreshStatus(); } }); /* กลับจากหน้าตั้งค่าแอพ = อ่านสิทธิ์ใหม่ */ /* กลับจาก CapCut/YouTube = เช็กยอดวันนี้ใหม่ (เว้น 3 นาที) */
     render(); check(false);
+    /* แตะวิดเจ็ต/แจ้งเตือน = เปิดหน้าวันต่อเนื่อง (เปิดแอพใหม่ = consumeOpen · แอพเปิดค้างอยู่ = event open) */
+    var P0 = plugin();
+    if(P0 && P0.addListener) P0.addListener("open", function(){ if(page.hidden) open(); });
+    if(P0 && P0.consumeOpen) P0.consumeOpen().then(function(r){ if(r && r.open && page.hidden) open(); }).catch(function(){});
   }
 
   window.MWStreak = { calc: calc, check: check, open: open, GOAL: GOAL };

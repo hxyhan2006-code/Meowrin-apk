@@ -161,18 +161,34 @@ jobs:
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   registerPlugin(MediaScanPlugin.class);
+                  registerPlugin(StreakPlugin.class);
                   super.onCreate(savedInstanceState);
               }
           }
           ''')
           PY4
+          # ไฟวันต่อเนื่องฝั่งเนทีฟ (วิดเจ็ต + แจ้งเตือน + เช็กยอดวันนี้ตอนแอพปิด): ซอร์สอยู่ใน tools/android/ (ไม่อยู่ใน OTA)
+          cp ../tools/android/java/*.java android/app/src/main/java/com/han/meowrin/
+          for d in layout xml drawable; do mkdir -p android/app/src/main/res/$d; cp ../tools/android/res/$d/*.xml android/app/src/main/res/$d/; done
           python3 - <<'PY2'
           p = "android/app/src/main/AndroidManifest.xml"
           s = open(p, encoding="utf-8").read()
           perms = "".join('    <uses-permission android:name="android.permission.%s" />\n' % n for n in [
-              "READ_MEDIA_VIDEO", "READ_MEDIA_IMAGES", "READ_MEDIA_AUDIO", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "MANAGE_EXTERNAL_STORAGE", "WAKE_LOCK"])
+              "READ_MEDIA_VIDEO", "READ_MEDIA_IMAGES", "READ_MEDIA_AUDIO", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "MANAGE_EXTERNAL_STORAGE", "WAKE_LOCK", "POST_NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED"])
           s = s.replace("<application", perms + "    <application", 1)
           s = s.replace("<application", '<application android:requestLegacyExternalStorage="true" android:largeHeap="true"', 1)
+          assert "</application>" in s, "ไม่เจอ </application> ใน AndroidManifest.xml"
+          s = s.replace("</application>", """        <receiver android:name=".StreakWidget" android:exported="true" android:label="ไฟวันต่อเนื่อง">
+                    <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+                    <meta-data android:name="android.appwidget.provider" android:resource="@xml/streak_widget_info" />
+                </receiver>
+                <receiver android:name=".StreakAlarm" android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.BOOT_COMPLETED" />
+                        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                    </intent-filter>
+                </receiver>
+            </application>""", 1)
           open(p, "w", encoding="utf-8").write(s)
           PY2
           npx cap sync android
