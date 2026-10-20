@@ -257,7 +257,7 @@
         if(nst && !nst.widgets){ MW.toast("ยังไม่มีวิดเจ็ตบนหน้าจอหลัก กดเพิ่มวิดเจ็ตก่อน", true, 3500); return; }
         if(!P.testWidget){ MW.toast("ต้องลง APK ใหม่ (สร้างหลัง v9.00) ถึงจะทดสอบวิดเจ็ตได้", true, 4000); return; }
         var st1 = WTEST[wtI++ % WTEST.length];
-        P.testWidget({ state: st1[0] }).then(function(){ MW.toast("วิดเจ็ตโชว์ตัวอย่าง \"" + st1[1] + "\" · กดโฮมไปดู ค้าง 20 วินาที · กดอีกทีเพื่อดูแบบถัดไป", false, 4500); }).catch(function(){ MW.toast("ทดสอบวิดเจ็ตไม่ได้", true); });
+        P.testWidget({ state: st1[0] }).then(function(r){ if(r && r.widgets === 0){ MW.toast("ยังไม่มีวิดเจ็ตบนหน้าจอหลัก กดเพิ่มวิดเจ็ตก่อน", true, 3500); return; } MW.toast("วิดเจ็ตโชว์ตัวอย่าง \"" + st1[1] + "\" · กดโฮมไปดู ค้าง 20 วินาที · กดอีกทีเพื่อดูแบบถัดไป", false, 4500); }).catch(function(){ MW.toast("ทดสอบวิดเจ็ตไม่ได้", true); });
       }
       else if(a === "test"){ if(nst && !nst.notify){ askNotify(); return; } plugin().test({ slot: "any" }); }
       else if(a === "prev" || a === "next"){ var d = new Date(view.y, view.m + (a === "next" ? 1 : -1), 1); view = { y: d.getFullYear(), m: d.getMonth() }; render(); }

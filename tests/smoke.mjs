@@ -1206,7 +1206,7 @@ try {
     await nv.addInitScript(() => { window.__sk = []; const st = { notify: false, battery: false, widgets: 1, canPin: true }; window.__tw = [];
       window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: (n) => n === 'Streak', Plugins: { Streak: {
         sync: async (a) => { __sk.push(a); return st; }, status: async () => st, consumeOpen: async () => ({ open: true }), addListener: () => {},
-        requestNotify: async () => st, openSettings: async () => {}, pinWidget: async () => ({ ok: true }), test: async () => {}, testWidget: async (a) => { __tw.push(a.state); } } } }; });
+        requestNotify: async () => st, openSettings: async () => {}, pinWidget: async () => ({ ok: true }), test: async () => {}, testWidget: async (a) => { __tw.push(a.state); return { widgets: 1 }; } } } }; });
     await nv.goto(base + '/index.html'); await nv.waitForFunction(() => window.MWStreak && window.MW, null, { timeout: 20000 });
     await nv.evaluate(() => { const d = new Date(), k = (o) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + o); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
       MWStore.set('mw_streak_v1', { handle: '@x', list: 'UUSHx', since: k(-3), days: { [k(-3)]: 2, [k(-2)]: 2, [k(-1)]: 2, [k(0)]: 1 }, syncedAt: Date.now() }); MWStore.flush(); });

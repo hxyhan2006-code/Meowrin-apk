@@ -147,10 +147,11 @@ final class StreakCore {
         return fill(a.optString(idx, ""), n, goal, streakShown, p.getInt("freeze", 0));
     }
 
-    static void draw(Context c, boolean set, boolean lit, int n, int goal, int streak, int freeze, String msg) {
+    /* คืนจำนวนวิดเจ็ตที่วาด (0 = ยังไม่มีวิดเจ็ตบนหน้าจอ) */
+    static int draw(Context c, boolean set, boolean lit, int n, int goal, int streak, int freeze, String msg) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         int[] ids = m.getAppWidgetIds(new ComponentName(c, StreakWidget.class));
-        if (ids == null || ids.length == 0) return;
+        if (ids == null || ids.length == 0) return 0;
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.streak_widget);
         v.setImageViewResource(R.id.stk_flame, lit ? R.drawable.stk_flame_on : R.drawable.stk_flame_off);
         v.setTextViewText(R.id.stk_num, set ? String.valueOf(streak) : "-");
@@ -162,6 +163,7 @@ final class StreakCore {
         v.setTextColor(R.id.stk_msg, lit ? 0xFFFFC08A : 0xFFD4D4D8);
         v.setOnClickPendingIntent(R.id.stk_root, openApp(c, 7));
         m.updateAppWidget(ids, v);
+        return ids.length;
     }
 
     static void renderWidgets(Context c) {
@@ -176,7 +178,10 @@ final class StreakCore {
 
     /* ทดสอบวิดเจ็ต: โชว์ตัวอย่างสถานการณ์ที่เลือก (z ยังไม่ทำ · h ครึ่งทาง · d ไฟติด · b โบนัส · e ค่ำไฟจะดับ · r ไฟเพิ่งดับ) พร้อมข้อความสุ่มจริงจากชุดนั้น
        ค้าง 20 วินาทีแล้ววาดค่าจริงกลับ (ไม่แตะข้อมูลจริง) */
-    static void previewWidget(final Context c, String state) {
+    static final Handler UI = new Handler(Looper.getMainLooper());
+
+    static int previewWidget(Context ctx, String state) {
+        final Context c = ctx.getApplicationContext();
         SharedPreferences p = prefs(c);
         int goal = p.getInt("goal", 2), base = p.getInt("base", 0) > 0 ? p.getInt("base", 0) : 12, frz = p.getInt("freeze", 1);
         boolean lit = "d".equals(state) || "b".equals(state);
@@ -184,11 +189,21 @@ final class StreakCore {
         int streak = "r".equals(state) ? 0 : lit ? base + 1 : base;
         JSONArray a = pool(p, "w_" + state);
         String msg = a.length() == 0 ? "ยังไม่มีข้อความ (เปิดแอพให้ซิงก์ก่อน)" : fill(a.optString(new Random().nextInt(a.length()), ""), n, goal, streak, frz);
-        draw(c, true, lit, n, goal, streak, frz, msg);
-        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+        int shown = draw(c, true, lit, n, goal, streak, frz, msg);
+        if (shown == 0) return 0;
+        UI.removeCallbacksAndMessages(null); /* กดทดสอบซ้อน = นับ 20 วินาทีใหม่ ไม่ให้ตัวคืนค่าอันเก่ามาตัดกลางคัน */
+        UI.postDelayed(new Runnable() {
             @Override
             public void run() { renderWidgets(c); }
         }, 20_000L);
+        /* โปรเซสถูกฆ่าก่อนครบ 20 วินาที = ตัวคืนค่าใน Handler หาย → ปลุกรอบเช็กอีกครั้งเป็นตัวสำรอง (ไม่ต้องรอรอบ 30 นาที/ข้ามคืน) */
+        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+        if (am != null) {
+            Intent i = new Intent(c, StreakAlarm.class).setAction(ACTION);
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 30_000L,
+                    PendingIntent.getBroadcast(c, 2, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        }
+        return shown;
     }
 
     static boolean canNotify(Context c) {

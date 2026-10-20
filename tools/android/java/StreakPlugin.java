@@ -122,8 +122,9 @@ public class StreakPlugin extends Plugin {
 
     @PluginMethod
     public void testWidget(PluginCall call) {
-        StreakCore.previewWidget(getContext(), call.getString("state", "z"));
-        call.resolve();
+        JSObject r = new JSObject();
+        r.put("widgets", StreakCore.previewWidget(getContext(), call.getString("state", "z")));
+        call.resolve(r);
     }
 
     @PluginMethod
