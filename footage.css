@@ -247,13 +247,25 @@ html:has(.alplay:not([hidden])){overflow:hidden}
 .askans small{display:block;margin-top:6px;color:var(--muted);font-size:12px}
 #askOut[hidden]{display:none}
 
-.orghead b{display:block}.orghead small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
-.orglist{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.orglist span{background:var(--field);border:1px solid var(--line-strong);border-radius:999px;padding:4px 10px;font-size:12.5px}
-.orglist em{font-style:normal;color:var(--muted);margin-left:4px}
-.orgbtns{display:flex;gap:8px;margin-top:8px}.orgbtns .btn{flex:1}
-#orgBox{padding:12px;border:1px solid var(--line-strong);border-radius:12px;margin-bottom:10px}
+/* จัดอัลบั้มใหม่ (footage-organize.js): หน้าเต็มจอทับหน้าอัลบั้ม · ชีตเลือก (z 50) และกล่องโต้ตอบ (z 100) อยู่บนสุด */
+#orgBox{position:fixed;inset:0;z-index:45;background:var(--bg);overflow-y:auto;overscroll-behavior:contain;padding:max(10px,env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
 #orgBox[hidden]{display:none}
+html.orgopen{overflow:hidden}
+.orgtop{display:flex;align-items:center;gap:12px;margin:0 0 14px}.orgtop>div{min-width:0}.orgtop b{display:block;font-size:18px}.orgtop small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.orgsec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:12px}.orgsec h3{margin:0 0 4px;font-size:15px}
+.orgbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.orgbtns .btn{flex:1 1 140px}
+.orggrp{border-top:1px solid var(--line);margin-top:8px;padding-top:8px}
+.orggh{display:flex;align-items:center;gap:8px}.orggh .btn{flex:none}
+.orgtg{flex:1;min-width:0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0;border:0;background:none;color:var(--text);font:inherit;font-weight:600;text-align:left}
+.orgtg em{font-style:normal;color:var(--muted);font-weight:400}.orgtg span{margin-left:auto;color:var(--accent);font-weight:400;font-size:13px}
+.orgrows{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.orgrow{display:block;width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--line-strong);background:var(--field);color:var(--text);font:inherit;text-align:left}
+.orgrow b{display:block;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.orgrow small{display:block;color:var(--muted);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
+.orglab{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}
+.orgta{width:100%;box-sizing:border-box;font-size:13.5px;line-height:1.5;resize:vertical}
+.orgal{margin-top:10px}.orgalh{display:flex;align-items:center;gap:8px;margin-bottom:4px}.orgalh b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.orgalh em{font-style:normal;color:var(--muted);font-weight:400;font-size:12.5px}
+.orgst{flex:none;min-height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line-strong);background:var(--field);color:var(--muted);font:inherit;font-size:12.5px}
+.orgst.st-use{color:var(--accent);border-color:rgba(57,217,138,.55);background:var(--accent-soft)}.orgst.st-lock{color:var(--warn,#f59e0b)}
 
 /* ฟังเสียงคลิป (footage-speech.js) */
 #spPanel .spc{margin:8px 0;border:1px solid var(--line-strong);border-radius:12px;background:var(--field)}

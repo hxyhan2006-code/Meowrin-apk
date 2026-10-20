@@ -282,6 +282,23 @@
     r.map = {}; (Array.isArray(j.r) ? j.r : []).forEach(function(x){ r.map[Number(x.i)] = ok[String(x.arc || "").toLowerCase().trim()] || ""; });
     return r;
   }
+  async function sortAlbums(items, albums, general){ /* จัดอัลบั้มใหม่ (footage-organize.js) · items:[{ n, album, brief }] albums:[{ name, desc }] → r.map: n → { a:ชื่ออัลบั้มตรงตัว | "", sure, why } · ข้อความล้วน (ใช้ดัชนี+บทพูดที่มีอยู่ ไม่ส่งรูป) */
+    var prompt = [
+      "You sort One Piece anime clips into the phone-gallery albums of a Thai YouTube Shorts editor (Han). Follow HIS rules below. They follow how he remembers a scene (who the scene is really about / the memory it evokes), NOT a head count.",
+      "General rules (Thai, from Han):", general || "-",
+      "Albums - choose ONLY one of these exact names:",
+      albums.map(function(a){ return "- " + a.name + (a.desc ? ": " + a.desc : ""); }).join("\n"),
+      "For each numbered clip you get its current album (Han filed many clips messily, so it can be wrong), the story arc, scene-by-scene characters + automatic descriptions, and the dialogue transcript (more reliable than the descriptions for who is there and what happens).",
+      "Pick the single best album. If the current album fits about as well as another one, keep the current album. If you are not reasonably sure, set sure=false (Han will decide himself) - never guess.",
+      "Return ONLY JSON: {\"r\":[{\"i\":<clip number>,\"a\":\"exact album name\",\"sure\":true,\"why\":\"short Thai reason, max 60 characters\"}]}",
+      "Clips:",
+      items.map(function(it){ return "Clip " + it.n + " (current album: " + (it.album || "-") + ")\n" + it.brief; }).join("\n\n")
+    ].join("\n");
+    var r = await askText(prompt, "low"), ok = {};
+    albums.forEach(function(a){ ok[a.name.toLowerCase()] = a.name; });
+    r.map = {}; (Array.isArray(r.json.r) ? r.json.r : []).forEach(function(x){ var a = ok[String(x.a || "").toLowerCase().trim()] || ""; r.map[Number(x.i)] = { a:a, sure:!!(a && x.sure !== false), why:String(x.why || "").slice(0, 80) }; }); /* ชื่อนอกรายการ = ไม่แน่ใจ */
+    return r;
+  }
   /* ---------- ผู้กำกับ AI ----------
      1) beats: แบ่งบทเป็นช็อตสั้นๆ (fast: วลี ~1.5-2.5 วิ เริ่มช็อตใหม่ตรงคำที่เอ่ยชื่อ) ตามสไตล์ช่อง: เอ่ยชื่อใคร/อะไร ภาพต้องเป็นสิ่งนั้น (ข้อความล้วน)
      2) direct: ส่งรูปผู้สมัครของแต่ละช็อต (ค้นจากดัชนีในเครื่องแล้ว) ให้ AI ดูภาพจริงแล้วเลือก ทีละชุดหลายช็อต (เห็นบทเต็มเพื่อความต่อเนื่อง) */
@@ -413,5 +430,5 @@
     r.json = j; return r;
   }
 
-  window.FT = { embed:embed, classifyArcs:classifyArcs, cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize, askExpand:askExpand, transcribe:transcribe, askPick:askPick };
+  window.FT = { embed:embed, classifyArcs:classifyArcs, sortAlbums:sortAlbums, cfg:cfg, saveCfg:saveCfg, orKey:orKey, store:store, clipId:clipId, scan:scan, refreshImages:refreshImages, IMG_V:IMG.v, AI_V:AI_V, AI_GOD:AI_GOD, deepFrames:deepFrames, describe:describe, beats:beats, direct:direct, recognize:recognize, askExpand:askExpand, transcribe:transcribe, askPick:askPick };
 })();

@@ -175,7 +175,7 @@
       : "<span>" + (arcMsg || "ไม่มีคลิปที่รอ AI ดูภาค") + "</span>";
   }
   $("alArc").addEventListener("click", function(e){ var b = e.target.closest("[data-act]"); if(!b) return; if(b.dataset.act === "stop"){ arcStopF = true; return; } runArcs(); });
-  async function runArcs(){ /* ปุ่มในแถบภาค + ปุ่มในแผงจัดอัลบั้มใหม่ (footage-organize.js) ใช้ตัวเดียวกัน */
+  async function runArcs(){ /* ปุ่มในแถบภาค (โหมดภาค) */
     var todo = arcTodo(); if(!todo.length || arcRun) return;
     if(!FT.orKey()){ await MWDialog.alert("ยังไม่มี OpenRouter key ในแอพ ไปใส่ที่ ตั้งค่า > คีย์ API ก่อน"); return; }
     if(!await MWDialog.confirm("ให้ AI ดูภาคของ " + todo.length + " คลิปที่ยังไม่แน่ใจ?\n\nประมาณ " + U.money(todo.length * 3 * 0.0012) + " (ประมาณการจากราคาต่อรูปของการตรวจตัวละครซ้ำ $0.0012 คูณ 3 รูปต่อคลิป ราคาจริงอาจต่างไป)\n\nAI จะไม่เดา: คลิปที่ไม่แน่ใจจะยังอยู่ในอัลบั้ม ยังไม่แน่ใจ และจะไม่ถูกลองซ้ำ ผลที่ AI ตอบไม่ทับภาคที่คุณย้ายเอง · พักและทำต่อได้ ต้องเปิดแอพค้างไว้", { ok:"เริ่ม" })) return;
@@ -199,7 +199,7 @@
     if(mode !== "phone") $("alSeg").querySelector('[data-m="phone"]').click(); else renderHome();
     var i = albums.findIndex(function(a){ return a.name === name; }); if(i >= 0) openAlbum(i);
   }
-  Object.assign(U, { albumHit:albumHit, openAlbumNamed:openAlbumNamed, playAt:playAt, runIndexFor:runFor, runArcs:runArcs, arcTodoCount:function(){ return arcTodo().length; } }); /* ให้แผงจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ / ให้ AI ดูภาค ได้เลย */
+  Object.assign(U, { albumHit:albumHit, openAlbumNamed:openAlbumNamed, playAt:playAt, runIndexFor:runFor, runArcs:runArcs }); /* runIndexFor = หน้าจัดอัลบั้มใหม่สั่ง ทำดัชนีที่เหลือ ได้เลย */
   var wasRunning = false;
   document.addEventListener("ft:queue", function(){ /* คิวเดินอยู่: อัปเดตแค่แถบ · จบรอบค่อยวาดตารางใหม่ (ไม่ให้กะพริบทุกวินาที) */
     var r = U.queueInfo().running; build(); if(curAlbum) curAlbum = albums.find(function(a){ return a.name === curAlbum.name; }) || null; strips();
@@ -270,6 +270,7 @@
   window.MWBackHook = async function(){ /* native.js เรียกเมื่อกดปุ่มย้อนของมือถือ */
     var sh = document.querySelector(".asheet:not([hidden])"); if(sh){ sh.click(); return true; } /* ชีตเลือก/แก้ไข: แตะพื้นหลัง = ปิด */
     if(!$("big").hidden){ $("bigX").click(); return true; }
+    if(FT.organize && FT.organize.isOpen()){ history.back(); return true; } /* หน้าจัดอัลบั้มใหม่: popstate ใน footage-organize.js ปิดให้ */
     if(view !== "home"){ history.back(); return true; } /* ตัวเล่น/อัลบั้ม: popstate ปิดทีละชั้น */
     if($("q").value.trim()){ $("q").value = ""; $("q").dispatchEvent(new Event("input")); return true; } /* กำลังค้นหา: ล้างคำค้นก่อน */
     return false;
