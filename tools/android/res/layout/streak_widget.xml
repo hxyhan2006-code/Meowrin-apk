@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- วิดเจ็ตไฟวันต่อเนื่อง (StreakCore.draw) · ซ้าย: มาสคอตแมว (ท่าเปลี่ยนตามสถานการณ์ ภาพ res/drawable-nodpi/mw_*.png ก๊อปจาก mascot/) · ขวา: แถวบน ไฟ+ตัวเลข+วันนี้ x/2+กันไฟดับ · แถวล่าง ข้อความสั้นสุ่มตามสถานการณ์ (streak-msgs.js w_*)
+<!-- วิดเจ็ตไฟวันต่อเนื่อง (StreakCore.draw) · ซ้าย: มาสคอตแมว (ท่าเปลี่ยนตามสถานการณ์ ภาพ res/drawable-nodpi/mw_*.png ก๊อปจาก mascot/) · ขวา: แถวบน ไฟ+ตัวเลข+วันนี้ x/2+กันไฟดับ · แถวล่าง ข้อความสั้นสุ่มตามสถานการณ์ (streak-msgs.js w_*) บรรทัดเดียว ปรับขนาดตัวอักษรอัตโนมัติ 8–14sp ให้พอดีความกว้าง (autoSize · ยาวเกินที่ 8sp = ตัดด้วย …)
      สีพื้นเปลี่ยนตามสถานการณ์ (stk_bg / _lit / _warn / _ice) · สูงรวมราว 66dp → พอดีวิดเจ็ตสูง 1 ช่อง -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/stk_root"
@@ -85,13 +85,17 @@
     <TextView
         android:id="@+id/stk_msg"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="20dp"
         android:layout_marginTop="2dp"
+        android:autoSizeMaxTextSize="14sp"
+        android:autoSizeMinTextSize="8sp"
+        android:autoSizeStepGranularity="0.5sp"
+        android:autoSizeTextType="uniform"
         android:ellipsize="end"
-        android:maxLines="2"
+        android:gravity="center_vertical"
+        android:maxLines="1"
         android:text=""
         android:textColor="#D4D4D8"
-        android:textSize="12.5sp"
         android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>
