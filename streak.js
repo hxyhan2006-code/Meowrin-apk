@@ -15,7 +15,7 @@
   var KEY = "mw_streak_v1", GOAL = 2, BONUS_PER_FREEZE = 2, MAX_FREEZE = 2, START_FREEZE = 1;
   var SPRINT_MS = 10 * 60e3, AUTO_MS = 3 * 60e3, MAX_PAGES = 20;
   var MILESTONES = [3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000];
-  var WTEST = [["z", "ยังไม่ได้ทำ"], ["h", "ทำไปครึ่งทาง"], ["d", "ไฟติดแล้ว"], ["b", "ทำเกินโควตา"], ["e", "ค่ำ ไฟจะดับ"], ["r", "ไฟเพิ่งดับ"]], wtI = 0; /* ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ */
+  var WTEST = [["z", "ยังไม่ได้ทำ"], ["h", "ทำไปครึ่งทาง"], ["d", "ไฟติดแล้ว"], ["b", "ทำเกินโควตา"], ["e", "ค่ำ ไฟจะดับ"], ["r", "ไฟเพิ่งดับ"], ["f", "เมื่อวานใช้กันไฟดับ"], ["m", "ไฟครบหลักไมล์"]], wtI = 0; /* ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ */
   var TIMES = ["11:00", "13:00", "16:30", "21:00"];
   var WD = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
   var MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
@@ -180,7 +180,7 @@
   function pushNative(s, today){
     var P = plugin(); if(!P || !P.sync) return;
     var n = notif(), arg = { key: st.list ? MWSync.getKey() : "", list: st.list || "", goal: GOAL, base: s ? (s.done ? s.streak - 1 : s.streak) : 0,
-      freeze: s ? s.freeze : 0, today: s ? s.today : 0, day: today, notify: !!n.on, times: n.on ? n.times : [], msgs: msgs(), broke: s && s.broke ? today : "" };
+      freeze: s ? s.freeze : 0, today: s ? s.today : 0, day: today, notify: !!n.on, times: n.on ? n.times : [], msgs: msgs(), poses: MWMascot.POOLS, broke: s && s.broke ? today : "", froze: s && !s.done && s.lastFrozen === addDay(today, -1) ? today : "" };
     var k = JSON.stringify(arg); if(k === sent) return; sent = k;
     P.sync(arg).then(function(r){ nst = r; if(page && !page.hidden) render(); }).catch(function(){ sent = ""; });
   }
@@ -223,6 +223,19 @@
       + '<p class="hint">' + (pr ? "บันทึกอยู่ " + pr.length + " ตัวอักษร" : "ยังไม่มี prompt") + '</p></div></details>';
   }
 
+  /* ท่ามาสคอตตามสถานการณ์ — ลำดับเดียวกับ StreakCore.poseKey ฝั่งเนทีฟ · ท่าเปลี่ยนทุกครึ่งชั่วโมง (สูตรเดียวกับวิดเจ็ต) + แตะมาสคอตเพื่อดูท่าถัดไป */
+  var mTap = 0;
+  function poseKey(s, today){
+    if(s.done) return MILESTONES.indexOf(s.streak) >= 0 ? "m" : s.today > GOAL ? "b" : "d";
+    if(s.lastFrozen === addDay(today, -1)) return "f";
+    if(s.broke) return "r";
+    return new Date().getHours() >= 19 && s.streak > 0 ? "e" : s.today >= 1 ? "h" : "z";
+  }
+  function mascotBtn(s, today){
+    var d = new Date(), name = s ? MWMascot.pick(poseKey(s, today), today, d.getHours() * 2 + (d.getMinutes() >= 30 ? 1 : 0), mTap) : "peace";
+    return '<button type="button" class="stk-mascot" data-stk="mascot" aria-label="เปลี่ยนท่ามาสคอต"><img src="' + MWMascot.src(name) + '" alt="" width="112" height="112"></button>';
+  }
+
   function renderBtn(s){
     if(!btn) return;
     btn.classList.toggle("lit", !!(s && s.done));
@@ -233,7 +246,7 @@
   function renderPage(s, today){
     var esc = MW.esc, head = '<div class="stk-head"><button class="btn small ghost" data-stk="close" aria-label="ปิด">' + MWIcon("x") + '</button><b>วันต่อเนื่อง</b><span></span></div>';
     if(!s){
-      page.innerHTML = head + '<div class="stk-hero"><div><b class="big">0</b><span>วันต่อเนื่อง</span></div><span class="stk-fire">' + MWIcon("flame") + '</span></div>'
+      page.innerHTML = head + '<div class="stk-hero"><div><b class="big">0</b><span>วันต่อเนื่อง</span></div>' + mascotBtn(null, today) + '</div>'
         + '<div class="stk-box"><h3>เริ่มนับไฟ</h3><p class="hint tip">ใส่ช่องของคุณ แอพจะนับคลิปที่ลงจริงบน YouTube · ลงครบวันละ ' + GOAL + ' คลิป = ไฟติด · กดนับเองไม่ได้</p>'
         + '<div class="row"><input data-stk="handle" placeholder="@meowrin" autocapitalize="none" autocomplete="off" aria-label="ช่องของคุณ">'
         + '<button class="btn" data-stk="setup"' + (busy ? " disabled" : "") + '>' + (busy ? "กำลังหา..." : "เริ่มนับ") + '</button></div>'
@@ -248,7 +261,7 @@
     var month = 0, pre = today.slice(0, 7); Object.keys(st.days || {}).forEach(function(k){ if(k.slice(0, 7) === pre && k >= st.since) month += st.days[k]; });
     page.innerHTML = head
       + '<div class="stk-hero' + (s.done ? " lit" : "") + '"><div><b class="big">' + s.streak + '</b><span>วันต่อเนื่อง!</span>'
-      + '<small>ดีสุด ' + s.best + ' วัน · เดือนนี้ลง ' + month + ' คลิป</small></div><span class="stk-fire">' + MWIcon("flame") + '</span></div>'
+      + '<small>ดีสุด ' + s.best + ' วัน · เดือนนี้ลง ' + month + ' คลิป</small></div>' + mascotBtn(s, today) + '</div>'
       + '<div class="stk-box stk-today"><div class="stk-trow"><div class="stk-goal">' + ring(s.today) + '<span>' + s.today + '/' + GOAL + '</span></div>'
       + '<div><b>' + esc(push) + '</b><small>' + esc(line) + '</small></div></div>'
       + (s.lastFrozen === addDay(today, -1) ? '<div class="stk-note">' + MWIcon("snow") + 'เมื่อวานใช้กันไฟดับไป 1 อัน ไฟยังไม่ดับ</div>' : "")
@@ -296,6 +309,7 @@
       var b = e.target.closest("[data-stk]"); if(!b) return;
       var a = b.dataset.stk;
       if(a === "close") close();
+      else if(a === "mascot"){ mTap++; render(); }
       else if(a === "setup") setup(page.querySelector('[data-stk="handle"]').value);
       else if(a === "refresh") check(true);
       else if(a === "sprint"){ st.sprint = Date.now(); save(); render(); }

@@ -305,8 +305,10 @@ body.stk-open{overflow:hidden}
 .stk-hero > div > span{font:500 22px Mitr,sans-serif;color:var(--muted);margin-top:4px}
 .stk-hero small{color:var(--muted);font-size:13px;margin-top:6px}
 .stk-hero.lit .big,.stk-hero.lit > div > span{color:var(--fire)}
-.stk-fire .ic{width:96px;height:96px;margin:0;color:var(--line-strong);stroke-width:1.6}
-.stk-hero.lit .stk-fire .ic{color:var(--fire);fill:rgba(255,138,61,.22)}
+.stk-mascot{flex:none;width:112px;height:112px;padding:0;margin:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.stk-mascot img{display:block;width:100%;height:100%;image-rendering:pixelated}
+.stk-hero.lit .stk-mascot img{filter:drop-shadow(0 0 14px rgba(255,138,61,.45))}
+.stk-mascot:active img{transform:scale(.94)}
 .stk-box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:14px;margin-bottom:14px}
 .stk-box h3{font:500 16px Mitr,sans-serif;margin:0 0 10px}
 .stk-box .hint{margin-bottom:0}

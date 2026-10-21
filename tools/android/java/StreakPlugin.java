@@ -63,6 +63,7 @@ public class StreakPlugin extends Plugin {
         e.putInt("today", call.getInt("today", 0));
         e.putString("day", call.getString("day", StreakCore.dayKey(System.currentTimeMillis())));
         if (call.hasOption("broke")) e.putString("broke", call.getString("broke", "")); /* JS รุ่นเก่าไม่ส่ง = ไม่ทับค่าที่เนทีฟจดไว้ */
+        if (call.hasOption("froze")) e.putString("froze", call.getString("froze", ""));
         e.putBoolean("notify", call.getBoolean("notify", false));
         JSArray times = call.getArray("times", new JSArray());
         StringBuilder sb = new StringBuilder();
@@ -70,6 +71,7 @@ public class StreakPlugin extends Plugin {
         e.putString("times", sb.toString());
         JSObject msgs = call.getObject("msgs", new JSObject());
         e.putString("msgs", msgs.toString());
+        if (call.hasOption("poses")) e.putString("poses", call.getObject("poses", new JSObject()).toString()); /* ชุดท่ามาสคอต (mascot.js) · JS รุ่นเก่าไม่ส่ง = ไม่ทับ */
         e.apply();
         StreakCore.renderWidgets(c);
         StreakCore.schedule(c);

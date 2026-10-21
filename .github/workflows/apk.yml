@@ -170,6 +170,9 @@ jobs:
           # ไฟวันต่อเนื่องฝั่งเนทีฟ (วิดเจ็ต + แจ้งเตือน + เช็กยอดวันนี้ตอนแอพปิด): ซอร์สอยู่ใน tools/android/ (ไม่อยู่ใน OTA)
           cp ../tools/android/java/*.java android/app/src/main/java/com/han/meowrin/
           for d in layout xml drawable; do mkdir -p android/app/src/main/res/$d; cp ../tools/android/res/$d/*.xml android/app/src/main/res/$d/; done
+          # มาสคอตแมว (วิดเจ็ต/แจ้งเตือน): mascot/<ท่า>.png → res/drawable-nodpi/mw_<ท่า>.png (ท่าใหม่ = ต้องสร้าง APK ใหม่)
+          mkdir -p android/app/src/main/res/drawable-nodpi
+          for f in ../mascot/*.png; do cp "$f" "android/app/src/main/res/drawable-nodpi/mw_$(basename "$f")"; done
           python3 - <<'PY2'
           p = "android/app/src/main/AndroidManifest.xml"
           s = open(p, encoding="utf-8").read()

@@ -1,17 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- วิดเจ็ตไฟวันต่อเนื่อง (StreakCore.draw) · แถวบน: ไฟ+ตัวเลข+วันนี้ x/2+กันไฟดับ · แถวล่าง: ข้อความสั้นสุ่มตามสถานการณ์ (streak-msgs.js w_*) บรรทัดเดียวเต็มความกว้าง
-     สูงรวมราว 60dp → พอดีวิดเจ็ตสูง 1 ช่อง ไม่บังตัวเลข -->
+<!-- วิดเจ็ตไฟวันต่อเนื่อง (StreakCore.draw) · ซ้าย: มาสคอตแมว (ท่าเปลี่ยนตามสถานการณ์ ภาพ res/drawable-nodpi/mw_*.png ก๊อปจาก mascot/) · ขวา: แถวบน ไฟ+ตัวเลข+วันนี้ x/2+กันไฟดับ · แถวล่าง ข้อความสั้นสุ่มตามสถานการณ์ (streak-msgs.js w_*)
+     สีพื้นเปลี่ยนตามสถานการณ์ (stk_bg / _lit / _warn / _ice) · สูงรวมราว 66dp → พอดีวิดเจ็ตสูง 1 ช่อง -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/stk_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/stk_bg"
     android:gravity="center_vertical"
-    android:orientation="vertical"
-    android:paddingStart="12dp"
-    android:paddingTop="6dp"
+    android:orientation="horizontal"
+    android:paddingStart="6dp"
+    android:paddingTop="4dp"
     android:paddingEnd="12dp"
-    android:paddingBottom="6dp">
+    android:paddingBottom="4dp">
+
+    <ImageView
+        android:id="@+id/stk_mascot"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
+        android:contentDescription="มาสคอตแมว"
+        android:scaleType="fitCenter"
+        android:src="@drawable/mw_peace" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,8 +37,8 @@
 
         <ImageView
             android:id="@+id/stk_flame"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
             android:contentDescription="ไฟ"
             android:src="@drawable/stk_flame_off" />
 
@@ -34,7 +50,7 @@
             android:includeFontPadding="false"
             android:text="-"
             android:textColor="#8B8F8D"
-            android:textSize="24sp"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
         <TextView
@@ -72,9 +88,10 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:ellipsize="end"
-        android:maxLines="1"
+        android:maxLines="2"
         android:text=""
         android:textColor="#D4D4D8"
         android:textSize="12.5sp"
         android:textStyle="bold" />
+    </LinearLayout>
 </LinearLayout>

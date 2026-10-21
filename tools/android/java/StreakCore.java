@@ -12,6 +12,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -61,15 +63,16 @@ final class StreakCore {
         String today = dayKey(System.currentTimeMillis()), day = p.getString("day", "");
         if (day.isEmpty() || day.compareTo(today) >= 0) return;
         int base = p.getInt("base", 0), freeze = p.getInt("freeze", 0), n = p.getInt("today", 0), goal = p.getInt("goal", 2);
-        boolean broke = false; /* ช่วงที่ข้ามมามีวันที่ไฟดับตอนมีไฟอยู่ไหม (ไม่ใช่แค่วันสุดท้าย) */
+        boolean broke = false, froze = false; /* broke = ช่วงที่ข้ามมามีวันที่ไฟดับตอนมีไฟอยู่ไหม (ไม่ใช่แค่วันสุดท้าย) · froze = เมื่อวาน (วันสุดท้ายที่ข้าม) ใช้กันไฟดับ */
         for (int guard = 0; day.compareTo(today) < 0 && guard < 400; guard++) {
+            froze = false;
             if (n >= goal) base++;
-            else if (freeze > 0) freeze--;
+            else if (freeze > 0) { freeze--; froze = true; }
             else { if (base > 0) broke = true; base = 0; }
             n = 0;
             day = nextDay(day);
         }
-        p.edit().putInt("base", base).putInt("freeze", freeze).putInt("today", 0).putString("day", today).putString("broke", broke ? today : "").apply();
+        p.edit().putInt("base", base).putInt("freeze", freeze).putInt("today", 0).putString("day", today).putString("broke", broke ? today : "").putString("froze", froze ? today : "").apply();
     }
 
     /* หน้าแรกของ playlist (50 คลิปล่าสุด = พอสำหรับวันละไม่กี่คลิป) · พลาด = null ไม่แตะยอดเดิม
@@ -147,8 +150,49 @@ final class StreakCore {
         return fill(a.optString(idx, ""), n, goal, streakShown, p.getInt("freeze", 0));
     }
 
+    /* ท่ามาสคอตตามสถานการณ์ (mascot.js POOLS ส่งมากับ sync) — ลำดับ/สูตรเลือกเหมือน streak.js poseKey + MWMascot.pick เป๊ะ
+       ตัวอักษรสถานการณ์: z ยังไม่ทำ · h ครึ่งทาง · d ไฟติด · b เกินโควตา · m หลักไมล์ · e ค่ำไฟจะดับ · r ไฟเพิ่งดับ · f เมื่อวานใช้กันไฟดับ */
+    static String poseKey(SharedPreferences p, boolean lit, int n, int goal, int streak) {
+        String today = dayKey(System.currentTimeMillis());
+        if (lit) return isMilestone(streak) ? "m" : n > goal ? "b" : "d";
+        if (today.equals(p.getString("froze", ""))) return "f";
+        if (today.equals(p.getString("broke", ""))) return "r";
+        if (Calendar.getInstance().get(Calendar.HOUR_OF_DAY) >= 19 && p.getInt("base", 0) > 0) return "e";
+        return n >= 1 ? "h" : "z";
+    }
+
+    static int slot(int len, String day, int half, String key) { return (((day + "|" + half + "|" + key).hashCode() % len) + len) % len; }
+
+    static JSONArray posePool(SharedPreferences p, String key) {
+        try { JSONArray a = new JSONObject(p.getString("poses", "{}")).optJSONArray(key); return a == null ? new JSONArray() : a; }
+        catch (Exception e) { return new JSONArray(); }
+    }
+
+    /* ท่าคงที่ตลอดครึ่งชั่วโมง ไม่ซ้ำครึ่งชั่วโมงก่อนหน้า (ยังไม่เคย sync = ท่าชู 2 นิ้ว) */
+    static String poseName(SharedPreferences p, String key) {
+        JSONArray a = posePool(p, key);
+        int n = a.length();
+        if (n == 0) return "peace";
+        Calendar cal = Calendar.getInstance();
+        int half = cal.get(Calendar.HOUR_OF_DAY) * 2 + cal.get(Calendar.MINUTE) / 30;
+        String day = dayKey(System.currentTimeMillis());
+        int i = slot(n, day, half, key);
+        if (n > 1 && i == slot(n, day, half - 1, key)) i = (i + 1) % n;
+        return a.optString(i, "peace");
+    }
+
+    /* ภาพท่าใน APK (res/drawable-nodpi/mw_<ท่า>.png) · ไม่มีท่านั้น (APK เก่ากว่าชุดท่า) = 0 */
+    static int poseRes(Context c, String name) {
+        return c.getResources().getIdentifier("mw_" + name, "drawable", c.getPackageName());
+    }
+
+    static int bgRes(Context c, String key) {
+        String n = "d".equals(key) || "b".equals(key) || "m".equals(key) ? "stk_bg_lit" : "e".equals(key) ? "stk_bg_warn" : "f".equals(key) ? "stk_bg_ice" : "stk_bg";
+        return c.getResources().getIdentifier(n, "drawable", c.getPackageName());
+    }
+
     /* คืนจำนวนวิดเจ็ตที่วาด (0 = ยังไม่มีวิดเจ็ตบนหน้าจอ) */
-    static int draw(Context c, boolean set, boolean lit, int n, int goal, int streak, int freeze, String msg) {
+    static int draw(Context c, boolean set, boolean lit, int n, int goal, int streak, int freeze, String msg, String key, String pose) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         int[] ids = m.getAppWidgetIds(new ComponentName(c, StreakWidget.class));
         if (ids == null || ids.length == 0) return 0;
@@ -161,6 +205,9 @@ final class StreakCore {
         v.setTextViewText(R.id.stk_frz, String.valueOf(freeze));
         v.setTextViewText(R.id.stk_msg, msg);
         v.setTextColor(R.id.stk_msg, lit ? 0xFFFFC08A : 0xFFD4D4D8);
+        int pr = poseRes(c, pose), bg = bgRes(c, key);
+        if (pr != 0) v.setImageViewResource(R.id.stk_mascot, pr);
+        if (bg != 0) v.setInt(R.id.stk_root, "setBackgroundResource", bg);
         v.setOnClickPendingIntent(R.id.stk_root, openApp(c, 7));
         m.updateAppWidget(ids, v);
         return ids.length;
@@ -173,10 +220,11 @@ final class StreakCore {
         int goal = p.getInt("goal", 2), n = p.getInt("today", 0);
         boolean lit = set && n >= goal;
         int streak = p.getInt("base", 0) + (lit ? 1 : 0);
-        draw(c, set, lit, n, goal, streak, p.getInt("freeze", 0), widgetMsg(p, set, lit, n, goal, streak));
+        String key = set ? poseKey(p, lit, n, goal, streak) : "z";
+        draw(c, set, lit, n, goal, streak, p.getInt("freeze", 0), widgetMsg(p, set, lit, n, goal, streak), key, set ? poseName(p, key) : "peace");
     }
 
-    /* ทดสอบวิดเจ็ต: โชว์ตัวอย่างสถานการณ์ที่เลือก (z ยังไม่ทำ · h ครึ่งทาง · d ไฟติด · b โบนัส · e ค่ำไฟจะดับ · r ไฟเพิ่งดับ) พร้อมข้อความสุ่มจริงจากชุดนั้น
+    /* ทดสอบวิดเจ็ต: โชว์ตัวอย่างสถานการณ์ที่เลือก (z ยังไม่ทำ · h ครึ่งทาง · d ไฟติด · b โบนัส · e ค่ำไฟจะดับ · r ไฟเพิ่งดับ · f ใช้กันไฟดับ · m หลักไมล์) พร้อมข้อความ+ท่ามาสคอตสุ่มจริงจากชุดนั้น
        ค้าง 20 วินาทีแล้ววาดค่าจริงกลับ (ไม่แตะข้อมูลจริง) */
     static final Handler UI = new Handler(Looper.getMainLooper());
 
@@ -184,12 +232,13 @@ final class StreakCore {
         final Context c = ctx.getApplicationContext();
         SharedPreferences p = prefs(c);
         int goal = p.getInt("goal", 2), base = p.getInt("base", 0) > 0 ? p.getInt("base", 0) : 12, frz = p.getInt("freeze", 1);
-        boolean lit = "d".equals(state) || "b".equals(state);
-        int n = "h".equals(state) ? 1 : "d".equals(state) ? goal : "b".equals(state) ? goal + 1 : 0;
+        boolean lit = "d".equals(state) || "b".equals(state) || "m".equals(state);
+        int n = "h".equals(state) ? 1 : "d".equals(state) || "m".equals(state) ? goal : "b".equals(state) ? goal + 1 : 0;
         int streak = "r".equals(state) ? 0 : lit ? base + 1 : base;
-        JSONArray a = pool(p, "w_" + state);
+        JSONArray a = pool(p, "f".equals(state) ? "w_h" : "m".equals(state) ? "w_d" : "w_" + state); /* f/m ไม่มีชุดข้อความของตัวเอง ยืมชุดใกล้เคียง */
         String msg = a.length() == 0 ? "ยังไม่มีข้อความ (เปิดแอพให้ซิงก์ก่อน)" : fill(a.optString(new Random().nextInt(a.length()), ""), n, goal, streak, frz);
-        int shown = draw(c, true, lit, n, goal, streak, frz, msg);
+        JSONArray pa = posePool(p, state);
+        int shown = draw(c, true, lit, n, goal, streak, frz, msg, state, pa.length() == 0 ? "peace" : pa.optString(new Random().nextInt(pa.length()), "peace"));
         if (shown == 0) return 0;
         UI.removeCallbacksAndMessages(null); /* กดทดสอบซ้อน = นับ 20 วินาทีใหม่ ไม่ให้ตัวคืนค่าอันเก่ามาตัดกลางคัน */
         UI.postDelayed(new Runnable() {
@@ -225,7 +274,7 @@ final class StreakCore {
     static final int RECENT = 10; /* ไม่ซ้ำ 10 ข้อความล่าสุด */
 
     /* สุ่มจากชุดข้อความที่ระบุ (streak-msgs.js ส่งมาตอน sync = แก้ผ่าน OTA ได้) ไม่ซ้ำ RECENT ข้อความล่าสุด */
-    static void notifyPool(Context c, String[] keys, int streakShown, String title) {
+    static void notifyPool(Context c, String[] keys, int streakShown, String title, String poseKey) {
         SharedPreferences p = prefs(c);
         ArrayList<String> all = new ArrayList<>(), fresh = new ArrayList<>();
         for (String k : keys) { JSONArray a = pool(p, k); for (int i = 0; i < a.length(); i++) all.add(a.optString(i, "")); }
@@ -250,6 +299,8 @@ final class StreakCore {
             b = new Notification.Builder(c).setPriority(Notification.PRIORITY_HIGH);
         }
         String text = fill(msg, p, streakShown);
+        int pr = poseRes(c, poseName(p, poseKey));
+        if (pr != 0) { Bitmap big = BitmapFactory.decodeResource(c.getResources(), pr); if (big != null) b.setLargeIcon(big); }
         b.setSmallIcon(R.drawable.stk_notif)
                 .setColor(0xFFFF8A3D)
                 .setContentTitle(fill(title, p, streakShown))
@@ -262,7 +313,9 @@ final class StreakCore {
 
     /* เตือนตามเวลา: ชุดของเวลานั้น + ชุดใช้ได้ทุกเวลา */
     static void notifyNow(Context c, String slot) {
-        notifyPool(c, new String[] { slot, "any" }, prefs(c).getInt("base", 0), "วันนี้ {n}/{goal} · ไฟ {streak} วัน");
+        SharedPreferences p = prefs(c);
+        int n = p.getInt("today", 0), goal = p.getInt("goal", 2);
+        notifyPool(c, new String[] { slot, "any" }, p.getInt("base", 0), "วันนี้ {n}/{goal} · ไฟ {streak} วัน", poseKey(p, false, n, goal, p.getInt("base", 0)));
     }
 
     static final int[] MILESTONES = { 3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000 };
@@ -336,7 +389,7 @@ final class StreakCore {
             if (items != null && prevOk && prevToday < goal && p.getInt("today", 0) >= goal && p.getBoolean("notify", false) && !today.equals(p.getString("praised", "")) && canNotify(c)) {
                 int shown = p.getInt("base", 0) + 1;
                 p.edit().putString("praised", today).apply();
-                notifyPool(c, new String[] { isMilestone(shown) ? "ms" : "praise" }, shown, "ไฟติดแล้ว · " + shown + " วัน");
+                notifyPool(c, new String[] { isMilestone(shown) ? "ms" : "praise" }, shown, "ไฟติดแล้ว · " + shown + " วัน", isMilestone(shown) ? "m" : "d");
             }
             if (fresh && p.getBoolean("notify", false) && p.getInt("today", 0) < goal && canNotify(c)) {
                 Calendar cal = Calendar.getInstance();
