@@ -4,17 +4,17 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0e0d" />
-<link rel="manifest" href="manifest.json?v=9.06">
+<link rel="manifest" href="manifest.json?v=9.07">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Meowrin">
-<link rel="icon" type="image/png" href="icon-192.png?v=9.06">
-<link rel="apple-touch-icon" href="icon-192.png?v=9.06">
+<link rel="icon" type="image/png" href="icon-192.png?v=9.07">
+<link rel="apple-touch-icon" href="icon-192.png?v=9.07">
 <title>Meowrin factory</title>
-<link rel="stylesheet" href="fonts.css?v=9.06"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
-<link rel="stylesheet" href="style.css?v=9.06">
-<link rel="stylesheet" href="sheet.css?v=9.06">
+<link rel="stylesheet" href="fonts.css?v=9.07"> <!-- ฟอนต์เก็บในแอพ (ไม่ดึงจาก Google: เน็ตช้า/ออฟไลน์แล้วหน้าค้าง) -->
+<link rel="stylesheet" href="style.css?v=9.07">
+<link rel="stylesheet" href="sheet.css?v=9.07">
 </head>
 <body>
 <div class="wrap">
@@ -40,7 +40,8 @@
 
     <div class="tools">
       <select id="sortSel" data-sheet aria-label="เรียงตาม">
-        <option value="vpd" data-desc="คลิปที่กำลังปังตอนนี้ (วิวรวม ÷ จำนวนวันที่ลง)" selected>วิวต่อวัน (ไวรัลตอนนี้)</option>
+        <option value="daily" data-desc="สุ่มคลิปดีๆ ที่ยังไม่ได้ทำ เปลี่ยนใหม่ทุกวัน (ไม่จำกัดช่วงเวลา)" selected>แนะนำวันนี้</option>
+        <option value="vpd" data-desc="คลิปที่กำลังปังตอนนี้ (วิวรวม ÷ จำนวนวันที่ลง)">วิวต่อวัน (ไวรัลตอนนี้)</option>
         <option value="score" data-desc="วิวรวม ÷ ผู้ติดตามของช่อง">ความปัง (วิว ÷ ผู้ติดตาม)</option>
         <option value="views" data-desc="ยอดวิวรวมสูงสุด">ยอดวิวรวม</option>
         <option value="new" data-desc="คลิปที่เพิ่งลงล่าสุด">ใหม่สุด</option>
@@ -57,6 +58,7 @@
       <button class="btn small ghost vbtn" id="viewBtn" aria-label="สลับมุมมองการ์ด"></button>
     </div>
     <div class="listinfo" id="listInfo"></div>
+    <button type="button" class="btn ghost small" id="reshuffle" hidden></button>
     <div id="status"></div>
     <div id="list"></div>
   </section>
@@ -400,6 +402,6 @@
   </div>
 </div>
 
-<script src="store.js?v=9.06" data-boot="version.js?v=9.06 icons.js?v=9.06 dialog.js?v=9.06 native.js?v=9.06 history.js?v=9.06 history-sheet.js?v=9.06 budget.js?v=9.06 sync.js?v=9.06 app.js?v=9.06 streak-msgs.js?v=9.06 streak.js?v=9.06 llm.js?v=9.06 ai.js?v=9.06 voicestore.js?v=9.06 tts.js?v=9.06 backup.js?v=9.06 history-ui.js?v=9.06 ota.js?v=9.06"></script>
+<script src="store.js?v=9.07" data-boot="version.js?v=9.07 icons.js?v=9.07 dialog.js?v=9.07 native.js?v=9.07 history.js?v=9.07 history-sheet.js?v=9.07 budget.js?v=9.07 sync.js?v=9.07 app.js?v=9.07 streak-msgs.js?v=9.07 streak.js?v=9.07 llm.js?v=9.07 ai.js?v=9.07 voicestore.js?v=9.07 tts.js?v=9.07 backup.js?v=9.07 history-ui.js?v=9.07 ota.js?v=9.07"></script>
 </body>
 </html>

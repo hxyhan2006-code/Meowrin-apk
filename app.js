@@ -57,6 +57,23 @@
   function vpd(c){ return c.views / Math.max(ageDays(c), 1); } /* วิวต่อวัน (คลิปอายุไม่ถึงวันนับเป็น 1 วัน) */
   function inRange(c, d){ return !d || ageDays(c) <= d; }
   function resetShown(){ ui.shown = PAGE; }
+  /* ---------- แนะนำวันนี้ (v9.07): สุ่มแบบมีน้ำหนักจากคลิปที่ยังไม่ได้ทำ · seed = วันที่ + จำนวนครั้งที่กดสุ่มใหม่ → ทั้งวันนิ่ง ข้ามเที่ยงคืนเปลี่ยน ---------- */
+  var DAILY_KEY = "mw_daily_v1", DAILY_CAP = 3; /* ช่องเดียวไม่เกิน 3 คลิปต่อ 12 อันดับ */
+  function dayKey(){ var d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+  function dailyState(){ var st = MWStore.get(DAILY_KEY, null); return st && st.d === dayKey() ? st : { d:dayKey(), n:0 }; }
+  function rng(seed){ var a = 0; for(var i = 0; i < seed.length; i++) a = (Math.imul(a, 31) + seed.charCodeAt(i)) | 0; return function(){ a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  function dailyPick(list){ /* คะแนน = เปอร์เซ็นไทล์ (วิวต่อวัน + ความปัง) เฉลี่ย → น้ำหนัก p³ · จับสลากแบบถ่วงน้ำหนัก (Efraimidis–Spirakis) */
+    var n = list.length; if(n < 2) return list.slice();
+    function pct(f){ var o = list.slice().sort(function(a, b){ return f(a) - f(b); }), m = new Map(); o.forEach(function(c, i){ m.set(c, i / (n - 1)); }); return m; }
+    var pv = pct(vpd), ps = pct(function(c){ return c.score || 0; }), r = rng(dayKey() + "#" + dailyState().n);
+    var ord = list.map(function(c){ var p = (pv.get(c) + ps.get(c)) / 2, w = Math.pow(p, 3) + 0.01; return { c:c, k:Math.pow(r() || 1e-9, 1 / w) }; })
+      .sort(function(a, b){ return b.k - a.k; }).map(function(x){ return x.c; });
+    var out = [], held = [], cnt = {};
+    ord.forEach(function(c){ var ch = c.chId || c.channel, i = out.length, lo = Math.max(0, i - 11), k = 0; for(var j = lo; j < i; j++) if((out[j].chId || out[j].channel) === ch) k++;
+      if(k >= DAILY_CAP) held.push(c); else out.push(c); });
+    return out.concat(held);
+  }
+  $("reshuffle").addEventListener("click", function(){ var st = dailyState(); st.n++; MWStore.set(DAILY_KEY, st); resetShown(); render(); });
 
   function chipsHtml(items, cur, attr){
     return items.map(function(x){
@@ -65,7 +82,7 @@
   }
   $("rangeChips").addEventListener("click", function(e){
     var b = e.target.closest("button[data-range]"); if(!b) return;
-    ui.only = ""; ui.range = +b.dataset.range; resetShown(); render();
+    ui.only = ""; ui.range = +b.dataset.range; if($("sortSel").value === "daily"){ $("sortSel").value = "vpd"; syncSel($("sortSel")); } resetShown(); render(); /* กดช่วงเวลา = ออกจากโหมดแนะนำวันนี้ (ใช้วิวต่อวัน) */
   });
   $("chanChips").addEventListener("click", function(e){
     var b = e.target.closest("button[data-chan]"); if(!b) return;
@@ -85,7 +102,7 @@
   $("viewBtn").addEventListener("click", function(){ data.cols = data.cols === 3 ? 2 : 3; persist(); render(); });
 
   function metricChip(c, sort){
-    if(sort === "vpd") return '<span class="chip hot">'+MWIcon("flame")+fmtNumTh(Math.round(vpd(c)))+'/วัน</span>';
+    if(sort === "vpd" || sort === "daily") return '<span class="chip hot">'+MWIcon("flame")+fmtNumTh(Math.round(vpd(c)))+'/วัน</span>';
     if(sort === "score" && c.score) return '<span class="chip hot">'+MWIcon("flame")+c.score.toFixed(1)+'×</span>';
     return "";
   }
@@ -101,12 +118,12 @@
     var byChan = fch ? base.filter(function(c){ return isChan(c, fch); }) : base;
     $("rangeChips").innerHTML = chipsHtml(RANGES.map(function(r){
       return { id:r.d, t:r.t, n: byChan.filter(function(c){ return inRange(c, r.d); }).length };
-    }), ui.only ? null : ui.range, "range"); /* เปิดดู ★/ทำแล้ว อยู่ = ไม่ไฮไลต์ช่วงเวลา */
+    }), ui.only || $("sortSel").value === "daily" ? null : ui.range, "range"); /* เปิดดู ★/ทำแล้ว อยู่ = ไม่ไฮไลต์ช่วงเวลา */
     var savedN = byChan.filter(function(c){ return data.saved[c.id]; }).length;
     var madeN = byChan.filter(function(c){ return data.made[c.id]; }).length;
     $("savedBtn").innerHTML = MWIcon("star") + savedN; $("savedBtn").classList.toggle("on", ui.only === "saved");
     $("madeBtn").innerHTML = MWIcon("check") + madeN; $("madeBtn").classList.toggle("on", ui.only === "made");
-    function inView(c){ return ui.only === "saved" ? data.saved[c.id] : ui.only === "made" ? data.made[c.id] : inRange(c, ui.range); }
+    function inView(c){ return ui.only === "saved" ? data.saved[c.id] : ui.only === "made" ? data.made[c.id] : inRange(c, $("sortSel").value === "daily" ? 0 : ui.range); }
     var byRange = base.filter(inView);
     $("chanChips").innerHTML = act.length < 2 ? "" : chipsHtml([{ id:"", t:"ทุกช่อง", n:byRange.length }].concat(act.map(function(ch){
       return { id:ch.id, t:ch.title, n: byRange.filter(function(c){ return isChan(c, ch); }).length };
@@ -116,12 +133,13 @@
     var matched = list.length;
     if($("hideMade").checked && ui.only !== "made") list = list.filter(function(c){ return !data.made[c.id]; });
     var s = $("sortSel").value;
-    list.sort(function(a,b){
+    if(s === "daily" && !ui.only) list = dailyPick(list); else list.sort(function(a,b){
       if(s==="views") return b.views - a.views;
       if(s==="new") return new Date(b.published) - new Date(a.published);
       if(s==="score") return b.score - a.score;
       return vpd(b) - vpd(a);
     });
+    $("reshuffle").hidden = s !== "daily" || ui.only || list.length < 2; $("reshuffle").innerHTML = MWIcon("repeat") + "สุ่มชุดใหม่";
     $("list").classList.toggle("cols3", data.cols === 3);
     $("list").classList.toggle("onlymade", ui.only === "made");
     $("viewBtn").innerHTML = VIEW_ICON[data.cols === 3 ? 2 : 3]; /* โชว์ไอคอนของมุมมองที่จะสลับไป */

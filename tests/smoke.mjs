@@ -69,6 +69,9 @@ async function finishPage(p) {
 try {
   // หน้าหลัก
   const main = await open('/index.html', 'หน้าหลัก');
+  // v9.07 โหมด "แนะนำวันนี้": เป็นค่าเริ่มต้น · มีปุ่มสุ่มชุดใหม่ · กดช่วงเวลา = ออกไปใช้วิวต่อวัน
+  const dly = await main.page.evaluate(() => ({ v: document.getElementById('sortSel').value, opt: !!document.querySelector('#sortSel option[value=daily]'), rs: document.getElementById('reshuffle') && !document.getElementById('reshuffle').hidden !== undefined }));
+  check('หน้าคลิป: ตัวเรียงเริ่มต้น = "แนะนำวันนี้" (daily) และมีปุ่มสุ่มชุดใหม่', dly.v === 'daily' && dly.opt && dly.rs, JSON.stringify(dly));
   await main.page.click('nav [data-tab=settings]'); await main.page.waitForTimeout(300);
   const label = await main.page.textContent('#appVersion'); const ver = /var VERSION = "([\w.]+)"/.exec(text('version.js'))[1];
   check('ท้ายตั้งค่าโชว์เลขรุ่นตรง version.js', label === 'Meowrin factory v' + ver, `ได้ "${label}"`);
