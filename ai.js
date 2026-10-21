@@ -177,7 +177,7 @@
     var p = parts(v.s2 || "");
     renderP1(p.title);
     $("s2View").textContent = v.orig ? parts(v.orig).script : p.script; /* หน้าบทโชว์ต้นฉบับที่ AI เขียน แก้ในหน้าเสียงไม่เปลี่ยนตรงนี้ */
-    $("vText").value = p.script; fit();
+    $("vText").value = p.script; fit(true);
     $("vClip").textContent = cur.clip.title;
     $("vVer").textContent = v.pname + " · เขียนโดย " + short(v.writer);
     renderCount(); renderRun();
@@ -206,14 +206,18 @@
   $("sTrans").addEventListener("input", function(){ if(cur) cur.trans = this.value; });
   $("s1Out").addEventListener("input", function(){ var v = activeV(); if(v) v.s1 = this.value; });
   /* กล่องบทในหน้าเสียงสูงตามเนื้อหา (หน้าเลื่อนยาวแบบ ElevenLabs ไม่มีกล่องเลื่อนซ้อน) — วัดได้เมื่อแท็บเสียงแสดงอยู่เท่านั้น */
-  function fit(){ var t = $("vText"); t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
-  document.addEventListener("mw:tab", function(e){ if(e.detail === "voice") fit(); });
+  function fit(shrink){ /* ตอนพิมพ์ขยายอย่างเดียว ไม่หุบเป็น auto ก่อน (หุบแล้วหน้าสั้นลงชั่วขณะ มือถือเลยเด้งหน้าขึ้นบนสุดทุกตัวอักษร) · หุบเมื่อเปลี่ยนบท/พิมพ์เสร็จ และคืนตำแหน่งเลื่อนให้ */
+    var t = $("vText"), y = window.scrollY;
+    if(shrink){ t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; window.scrollTo(0, y); }
+    else if(t.scrollHeight > t.clientHeight) t.style.height = t.scrollHeight + "px";
+  }
+  document.addEventListener("mw:tab", function(e){ if(e.detail === "voice") fit(true); });
   /* แก้บทในหน้าเสียง = แก้เฉพาะ PART 2 ของเวอร์ชันที่เปิดอยู่ (PART 1 คงเดิม) */
   $("vText").addEventListener("input", function(){
     var v = activeV(); if(!v) return;
     ensureHist(v); setScript(v, this.value); fit(); renderCount(); renderUndo(v);
   });
-  $("vText").addEventListener("change", function(){ var v = activeV(); if(v){ commit(v); renderUndo(v); } }); /* พิมพ์แก้เสร็จ (แตะออกจากช่อง) = หนึ่งขั้นให้ย้อนได้ */
+  $("vText").addEventListener("change", function(){ fit(true); var v = activeV(); if(v){ commit(v); renderUndo(v); } }); /* พิมพ์แก้เสร็จ (แตะออกจากช่อง) = หนึ่งขั้นให้ย้อนได้ */
   ["s1Out","vText","sTrans"].forEach(function(id){ $(id).addEventListener("change", function(){ if(cur) saveHist(cur); }); }); /* แก้เองแล้วเก็บให้ด้วย */
 
   $("s1FbBtn").addEventListener("click", function(){

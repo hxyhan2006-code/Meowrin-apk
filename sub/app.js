@@ -1,17 +1,17 @@
-import { alignLinesToWords, refineSegmentBoundariesWithEnergy } from './aligner.js?v=9.08';
-import { buildSrt } from './srt.js?v=9.08';
-import { callGroqWhisper, buildTranscriptForGemini, callGeminiSplit, removeThaiSpaces, GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from './ai.js?v=9.08';
-import { loadMediabunny, decodeAudioFile, isVideoFile, extractAudioFromVideo, audioBufferToWavBlob } from './media.js?v=9.08';
-import { CANVAS_W, FONT_FAMILY, BOTTOM_MARGIN_RATIO, renderVideo } from './render.js?v=9.08';
-import { createTrimEditor } from './waveform.js?v=9.08';
-import { setupFineSlider, createStagedProgress, escapeHtml, getReliableDuration } from './ui.js?v=9.08';
-import { setupVoicePicker } from './voicepick.js?v=9.08';
+import { alignLinesToWords, refineSegmentBoundariesWithEnergy } from './aligner.js?v=9.09';
+import { buildSrt } from './srt.js?v=9.09';
+import { callGroqWhisper, buildTranscriptForGemini, callGeminiSplit, removeThaiSpaces, GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from './ai.js?v=9.09';
+import { loadMediabunny, decodeAudioFile, isVideoFile, extractAudioFromVideo, audioBufferToWavBlob } from './media.js?v=9.09';
+import { CANVAS_W, FONT_FAMILY, BOTTOM_MARGIN_RATIO, renderVideo } from './render.js?v=9.09';
+import { createTrimEditor } from './waveform.js?v=9.09';
+import { setupFineSlider, createStagedProgress, escapeHtml, getReliableDuration } from './ui.js?v=9.09';
+import { setupVoicePicker } from './voicepick.js?v=9.09';
 
 // ===== ที่เก็บข้อมูลร่วมกับแอพหลัก (MWStore จาก ../store.js) — service worker ของแอพหลักคุมหน้านี้อยู่แล้ว =====
   const S = window.MWStore;
   await S.ready;
   // สคริปต์ของแอพหลักที่หน้านี้ยืมใช้ — โหลดหลังข้อมูลพร้อม ถ้าโหลดไม่ได้ก็ใช้ต่อได้ (budget = เพดานค่า AI ตอนถอยไป OpenRouter · r2 + voicestore = เสียงที่เจนไว้)
-  for (const src of ['../native.js?v=9.08', '../history.js?v=9.08', '../history-sheet.js?v=9.08', '../budget.js?v=9.08', '../voicestore.js?v=9.08']) {
+  for (const src of ['../native.js?v=9.09', '../history.js?v=9.09', '../history-sheet.js?v=9.09', '../budget.js?v=9.09', '../voicestore.js?v=9.09']) {
     await new Promise((ok) => { const el = document.createElement('script'); el.src = src; el.onload = el.onerror = ok; document.body.appendChild(el); });
   }
   const GROQ_KEY = 'mw_groq_key_v1', GEMINI_KEY = 'mw_gemini_key_v1', OR_KEY = 'mw_openrouter_key_v1', SUB_CFG = 'mw_sub_cfg_v1'; // key ตั้งที่แอพหลัก > ตั้งค่า
