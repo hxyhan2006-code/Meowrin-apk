@@ -139,7 +139,7 @@
       if(s==="score") return b.score - a.score;
       return vpd(b) - vpd(a);
     });
-    $("reshuffle").hidden = s !== "daily" || ui.only || list.length < 2; $("reshuffle").innerHTML = MWIcon("repeat") + "สุ่มชุดใหม่";
+    $("reshuffle").hidden = s !== "daily" || ui.only || list.length < 2; $("reshuffle").innerHTML = MWIcon("repeat");
     $("list").classList.toggle("cols3", data.cols === 3);
     $("list").classList.toggle("onlymade", ui.only === "made");
     $("viewBtn").innerHTML = VIEW_ICON[data.cols === 3 ? 2 : 3]; /* โชว์ไอคอนของมุมมองที่จะสลับไป */

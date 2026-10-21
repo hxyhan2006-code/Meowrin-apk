@@ -566,6 +566,7 @@ body.stk-open{overflow:hidden}
 .bm.on{color:var(--accent);border-color:rgba(57,217,138,.6)}
 .vbtn{flex:none;width:38px;padding:0}
 .vbtn svg{width:18px;height:18px;fill:currentColor}
+#reshuffle svg{fill:none;margin:0;width:20px;height:20px} /* ปุ่มสุ่มชุดใหม่ (ไอคอนเส้น ไม่มีข้อความ) */
 #list.cols3{grid-template-columns:repeat(3, minmax(0, 1fr));gap:8px}
 #list.cols3 .cbody{padding:7px 7px 8px}
 #list.cols3 .ctitle{font-size:12px;margin-bottom:4px}
