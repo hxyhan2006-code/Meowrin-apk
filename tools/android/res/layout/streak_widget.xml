@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- วิดเจ็ตไฟวันต่อเนื่อง (StreakCore.draw) · ซ้อนชั้น: ฉากพื้นหลังพิกเซล (สลับทุก 3 ชม. · อารมณ์ตามสถานการณ์ drawable-nodpi/stk_bg_<ฉาก>_<n|d|e|f>.png)
      → ข้อความสั้นแถวบนเต็มความกว้าง (บรรทัดเดียว ปรับขนาดอัตโนมัติ) → ตัวเลขสตรีค+ไฟ (StreakArt.stats) + ช่องความคืบหน้า (StreakArt.blocks) + บรรทัดเล็ก "วันนี้ x/2 · กันไฟ n" → มาสคอตแมว (mw_<ท่า>.png)
-     พื้นหลังใช้ id android:id/background เพื่อให้ Android 12+ ตัดมุมโค้งให้เอง · centerCrop = ย่อ/ขยายวิดเจ็ตแล้วภาพไม่เบี้ยว -->
+     มุมมน 22dp ตัดเองด้วย background รูปทรงมน + clipToOutline (launcher บางตัวไม่ตัดมุมให้) · centerCrop = ย่อ/ขยายวิดเจ็ตแล้วภาพไม่เบี้ยว
+     ข้อความ 2 จุดเป็น ImageView เพราะวาดตัวหนังสือมีขอบดำเอง (StreakArt.text) · TextView ทำขอบตัวอักษรไม่ได้ -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/stk_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/stk_round"
+    android:clipToOutline="true">
 
     <ImageView
-        android:id="@android:id/background"
+        android:id="@+id/stk_bgimg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="@null"
@@ -26,28 +29,15 @@
         android:scaleType="fitCenter"
         android:src="@drawable/mw_peace" />
 
-    <TextView
+    <ImageView
         android:id="@+id/stk_msg"
-        android:layout_width="match_parent"
-        android:layout_height="26dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:layout_marginStart="9dp"
-        android:layout_marginTop="4dp"
-        android:layout_marginEnd="9dp"
-        android:autoSizeMaxTextSize="17sp"
-        android:autoSizeMinTextSize="8sp"
-        android:autoSizeStepGranularity="0.5sp"
-        android:autoSizeTextType="uniform"
-        android:ellipsize="end"
-        android:gravity="center_vertical"
-        android:maxLines="1"
-        android:shadowColor="#E61D3B5A"
-        android:shadowDx="0"
-        android:shadowDy="0"
-        android:shadowRadius="3"
-        android:text=""
-        android:textColor="#FFFFFF"
-        android:textStyle="bold" />
+        android:layout_marginTop="3dp"
+        android:contentDescription="@null"
+        android:scaleType="fitStart" />
 
     <ImageView
         android:id="@+id/stk_stats"
@@ -71,21 +61,13 @@
         android:contentDescription="ความคืบหน้าวันนี้"
         android:scaleType="fitEnd" />
 
-    <TextView
+    <ImageView
         android:id="@+id/stk_today"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_marginStart="66dp"
-        android:layout_marginBottom="8dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:shadowColor="#E61D3B5A"
-        android:shadowDx="0"
-        android:shadowDy="0"
-        android:shadowRadius="3"
-        android:text=""
-        android:textColor="#FFFFFF"
-        android:textSize="10.5sp"
-        android:textStyle="bold" />
+        android:layout_marginBottom="6dp"
+        android:contentDescription="@null"
+        android:scaleType="fitStart" />
 </FrameLayout>

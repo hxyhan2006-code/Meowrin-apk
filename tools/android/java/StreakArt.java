@@ -3,6 +3,7 @@ package com.han.meowrin;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Typeface;
 
 /* ภาพพิกเซลของวิดเจ็ตที่วาดสดด้วย Canvas (ฟอนต์ตัวเลขพิกเซล 5x7 + ไฟ + ช่องความคืบหน้า) — ไม่มีฟอนต์พิกเซลที่ใช้ได้ทั้งไทย/เลขในเครื่อง จึงวาดเอง
    ไฟสูงเท่าตัวเลข วางห่างกัน ไม่ทับ · ขนาดหน่วยพิกเซลคิดจากความหนาแน่นจอ (ขอบคม ไม่เบลอ) */
@@ -69,6 +70,39 @@ final class StreakArt {
             p.setColor(i < done ? 0xFFFF8A1A : 0x88FFFFFF);
             cv.drawRect(x + b, b, x + sq - b, sq - b, p);
         }
+        return bm;
+    }
+
+    /* ตัวหนังสือสีขาวมีขอบ (stroke) ดำบางๆ ให้อ่านออกบนพื้นภาพทุกฉาก · บรรทัดเดียว ย่อขนาดอัตโนมัติจาก maxDp ลงถึง minDp ให้พอดี widthDp (ยาวเกินที่ขนาดเล็กสุด = ตัดท้ายด้วย …)
+       TextView ทำขอบตัวอักษรไม่ได้ใน RemoteViews จึงวาดเป็นภาพเอง (ใส่ contentDescription ให้โปรแกรมอ่านจอ) */
+    static Bitmap text(String s, float maxDp, float minDp, float widthDp, float density) {
+        if (s == null || s.isEmpty()) s = " ";
+        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fill.setTypeface(Typeface.DEFAULT_BOLD);
+        fill.setColor(0xFFFFFFFF);
+        Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
+        line.setTypeface(Typeface.DEFAULT_BOLD);
+        line.setStyle(Paint.Style.STROKE);
+        line.setStrokeJoin(Paint.Join.ROUND);
+        line.setColor(0xFF000000);
+        float maxW = widthDp * density, size = maxDp * density, minS = minDp * density, sw;
+        for (;;) {
+            fill.setTextSize(size);
+            sw = Math.max(density, size * 0.06f);
+            if (fill.measureText(s) + sw * 2 <= maxW || size <= minS) break;
+            size -= 0.5f * density;
+        }
+        if (fill.measureText(s) + sw * 2 > maxW) {
+            while (s.length() > 1 && fill.measureText(s + "\u2026") + sw * 2 > maxW) s = s.substring(0, s.length() - 1);
+            s = s + "\u2026";
+        }
+        line.setTextSize(size);
+        line.setStrokeWidth(sw * 2);
+        Paint.FontMetrics fm = fill.getFontMetrics();
+        Bitmap bm = Bitmap.createBitmap(Math.max(1, (int) Math.ceil(fill.measureText(s) + sw * 2)), Math.max(1, (int) Math.ceil(fm.descent - fm.ascent + sw * 2)), Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(bm);
+        cv.drawText(s, sw, sw - fm.ascent, line);
+        cv.drawText(s, sw, sw - fm.ascent, fill);
         return bm;
     }
 }

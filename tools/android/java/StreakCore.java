@@ -207,17 +207,24 @@ final class StreakCore {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         int[] ids = m.getAppWidgetIds(new ComponentName(c, StreakWidget.class));
         if (ids == null || ids.length == 0) return 0;
-        RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.streak_widget);
         float d = c.getResources().getDisplayMetrics().density;
-        v.setImageViewBitmap(R.id.stk_stats, StreakArt.stats(set ? String.valueOf(streak) : "-", lit, d));
-        v.setImageViewBitmap(R.id.stk_prog, StreakArt.blocks(set ? n : 0, goal, d));
-        v.setTextViewText(R.id.stk_today, set ? "วันนี้ " + n + "/" + goal + " · กันไฟ " + freeze : "");
-        v.setTextViewText(R.id.stk_msg, msg);
+        String sub = set ? "วันนี้ " + n + "/" + goal + " · กันไฟ " + freeze : "";
+        Bitmap stats = StreakArt.stats(set ? String.valueOf(streak) : "-", lit, d), prog = StreakArt.blocks(set ? n : 0, goal, d);
         int pr = poseRes(c, pose), bg = bgRes(c, scene, key);
-        if (pr != 0) v.setImageViewResource(R.id.stk_mascot, pr);
-        if (bg != 0) v.setImageViewResource(android.R.id.background, bg);
-        v.setOnClickPendingIntent(R.id.stk_root, openApp(c, 7));
-        m.updateAppWidget(ids, v);
+        for (int id : ids) { /* วิดเจ็ตแต่ละอันกว้างไม่เท่ากัน (ผู้ใช้ย่อ/ขยายได้) → วาดข้อความให้พอดีความกว้างของอันนั้น */
+            float w = m.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 170);
+            RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.streak_widget);
+            v.setImageViewBitmap(R.id.stk_stats, stats);
+            v.setImageViewBitmap(R.id.stk_prog, prog);
+            v.setImageViewBitmap(R.id.stk_msg, StreakArt.text(msg, 17, 8, w - 18, d));
+            v.setContentDescription(R.id.stk_msg, msg);
+            v.setImageViewBitmap(R.id.stk_today, StreakArt.text(sub, 11, 8, Math.max(40, w - 75), d));
+            v.setContentDescription(R.id.stk_today, sub);
+            if (pr != 0) v.setImageViewResource(R.id.stk_mascot, pr);
+            if (bg != 0) v.setImageViewResource(R.id.stk_bgimg, bg);
+            v.setOnClickPendingIntent(R.id.stk_root, openApp(c, 7));
+            m.updateAppWidget(id, v);
+        }
         return ids.length;
     }
 
