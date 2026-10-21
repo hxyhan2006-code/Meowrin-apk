@@ -33,7 +33,10 @@
     ["เมือง","หมู่บ้าน","ชาวบ้าน","town","village"],["นอน","หลับ","เตียง","sleep","bed"],["พูด","คุย","บอก","talk","speak","say"],["ร้อง","ตะโกน","scream","shout","yell"],["ร้องเพลง","เพลง","sing","song"],
     ["ซ่อน","แอบ","hide","sneak"],["กอด","hug","embrace"],["วิ่ง","หนี","run","flee","chase"]);
   SYN.push(["สกายเปีย","เกาะบนฟ้า","skypiea","sky island"],["อลาบาสต้า","อลาบาสตา","อาราบาสต้า","alabasta","arabasta"],["เอนิเอสล็อบบี้","เอเนียสล็อบบี้","เอนีส","enies lobby","buster call"],["วอเตอร์เซเว่น","วอเตอร์ 7","water 7","water seven"],["มารีนฟอร์ด","มารีนฟอร์ต","สงครามสูงสุด","marineford","summit war"],["อิมเพลดาวน์","impel down"],["เกาะมนุษย์เงือก","ฟิชแมน","fish-man","fishman","fish man"],["พังค์ฮาซาร์ด","พังก์ฮาซาร์ด","punk hazard"],["เดรสโรซา","dressrosa"],["โฮลเค้ก","ฮอลเค้ก","whole cake"],["วาโนะ","วาโนคุนิ","wano"],["เอ้กเฮด","egghead"],["ธริลเลอร์บาร์ค","thriller bark"],["ชาบอนดี้","ซาโบดี้","sabaody"],["อเมซอนลิลลี่","amazon lily"],["บาราตี้","baratie"],["อาร์ลองปาร์ค","arlong park"],["ล็อกทาวน์","logue town","loguetown"],["ดรัมไอส์แลนด์","เกาะดรัม","drum island"],["ลิตเติ้ลการ์เด้น","little garden"],["วิสกี้พีค","whisky peak"],["จายา","jaya"],["ลองริงลองแลนด์","long ring long land"],["โรแมนซ์ดอว์น","romance dawn"],["ออเรนจ์ทาวน์","orange town"],["ซีรัป","หมู่บ้านซีรัป","syrup village"],["ริเวิร์สเมาน์เทน","reverse mountain"]); /* ชื่อภาค ไทย↔อังกฤษ (ป้าย arc ของ AI เป็นอังกฤษ) */
-  var STOP = ["ภาค","ฉาก","ฉากที่","ที่","ซึ่ง","อยู่","กับ","และ","ของ","ใน","ตอน","ตอนที่","แบบ","มี","เป็น","ให้","ไป","มา","คือ","หา","อยาก","ได้","เวลา","เจอ","ครับ","ค่ะ","หน่อย","ด้วย","แล้ว","จะ","ก็","ไหม","มั้ย","อะ","นะ","เมื่อ","กำลัง","แต่","หรือ","กัน","เรื่อง","ภาพ","คลิป","ช่วง","ที"];
+  SYN.push(["ทหารเรือ","ทหาร","นาวิกโยธิน","marine","marines","navy","naval","soldier"],["เงิน","เงินทอง","ทองคำ","ทอง","เบลลี่","เหรียญ","ขุมทรัพย์","สมบัติ","รวย","money","gold","coin","berry","berries","treasure","cash","rich","wealth"],
+    ["หน้าแปลก","หน้าตลก","หน้าเพี้ยน","หน้าเอ๋อ","หน้าบูด","หน้าเหวอ","หน้าเบ้","หน้าทะเล้น","หน้าบึ้ง","funny face","weird face","silly face","goofy","derp","grimace","wacky","comical"],["แปลก","ประหลาด","weird","strange","odd","bizarre"],
+    ["โจรสลัด","pirate","pirates"],["ผลปีศาจ","ผลไม้ปีศาจ","devil fruit"],["ค่าหัว","โปสเตอร์ค่าหัว","bounty","wanted"],["แกล้ง","ล้อเลียน","หยอก","tease","prank","mock"],["น้ำลายไหล","น้ำลาย","drool"],["ง่วง","หาว","ง่วงนอน","yawn","sleepy"]); /* v9.06 คำที่ Han พิมพ์บ่อย: ลูฟี่ เงิน / ลูฟี่ ทหารเรือ / ลูฟี่ทำหน้าแปลกๆ */
+  var STOP = ["ภาค","ฉาก","ฉากที่","ที่","ซึ่ง","อยู่","กับ","และ","ของ","ใน","ตอน","ตอนที่","แบบ","มี","เป็น","ให้","ไป","มา","คือ","หา","อยาก","ได้","เวลา","เจอ","ครับ","ค่ะ","หน่อย","ด้วย","แล้ว","จะ","ก็","ไหม","มั้ย","อะ","นะ","เมื่อ","กำลัง","แต่","หรือ","กัน","เรื่อง","ภาพ","คลิป","ช่วง","ที","ทำ","ถาม","เห็น","ขอ","อะไร","ยัง"];
   var seg = null; try{ seg = new Intl.Segmenter("th", { granularity:"word" }); }catch(e){}
   /* ปรับข้อความให้เทียบกันได้แม้สะกดต่าง: ตัดวรรณยุกต์/ไม้ยมก · เลขไทย→อารบิก · สอง/สาม/หนึ่ง→2/3/1 · compact = ตัดช่องว่างด้วย (ภาษาไทยไม่เว้นวรรคสม่ำเสมอ) */
   var NZC = {};
@@ -50,9 +53,30 @@
     for(var i = 0; i + m <= L; i++) if(h.indexOf(w.substr(i, m)) >= 0) return true;
     return false;
   }
-  function terms(q){ /* คืนกลุ่มคำ [[คำที่ความหมายเดียวกัน...]] แต่ละกลุ่ม = 1 เงื่อนไขที่ต้องตรง · เงื่อนไขคำธรรมดามี .chunk = ก้อนที่พิมพ์ติดกัน (ใช้กู้เมื่อตัวตัดคำตัดผิด) */
-    var out = [], rest = nzk(q).split(nzk("เรื่อง")).join(" "); /* v8.83 nzk ตัดวรรณยุกต์ → เรื่อง=เรือง ซึ่งมี "เรือ" (กลุ่มคำพ้องความหมายของเรือ) ทำให้ทุกคำถามที่มี "เรื่อง" ค้นหาฉากเรือ/พายเรือไปด้วย · เรื่อง เป็นคำเติม (อยู่ใน STOP) ตัดทิ้งก่อนจับกลุ่มคำพ้อง */
-    NAMES.concat(SYN).forEach(function(v){ if(v.some(function(n){ return rest.indexOf(nzk(n)) >= 0; })){ out.push(v); v.forEach(function(n){ rest = rest.split(nzk(n)).join(" "); }); } });
+  function lev1(a, b){ /* ต่างกันไม่เกิน 1 ตัวอักษร (แทน/เพิ่ม/ลบ) */
+    if(a === b) return true; var d = a.length - b.length; if(d > 1 || d < -1) return false;
+    if(d < 0){ var t = a; a = b; b = t; } var i = 0; while(i < b.length && a[i] === b[i]) i++;
+    return d ? a.slice(i + 1) === b.slice(i) : a.slice(i + 1) === b.slice(i + 1);
+  }
+  function pk(s){ return s.replace(/[\u0e30\u0e31\u0e4d]/g, "").replace(/ร/g, "ล"); } /* เทียบเสียงหยาบๆ: ร=ล ไม่นับสระอะ/ไม้หันอากาศ (อารอง ≈ อาร์ลอง) */
+  var NAMEK = null, SYNK = null;
+  function wordsOf(q){ /* คำเต็มที่ผู้ใช้พิมพ์ (ตามช่องว่าง + ตัวตัดคำ) ไว้ตัดสินว่าคำสั้นๆ เช่น ร้อง/ทอง/เรือ เป็นคำเต็มจริงไหม ไม่ใช่เศษของคำยาว (อารอง ≠ อา+ร้อง) */
+    var w = {}; String(q).toLowerCase().split(/[\s,]+/).forEach(function(p){ if(!p) return; w[nzk(p)] = 1; if(seg) Array.from(seg.segment(p)).forEach(function(x){ if(x.isWordLike) w[nzk(x.segment)] = 1; }); }); return w;
+  }
+  function terms(q){ /* คืนกลุ่มคำ [[คำที่ความหมายเดียวกัน...]] แต่ละกลุ่ม = 1 เงื่อนไขที่ต้องตรง · เงื่อนไขคำธรรมดามี .chunk = ก้อนที่พิมพ์ติดกัน (ใช้กู้เมื่อตัวตัดคำต่างจากข้อความ)
+     ลำดับ: ชื่อตัวละคร (ตรง) → ชื่อสะกดเพี้ยน 1 ตัว → กลุ่มคำพ้อง (คำยาวก่อน ทหารเรือ ชนะ เรือ) · คำสั้น ≤3 ตัว (ทอง/ร้อง/เรือ) ต้องเป็นคำเต็ม ไม่ใช่เศษกลางคำ */
+    var out = [], rest = nzk(q).split(nzk("เรื่อง")).join(" "), words = wordsOf(q); /* v8.83 nzk ตัดวรรณยุกต์ → เรื่อง=เรือง ซึ่งมี "เรือ" (กลุ่มคำพ้องความหมายของเรือ) ทำให้ทุกคำถามที่มี "เรื่อง" ค้นหาฉากเรือ/พายเรือ */
+    function has(n, lim){ var k = nzk(n); if(!k || rest.indexOf(k) < 0) return 0; return k.length > lim || !/[฀-๿]/.test(k) || words[k] ? k.length : 0; }
+    function eat(v){ out.push(v); v.forEach(function(n){ rest = rest.split(nzk(n)).join(" "); }); }
+    NAMES.forEach(function(v){ if(v.some(function(n){ return has(n, 2); })) eat(v); });
+    if(!NAMEK){ NAMEK = []; NAMES.forEach(function(v){ v.forEach(function(n){ var k = nzc(n); if(k.length >= 4) NAMEK.push([k, pk(k), v]); }); }); SYNK = {}; SYN.forEach(function(v){ v.forEach(function(n){ SYNK[nzc(n)] = 1; }); }); }
+    rest.split(/[\s,]+/).forEach(function(p){ /* ชื่อสะกดเพี้ยนตัวเดียว (อารอง→อาร์ลอง) ทั้งคำเท่านั้น */
+      var k = nzc(p); if(k.length < 4 || SYNK[k] || STOP.indexOf(k) >= 0) return; var kp = pk(k);
+      var m = NAMEK.find(function(x){ return out.indexOf(x[2]) < 0 && x[0] !== k && lev1(kp, x[1]); });
+      if(m){ out.push(m[2]); rest = rest.split(p).join(" "); }
+    });
+    SYN.map(function(v){ return { v:v, len:Math.max.apply(null, v.map(function(n){ return has(n, 3); })) }; }).filter(function(x){ return x.len; }).sort(function(a, b){ return b.len - a.len; })
+      .forEach(function(x){ if(x.v.some(function(n){ return has(n, 3); }) && out.indexOf(x.v) < 0) eat(x.v); });
     rest.split(/[\s,]+/).filter(Boolean).forEach(function(p){
       if(/[฀-๿]/.test(p) && seg){
         var ws = Array.from(seg.segment(p)).filter(function(x){ return x.isWordLike && x.segment.length >= 2; }).map(function(x){ return x.segment; }).filter(function(w){ return STOP.indexOf(w) < 0; });
@@ -295,8 +319,21 @@
   $("onlySel").addEventListener("change", function(){ only = this.checked; chipMax = 40; search(); });
   var sT = 0, shown = [], lastQ = "", showPartial = false, chipMax = 40; /* shown = รายการที่โชว์อยู่ (ให้ปุ่มดูรูปใหญ่อ้างถึง) */
   $("q").addEventListener("input", function(){ clearTimeout(sT); sT = setTimeout(search, 250); });
-  function search(){
-    if(U.askReset) U.askReset();
+  var semC = { q:"", list:null }, semTok = 0, semT = 0;
+  function semAuto(q, names){ /* v9.06 ค้นตามความหมายอัตโนมัติ (ไม่ต้องกด ถาม AI): ถ้าทำดัชนีความหมายไว้ + มี OpenRouter key → ฝังคำค้น (≈ $0.000001) หาฉากใกล้ความหมาย แล้วรวมเข้าผล · ไม่มี/ล้ม = ค้นด้วยคำอย่างเดียวเหมือนเดิม */
+    clearTimeout(semT); if(!FT.sem || !FT.orKey || !FT.orKey() || q.length < 2 || semC.q === q) return; var tok = ++semTok;
+    semT = setTimeout(async function(){
+      try{
+        if(!(await FT.sem.ready()) || tok !== semTok) return;
+        var hits = await FT.sem.query(q, 40); if(tok !== semTok || (U.askActive && U.askActive())) return;
+        var cost = hits.cost || 0, best = hits.length ? hits[0].sim : 0; hits = hits.filter(function(x){ return x.sim > 0.2 && x.sim >= best * 0.8; });
+        if(names.length){ var want = names.map(function(v){ return v[0]; }); hits = hits.filter(function(x){ var cs = U.chars(x.sc); return want.every(function(k){ return cs.indexOf(k) >= 0; }); }); } /* พิมพ์ชื่อตัวละคร = ฉากต้องมีตัวละครนั้น */
+        semC = { q:q, list:hits }; if(U.addCost) U.addCost(cost); search(true);
+      }catch(e){}
+    }, 400);
+  }
+  function search(again){
+    if(!again){ if(U.askReset) U.askReset(); semTok++; }
     var q = $("q").value.trim();
     document.dispatchEvent(new CustomEvent("ft:search", { detail:{ active:!!q || filtering() } })); /* หน้าอัลบั้มสลับระหว่างตารางอัลบั้ม/ผลค้นหา */
     var clips = U.lib().filter(function(c){ return c.status === "done" && !c.hide ; }); /* c.hide = ซ่อนเพราะซ้ำ (footage-dup.js) */
@@ -317,7 +354,14 @@
       if(hit) hits.push({ c:c, sc:sc, hit:hit, score:score, exact:exact });
     }); });
     hits.sort(function(a, b){ return b.hit - a.hit || b.score - a.score; }); /* ตรงเป๊ะ (ตัวละครเป็นคนมีอารมณ์นั้น) ได้คะแนนพิเศษ จึงขึ้นก่อน */
-    var full = hits.filter(function(h){ return h.hit === ts.length; }), part = hits.filter(function(h){ return h.hit < ts.length; });
+    var full = hits.filter(function(h){ return h.hit === ts.length; }), part = hits.filter(function(h){ return h.hit < ts.length; }), semN = 0;
+    if(semC.q === q && semC.list && semC.list.length){ /* รวมผลความหมายกับผลค้นคำแบบจัดอันดับ (RRF) · ฉากที่ตรงความหมายอย่างเดียวก็เข้ากลุ่ม "ตรงครบ" */
+      var fz = new Map(), byScene = new Map(); hits.forEach(function(h){ byScene.set(h.sc, h); });
+      full.forEach(function(h, i){ fz.set(h.sc, { h:h, s:1 / (60 + i) }); });
+      semC.list.forEach(function(x, i){ var f = fz.get(x.sc); if(f){ f.s += 1 / (60 + i); return; } if(!passSc(x.sc, x.c)) return;
+        var h = byScene.get(x.sc) || { c:x.c, sc:x.sc, hit:0, score:0, exact:false }; fz.set(x.sc, { h:h, s:1 / (60 + i) }); semN++; });
+      full = Array.from(fz.values()).sort(function(a, b){ return b.s - a.s; }).map(function(f){ return f.h; }); part = part.filter(function(h){ return !fz.has(h.sc); });
+    }
     if(q !== lastQ){ lastQ = q; showPartial = !full.length; } /* คำค้นใหม่ = ซ่อนที่ตรงบางส่วนไว้ก่อน (ถ้ามีตรงครบ) */
     var ab = ts.length === 1 && names.length === 1 && U.albumHit ? U.albumHit(names[0][0]) : null; /* ค้นชื่อตัวละครตัวเดียว = มีทางลัดไปอัลบั้มของเขา (ผลค้นเป็นร้อยฉากไม่ช่วยอะไร) */
     var list = full.slice(0, 60), html = (ab ? '<button type="button" class="albanner" data-album="' + esc(ab.name) + '">' + MWIcon("folder") + "อัลบั้ม " + esc(ab.name) + " · " + ab.n + " คลิป<span>เปิด</span></button>" : "") + (full.length ? '<p class="hint">ตรงครบทุกคำ ' + full.length + " ฉาก" + (full.length > 60 ? " (โชว์ 60 อันดับแรก)" : "") + "</p>" : "");
@@ -326,8 +370,9 @@
       if(showPartial) out += '<p class="hint">ตรงบางส่วน (มีแค่บางคำ) ' + part.length + " ฉาก</p>" + part.slice(0, 40).map(function(h){ return card(h.c, h.sc, false); }).join("");
       out += '<button class="btn ghost small" id="partialBtn" style="width:100%">' + (showPartial ? "ซ่อน" : "ดู") + "ที่ตรงบางส่วน (" + part.length + ")</button>";
     }
-    $("findInfo").textContent = "คำค้น: " + ts.map(function(v){ return v[0]; }).join(" + ") + " · ตรงครบ " + full.length + " ฉาก · ตรงบางส่วน " + part.length + " ฉาก";
+    $("findInfo").textContent = "คำค้น: " + ts.map(function(v){ return v[0]; }).join(" + ") + " · ตรงครบ " + full.length + " ฉาก · ตรงบางส่วน " + part.length + " ฉาก" + (semN ? " · รวมที่ใกล้ความหมายอีก " + semN + " ฉาก" : "");
     $("results").innerHTML = (html + out) || '<p class="empty">ไม่เจอฉากที่ตรง ลองคำอื่น หรือแตะชิปตัวละคร</p>'; if(U.sharpen) U.sharpen($("results"));
+    if(!again) semAuto(q, names);
   }
   $("results").addEventListener("click", function(e){
     var al = e.target.closest("[data-album]"); if(al && U.openAlbumNamed){ U.openAlbumNamed(al.dataset.album); return; }
@@ -454,7 +499,7 @@
       a.characters = (a.characters || []).concat(nx ? nx.key.replace(/(^| )\w/g, function(m){ return m.toUpperCase(); }) : k); a.characters_th = (a.characters_th || []).concat(nx ? nx.th : k); n++; });
     if(n){ a.rc = 1; chipCache.delete(sc); } return n;
   }
-  Object.assign(U, { cancelSearch:function(){ clearTimeout(sT); }, shownAt:function(k){ return shown[k]; }, syncSpeakers:syncSpeakers, speechOf:speechOf, speechLines:speechLines, editWho:editWho, addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, speechArc:speechArc, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
+  Object.assign(U, { cancelSearch:function(){ clearTimeout(sT); clearTimeout(semT); semTok++; }, shownAt:function(k){ return shown[k]; }, syncSpeakers:syncSpeakers, speechOf:speechOf, speechLines:speechLines, editWho:editWho, addChars:addChars, show:function(c, sc){ return shown.push({ c:c, sc:sc }) - 1; }, terms:terms, hay:hay, matchIdx:matchIdx, card:card, chars:sceneChars, enName:enName, ARCS:ARCS, UNSURE:UNSURE, arcOf:arcOf, speechArc:speechArc, arcRank:arcRank, charKey:charKey, fileFor:fileOf, hasSrc:hasSrc, srcUrl:srcUrl, search:search,
                      openFiles:function(docs){ $(docs ? "pickDocs" : "playFiles").click(); } });
   document.addEventListener("ft:lib", syncAllSpeakers); syncAllSpeakers();
   search();
