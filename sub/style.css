@@ -144,6 +144,8 @@ button.primary:disabled{background:var(--accent-dim);color:#c7d8ce;cursor:not-al
 .progress-pct{flex:0 0 auto;font-size:13px;font-weight:700;color:var(--accent);min-width:40px;text-align:right;}
 .error-box{display:none;margin:12px 0 0;background:rgba(224,102,90,.1);border:1px solid var(--danger);color:#f2b8b1;border-radius:10px;padding:11px 13px;font-size:14px;}
 .error-box.show{display:block;}
+.save-msg{margin:10px 0 0;padding:10px 12px;border-radius:10px;font-size:14px;line-height:1.5;background:rgba(57,217,138,.1);border:1px solid rgba(57,217,138,.5);color:var(--text,#e8eceb);word-break:break-word;}
+.save-msg.err{background:rgba(224,102,90,.1);border-color:var(--danger);color:#f2b8b1;}
 
 /* ---------- unified 1:1 stage (tab 3) ---------- */
 .stage-wrap{padding:2px 0 12px;} /* scrolls naturally with the rest of tab 3 */

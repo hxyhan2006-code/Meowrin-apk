@@ -1,17 +1,17 @@
-import { alignLinesToWords, refineSegmentBoundariesWithEnergy } from './aligner.js?v=9.09';
-import { buildSrt } from './srt.js?v=9.09';
-import { callGroqWhisper, buildTranscriptForGemini, callGeminiSplit, removeThaiSpaces, GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from './ai.js?v=9.09';
-import { loadMediabunny, decodeAudioFile, isVideoFile, extractAudioFromVideo, audioBufferToWavBlob } from './media.js?v=9.09';
-import { CANVAS_W, FONT_FAMILY, BOTTOM_MARGIN_RATIO, renderVideo } from './render.js?v=9.09';
-import { createTrimEditor } from './waveform.js?v=9.09';
-import { setupFineSlider, createStagedProgress, escapeHtml, getReliableDuration } from './ui.js?v=9.09';
-import { setupVoicePicker } from './voicepick.js?v=9.09';
+import { alignLinesToWords, refineSegmentBoundariesWithEnergy } from './aligner.js?v=9.10';
+import { buildSrt } from './srt.js?v=9.10';
+import { callGroqWhisper, buildTranscriptForGemini, callGeminiSplit, removeThaiSpaces, GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from './ai.js?v=9.10';
+import { loadMediabunny, decodeAudioFile, isVideoFile, extractAudioFromVideo, audioBufferToWavBlob } from './media.js?v=9.10';
+import { CANVAS_W, FONT_FAMILY, BOTTOM_MARGIN_RATIO, renderVideo } from './render.js?v=9.10';
+import { createTrimEditor } from './waveform.js?v=9.10';
+import { setupFineSlider, createStagedProgress, escapeHtml, getReliableDuration } from './ui.js?v=9.10';
+import { setupVoicePicker } from './voicepick.js?v=9.10';
 
 // ===== ที่เก็บข้อมูลร่วมกับแอพหลัก (MWStore จาก ../store.js) — service worker ของแอพหลักคุมหน้านี้อยู่แล้ว =====
   const S = window.MWStore;
   await S.ready;
   // สคริปต์ของแอพหลักที่หน้านี้ยืมใช้ — โหลดหลังข้อมูลพร้อม ถ้าโหลดไม่ได้ก็ใช้ต่อได้ (budget = เพดานค่า AI ตอนถอยไป OpenRouter · r2 + voicestore = เสียงที่เจนไว้)
-  for (const src of ['../native.js?v=9.09', '../history.js?v=9.09', '../history-sheet.js?v=9.09', '../budget.js?v=9.09', '../voicestore.js?v=9.09']) {
+  for (const src of ['../native.js?v=9.10', '../history.js?v=9.10', '../history-sheet.js?v=9.10', '../budget.js?v=9.10', '../voicestore.js?v=9.10']) {
     await new Promise((ok) => { const el = document.createElement('script'); el.src = src; el.onload = el.onerror = ok; document.body.appendChild(el); });
   }
   const GROQ_KEY = 'mw_groq_key_v1', GEMINI_KEY = 'mw_gemini_key_v1', OR_KEY = 'mw_openrouter_key_v1', SUB_CFG = 'mw_sub_cfg_v1'; // key ตั้งที่แอพหลัก > ตั้งค่า
@@ -82,12 +82,16 @@ import { setupVoicePicker } from './voicepick.js?v=9.09';
   let outVideoBlob = null, outSrtBlob = null; // ในแอพ APK ปุ่มดาวน์โหลดแบบเว็บไม่เซฟ → เซฟลง Documents/Meowrin ด้วย MWNative
   for (const [el, name, get] of [[dlVideo, 'green_screen_subtitle.mp4', () => outVideoBlob], [dlSrt, 'subtitle.srt', () => outSrtBlob]]) {
     el.addEventListener('click', async (e) => {
-      if (!window.MWNative || !MWNative.isNative() || !get()) return;
+      if (!window.MWNative || !MWNative.isNative()) return;
       e.preventDefault();
-      try { const r = await MWNative.save(get(), name); showStatus('บันทึกแล้วที่ ' + r.path); }
-      catch (err) { showError('บันทึกไม่ได้: ' + err.message); }
+      if (!get()) { saveNote('ยังไม่มีไฟล์ให้บันทึก ลองกดสร้างคลิปใหม่อีกครั้ง', true); return; }
+      if (el.dataset.saving) return; el.dataset.saving = '1'; saveNote('กำลังบันทึก...');
+      try { const r = await MWNative.save(get(), name); saveNote('บันทึกแล้วที่ ' + r.path); } // ข้อความอยู่ใต้ปุ่ม (errorBox อยู่ล่างสุดของหน้า ถูกแถบล่างบังจนไม่เห็นว่าพังเพราะอะไร)
+      catch (err) { saveNote('บันทึกไม่ได้: ' + ((err && err.message) || err), true); }
+      finally { delete el.dataset.saving; }
     });
   }
+  function saveNote(msg, bad) { const n = document.getElementById('saveMsg'); n.hidden = false; n.textContent = msg; n.classList.toggle('err', !!bad); }
   function setStageView(view){
     stage.dataset.view = view;
     stageSwitchBtns.forEach(b => b.classList.toggle('active', b.dataset.view === view));
@@ -508,7 +512,7 @@ import { setupVoicePicker } from './voicepick.js?v=9.09';
     // หยุดและรีเซ็ตคลิปตัวอย่างเก่าทันที กันเสียงคลิปเก่าแอบดังแทรกตอนเรนเดอร์คลิปใหม่
     previewVideo.pause(); previewVideo.currentTime = 0;
     hideError();
-    resultCard.classList.remove('show');
+    resultCard.classList.remove('show'); document.getElementById('saveMsg').hidden = true;
 
     const groqKey = readKey(GROQ_KEY);
     // strip the "[AI]" auto-fill marker (added by the auto-split feature above to
