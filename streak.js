@@ -13,7 +13,7 @@
 (function(){
   "use strict";
   var KEY = "mw_streak_v1", GOAL = 2, BONUS_PER_FREEZE = 2, MAX_FREEZE = 2, START_FREEZE = 1;
-  var SPRINT_MS = 10 * 60e3, AUTO_MS = 3 * 60e3, MAX_PAGES = 20;
+  var SPRINT_MS = 10 * 60e3, AUTO_MS = 15e3, MAX_PAGES = 20;
   var MILESTONES = [3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000];
   var WTEST = [["z", "ยังไม่ได้ทำ"], ["h", "ทำไปครึ่งทาง"], ["d", "ไฟติดแล้ว"], ["b", "ทำเกินโควตา"], ["e", "ค่ำ ไฟจะดับ"], ["r", "ไฟเพิ่งดับ"], ["f", "เมื่อวานใช้กันไฟดับ"], ["m", "ไฟครบหลักไมล์"]], wtI = 0; /* ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ */
   var TIMES = ["11:00", "13:00", "16:30", "21:00"];
@@ -106,6 +106,7 @@
     st.days = days; st.syncedAt = Date.now();
   }
 
+  /* เช็กเองทุกครั้งที่เปิดแอพ/กลับเข้าแอพ/เปิดหน้านี้ (ห่างกันน้อยกว่า AUTO_MS = ข้าม กันยิงซ้ำตอนสลับแอพรัวๆ) → ยอดวันนี้เปลี่ยน = ส่งให้วิดเจ็ตอัปเดตเองใน render/pushNative ไม่ต้องกดปุ่มเช็ก */
   async function check(manual){
     if(busy || !st.list) return;
     if(!manual && st.syncedAt && Date.now() - st.syncedAt < AUTO_MS) return;
