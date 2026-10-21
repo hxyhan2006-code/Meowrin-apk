@@ -180,7 +180,7 @@
   function pushNative(s, today){
     var P = plugin(); if(!P || !P.sync) return;
     var n = notif(), arg = { key: st.list ? MWSync.getKey() : "", list: st.list || "", goal: GOAL, base: s ? (s.done ? s.streak - 1 : s.streak) : 0,
-      freeze: s ? s.freeze : 0, today: s ? s.today : 0, day: today, notify: !!n.on, times: n.on ? n.times : [], msgs: msgs(), poses: MWMascot.POOLS, broke: s && s.broke ? today : "", froze: s && !s.done && s.lastFrozen === addDay(today, -1) ? today : "" };
+      freeze: s ? s.freeze : 0, today: s ? s.today : 0, day: today, notify: !!n.on, times: n.on ? n.times : [], msgs: msgs(), poses: MWMascot.POOLS, scenes: MWMascot.SCENES, broke: s && s.broke ? today : "", froze: s && !s.done && s.lastFrozen === addDay(today, -1) ? today : "" };
     var k = JSON.stringify(arg); if(k === sent) return; sent = k;
     P.sync(arg).then(function(r){ nst = r; if(page && !page.hidden) render(); }).catch(function(){ sent = ""; });
   }

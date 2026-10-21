@@ -38,8 +38,6 @@ def base(g, tail=True):
     # nose
     rect(g,14,10,15,10,'P'); px(g,14,11,'P'); px(g,15,11,'P')
     # whiskers (left only + right short)
-    for x in (1,2): px(g,x,11,'K')
-    for x in (2,3): px(g,x,14,'K')
 
 def eyes_open(g, look=1, lid=True):
     for x0 in (8,17):
@@ -134,6 +132,11 @@ def outline(g):
             if n not in g and 0<=n[0]<W and 0<=n[1]<H: out[n]='K'
     return out
 
+def finish(g):
+    o = outline(g)
+    for (x,y) in [(1,10),(2,10),(3,11),(1,14),(2,13),(3,13)]: o[(x,y)]='K'  # หนวดซ้าย (หลังวาดขอบ จะได้เป็นเส้นบาง ไม่เป็นก้อน)
+    return o
+
 def tint_ice(g):
     out={}
     for k,v in g.items():
@@ -146,13 +149,13 @@ def pose(name):
     g = new()
     base(g)
     if name=='peace':
-        eyes_open(g); mouth_smirk(g); arm_hip(g); arm_up(g,fingers=2)
+        eyes_open(g); mouth_smirk(g); arm_down(g,'L'); arm_up(g,fingers=2)
     elif name=='sleepy':
         eyes_closed_line(g); mouth_flat(g); arm_down(g,'L'); arm_down(g,'R')
         for x,y in [(7,6),(8,6),(9,6),(10,6)]: px(g,x,y,'D')
         zzz(g,24,4)
     elif name=='one':
-        eyes_open(g); mouth_smirk(g); arm_hip(g); arm_up(g,fingers=1)
+        eyes_open(g); mouth_smirk(g); arm_down(g,'L'); arm_up(g,fingers=1)
     elif name=='cheer':
         eyes_happy(g); mouth_big(g); arm_up(g,fingers=5); arm_up(g,flip=True,fingers=5)
         sparkle(g,2,3); sparkle(g,29,5); sparkle(g,1,20); sparkle(g,30,22,'F1')
@@ -171,7 +174,7 @@ def pose(name):
         for (x,y) in [(21,18),(22,18),(23,17),(24,17),(25,17),(25,16)]: px(g,x,y,'W')
         glove(g,27,9,5)
         flame(g,24,-1+0,1) if False else None
-    return outline(g)
+    return finish(g)
 
 def render(g, scale, bg=None):
     im = Image.new('RGBA',(W*scale,H*scale),bg or (0,0,0,0))

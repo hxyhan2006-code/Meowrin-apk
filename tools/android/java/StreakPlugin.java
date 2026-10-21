@@ -71,6 +71,7 @@ public class StreakPlugin extends Plugin {
         e.putString("times", sb.toString());
         JSObject msgs = call.getObject("msgs", new JSObject());
         e.putString("msgs", msgs.toString());
+        if (call.hasOption("scenes")) e.putString("scenes", call.getArray("scenes", new JSArray()).toString()); /* ชื่อฉากพื้นหลังวิดเจ็ต (mascot.js SCENES) */
         if (call.hasOption("poses")) e.putString("poses", call.getObject("poses", new JSObject()).toString()); /* ชุดท่ามาสคอต (mascot.js) · JS รุ่นเก่าไม่ส่ง = ไม่ทับ */
         e.apply();
         StreakCore.renderWidgets(c);

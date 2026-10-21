@@ -186,28 +186,36 @@ final class StreakCore {
         return c.getResources().getIdentifier("mw_" + name, "drawable", c.getPackageName());
     }
 
-    static int bgRes(Context c, String key) {
-        String n = "d".equals(key) || "b".equals(key) || "m".equals(key) ? "stk_bg_lit" : "e".equals(key) ? "stk_bg_warn" : "f".equals(key) ? "stk_bg_ice" : "stk_bg";
-        return c.getResources().getIdentifier(n, "drawable", c.getPackageName());
+    /* ฉากพื้นหลัง (mascot.js SCENES ส่งมากับ sync · ภาพ res/drawable-nodpi/stk_bg_<ฉาก>_<อารมณ์>.png จาก tools/widget/scenes.py) · สลับทุก 3 ชั่วโมง */
+    static String sceneName(SharedPreferences p) {
+        try {
+            JSONArray a = new JSONArray(p.getString("scenes", "[]"));
+            if (a.length() == 0) return "meadow";
+            return a.optString(slot(a.length(), dayKey(System.currentTimeMillis()), Calendar.getInstance().get(Calendar.HOUR_OF_DAY) / 3, "scene"), "meadow");
+        } catch (Exception e) { return "meadow"; }
+    }
+
+    /* อารมณ์ของฉาก: n หม่น (ยังไม่ทำ/ไฟเพิ่งดับ) · d สว่าง (ครึ่งทาง/ไฟติด) · e ค่ำ (ไฟจะดับ) · f น้ำแข็ง (ใช้กันไฟดับ) */
+    static int bgRes(Context c, String scene, String key) {
+        String mood = "e".equals(key) ? "e" : "f".equals(key) ? "f" : "z".equals(key) || "r".equals(key) ? "n" : "d";
+        int id = c.getResources().getIdentifier("stk_bg_" + scene + "_" + mood, "drawable", c.getPackageName());
+        return id != 0 ? id : c.getResources().getIdentifier("stk_bg_meadow_" + mood, "drawable", c.getPackageName());
     }
 
     /* คืนจำนวนวิดเจ็ตที่วาด (0 = ยังไม่มีวิดเจ็ตบนหน้าจอ) */
-    static int draw(Context c, boolean set, boolean lit, int n, int goal, int streak, int freeze, String msg, String key, String pose) {
+    static int draw(Context c, boolean set, boolean lit, int n, int goal, int streak, int freeze, String msg, String key, String pose, String scene) {
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         int[] ids = m.getAppWidgetIds(new ComponentName(c, StreakWidget.class));
         if (ids == null || ids.length == 0) return 0;
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.streak_widget);
-        v.setImageViewResource(R.id.stk_flame, lit ? R.drawable.stk_flame_on : R.drawable.stk_flame_off);
-        v.setTextViewText(R.id.stk_num, set ? String.valueOf(streak) : "-");
-        v.setTextColor(R.id.stk_num, lit ? 0xFFFF8A3D : 0xFF8B8F8D);
-        v.setTextViewText(R.id.stk_today, set ? n + "/" + goal : "");
-        v.setTextColor(R.id.stk_today, lit ? 0xFFFFC08A : 0xFFD4D4D8);
-        v.setTextViewText(R.id.stk_frz, String.valueOf(freeze));
+        float d = c.getResources().getDisplayMetrics().density;
+        v.setImageViewBitmap(R.id.stk_stats, StreakArt.stats(set ? String.valueOf(streak) : "-", lit, d));
+        v.setImageViewBitmap(R.id.stk_prog, StreakArt.blocks(set ? n : 0, goal, d));
+        v.setTextViewText(R.id.stk_today, set ? "วันนี้ " + n + "/" + goal + " · กันไฟ " + freeze : "");
         v.setTextViewText(R.id.stk_msg, msg);
-        v.setTextColor(R.id.stk_msg, lit ? 0xFFFFC08A : 0xFFD4D4D8);
-        int pr = poseRes(c, pose), bg = bgRes(c, key);
+        int pr = poseRes(c, pose), bg = bgRes(c, scene, key);
         if (pr != 0) v.setImageViewResource(R.id.stk_mascot, pr);
-        if (bg != 0) v.setInt(R.id.stk_root, "setBackgroundResource", bg);
+        if (bg != 0) v.setImageViewResource(android.R.id.background, bg);
         v.setOnClickPendingIntent(R.id.stk_root, openApp(c, 7));
         m.updateAppWidget(ids, v);
         return ids.length;
@@ -221,7 +229,7 @@ final class StreakCore {
         boolean lit = set && n >= goal;
         int streak = p.getInt("base", 0) + (lit ? 1 : 0);
         String key = set ? poseKey(p, lit, n, goal, streak) : "z";
-        draw(c, set, lit, n, goal, streak, p.getInt("freeze", 0), widgetMsg(p, set, lit, n, goal, streak), key, set ? poseName(p, key) : "peace");
+        draw(c, set, lit, n, goal, streak, p.getInt("freeze", 0), widgetMsg(p, set, lit, n, goal, streak), key, set ? poseName(p, key) : "peace", sceneName(p));
     }
 
     /* ทดสอบวิดเจ็ต: โชว์ตัวอย่างสถานการณ์ที่เลือก (z ยังไม่ทำ · h ครึ่งทาง · d ไฟติด · b โบนัส · e ค่ำไฟจะดับ · r ไฟเพิ่งดับ · f ใช้กันไฟดับ · m หลักไมล์) พร้อมข้อความ+ท่ามาสคอตสุ่มจริงจากชุดนั้น
@@ -238,7 +246,7 @@ final class StreakCore {
         JSONArray a = pool(p, "f".equals(state) ? "w_h" : "m".equals(state) ? "w_d" : "w_" + state); /* f/m ไม่มีชุดข้อความของตัวเอง ยืมชุดใกล้เคียง */
         String msg = a.length() == 0 ? "ยังไม่มีข้อความ (เปิดแอพให้ซิงก์ก่อน)" : fill(a.optString(new Random().nextInt(a.length()), ""), n, goal, streak, frz);
         JSONArray pa = posePool(p, state);
-        int shown = draw(c, true, lit, n, goal, streak, frz, msg, state, pa.length() == 0 ? "peace" : pa.optString(new Random().nextInt(pa.length()), "peace"));
+        int shown = draw(c, true, lit, n, goal, streak, frz, msg, state, pa.length() == 0 ? "peace" : pa.optString(new Random().nextInt(pa.length()), "peace"), sceneName(p));
         if (shown == 0) return 0;
         UI.removeCallbacksAndMessages(null); /* กดทดสอบซ้อน = นับ 20 วินาทีใหม่ ไม่ให้ตัวคืนค่าอันเก่ามาตัดกลางคัน */
         UI.postDelayed(new Runnable() {

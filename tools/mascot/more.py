@@ -64,26 +64,26 @@ def stars(g,x,y):
 def p(name):
     g = new(); base(g)
     if name=='wave':
-        eyes_open(g); mouth_smirk(g); arm_hip(g); arm_up(g,fingers=5)
+        eyes_open(g); mouth_smirk(g); arm_down(g,'L'); arm_up(g,fingers=5)
     elif name=='cool':
-        shades(g); mouth_smirk(g); arm_hip(g); arm_up(g,fingers=2)
+        shades(g); mouth_smirk(g); arm_up(g,flip=True,fingers=2); arm_up(g,fingers=2)
     elif name=='coffee':
-        eyes_half(g); mouth_flat(g); arm_hip(g); arm_stub(g); mug(g,23,13)
+        eyes_half(g); mouth_flat(g); arm_down(g,'L'); arm_stub(g); mug(g,23,13)
     elif name=='music':
-        eyes_happy(g); mouth_smirk(g); arm_hip(g); arm_down(g,'R'); phones(g); note(g,27,5); note(g,1,5)
+        eyes_happy(g); mouth_smirk(g); arm_down(g,'L'); arm_down(g,'R'); phones(g); note(g,27,5); note(g,1,5)
     elif name=='fish':
-        eyes_happy(g); mouth_big(g); arm_hip(g); arm_stub(g); fish(g,23,13)
+        eyes_happy(g); mouth_big(g); arm_down(g,'L'); arm_stub(g); fish(g,23,13)
     elif name=='angry':
         eyes_open(g, lid=True); mouth_open(g)
         for x,y in [(7,5),(8,6),(9,7),(10,7)]: px(g,x,y,'K')
         for x,y in [(24,5),(23,6),(22,7),(21,7)]: px(g,x,y,'K')
-        arm_hip(g); arm_up(g,fingers=0); anger(g,26,1)
+        arm_up(g,flip=True,fingers=0); arm_up(g,fingers=0); anger(g,26,1)
     elif name=='work':
         eyes_open(g); mouth_flat(g); laptop(g)
     elif name=='phone':
-        eyes_half(g); mouth_flat(g); arm_hip(g); arm_stub(g); phone(g,23,10)
+        eyes_half(g); mouth_flat(g); arm_down(g,'L'); arm_stub(g); phone(g,23,10)
     elif name=='love':
-        eyes_happy(g); mouth_smirk(g); blush(g); arm_hip(g); arm_up(g,fingers=5)
+        eyes_happy(g); mouth_smirk(g); blush(g); arm_up(g,flip=True,fingers=5); arm_up(g,fingers=5)
         heart(g,2,2); heart(g,27,1,'M')
     elif name=='cry':
         eyes_closed_line(g); mouth_open(g)
@@ -91,22 +91,17 @@ def p(name):
         tear(g,9,10); tear(g,22,10); tear(g,8,13); tear(g,23,13)
         arm_down(g,'L'); arm_down(g,'R')
     elif name=='crown':
-        eyes_open(g); mouth_smirk(g); arm_hip(g); arm_up(g,fingers=2); crown(g)
+        eyes_open(g); mouth_smirk(g); arm_up(g,flip=True,fingers=2); arm_up(g,fingers=2); crown(g)
         sparkle(g,2,4); sparkle(g,29,3); sparkle(g,28,22,'F1')
     elif name=='torch':
-        eyes_open(g); mouth_big(g); arm_hip(g); arm_up(g,fingers=0,cx=28,top=8); flame(g,25,1,1)
+        eyes_open(g); mouth_big(g); arm_down(g,'L'); arm_up(g,fingers=0,cx=28,top=8); flame(g,25,1,1)
     elif name=='dizzy':
         eyes_x(g); mouth_open(g); tongue(g); arm_down(g,'L'); arm_down(g,'R'); stars(g,10,0)
     elif name=='shrug':
-        eyes_open(g); mouth_flat(g); arm_stub(g); glove(g,26,10,5)
-        arm_hip(g) if False else None
-        qmark(g,1,2); qmark(g,26,0) if False else None
-        # left arm out
-        for (x,y) in [(10,17),(9,17),(8,17),(7,16)]: px(g,x,y,'W')
-        glove(g,5,9,5,flip=False) if False else None
+        eyes_open(g); mouth_flat(g); arm_up(g,flip=True,fingers=5,top=11); arm_up(g,fingers=5,top=11); qmark(g,1,2)
     elif name=='wink':
-        eye_wink(g); mouth_smirk(g); tongue(g); arm_hip(g); arm_up(g,fingers=2); sparkle(g,3,3)
-    return outline(g)
+        eye_wink(g); mouth_smirk(g); tongue(g); arm_down(g,'L'); arm_up(g,fingers=2); sparkle(g,3,3)
+    return finish(g)
 
 NEW = ['wave','cool','coffee','music','fish','angry','work','phone','love','cry','crown','torch','dizzy','shrug','wink']
 ALL = [('peace',None),('one',None),('cheer',None),('sleepy',None),('panic',None),('frozen',None)] + [(n,'n') for n in NEW]
