@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- วิดเจ็ตไฟวันต่อเนื่อง (StreakCore.draw) · ซ้อนชั้น: ฉากพื้นหลังพิกเซล (สลับทุก 3 ชม. · อารมณ์ตามสถานการณ์ drawable-nodpi/stk_bg_<ฉาก>_<n|d|e|f>.png)
-     → ข้อความสั้นแถวบนเต็มความกว้าง (บรรทัดเดียว ปรับขนาดอัตโนมัติ) → ตัวเลขสตรีค+ไฟ (StreakArt.stats) + ช่องความคืบหน้า (StreakArt.blocks) + บรรทัดเล็ก "วันนี้ x/2 · กันไฟ n" → มาสคอตแมว (mw_<ท่า>.png)
+     → ข้อความสั้นแถวบนจัดกึ่งกลาง (บรรทัดเดียว ปรับขนาดอัตโนมัติ) → ตัวเลขสตรีค+ไฟ (StreakArt.stats) + ช่องความคืบหน้า (StreakArt.blocks) + บรรทัดเล็ก "วันนี้ x/2 · กันไฟ n" → มาสคอตแมว (mw_<ท่า>.png)
      มุมมน 22dp ตัดเองด้วย background รูปทรงมน + clipToOutline (launcher บางตัวไม่ตัดมุมให้) · centerCrop = ย่อ/ขยายวิดเจ็ตแล้วภาพไม่เบี้ยว
      ข้อความ 2 จุดเป็น ImageView เพราะวาดตัวหนังสือมีขอบดำเอง (StreakArt.text) · TextView ทำขอบตัวอักษรไม่ได้ -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -33,8 +33,7 @@
         android:id="@+id/stk_msg"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="top|start"
-        android:layout_marginStart="9dp"
+        android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="3dp"
         android:contentDescription="@null"
         android:scaleType="fitStart" />
