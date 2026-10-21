@@ -3,6 +3,7 @@ package com.han.meowrin;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 
 /* ภาพพิกเซลของวิดเจ็ตที่วาดสดด้วย Canvas (ฟอนต์ตัวเลขพิกเซล 5x7 + ไฟ + ช่องความคืบหน้า) — ไม่มีฟอนต์พิกเซลที่ใช้ได้ทั้งไทย/เลขในเครื่อง จึงวาดเอง
@@ -98,11 +99,15 @@ final class StreakArt {
         }
         line.setTextSize(size);
         line.setStrokeWidth(sw * 2);
+        /* ความสูงต้องวัดจากตัวอักษรจริง (getTextBounds รวมฟอนต์ไทยสำรอง) ไม่ใช่แค่ฟอนต์หลัก ไม่งั้นสระ/วรรณยุกต์ที่ลอยสูง-หางล่างโดนตัดขอบ */
         Paint.FontMetrics fm = fill.getFontMetrics();
-        Bitmap bm = Bitmap.createBitmap(Math.max(1, (int) Math.ceil(fill.measureText(s) + sw * 2)), Math.max(1, (int) Math.ceil(fm.descent - fm.ascent + sw * 2)), Bitmap.Config.ARGB_8888);
+        Rect b = new Rect();
+        fill.getTextBounds(s, 0, s.length(), b);
+        float pad = sw + size * 0.08f, top = Math.min(fm.ascent, b.top) - pad, bottom = Math.max(fm.descent, b.bottom) + pad;
+        Bitmap bm = Bitmap.createBitmap(Math.max(1, (int) Math.ceil(fill.measureText(s) + sw * 2)), Math.max(1, (int) Math.ceil(bottom - top)), Bitmap.Config.ARGB_8888);
         Canvas cv = new Canvas(bm);
-        cv.drawText(s, sw, sw - fm.ascent, line);
-        cv.drawText(s, sw, sw - fm.ascent, fill);
+        cv.drawText(s, sw, -top, line);
+        cv.drawText(s, sw, -top, fill);
         return bm;
     }
 }
