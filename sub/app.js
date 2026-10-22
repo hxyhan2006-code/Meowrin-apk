@@ -1,17 +1,17 @@
-import { alignLinesToWords, refineSegmentBoundariesWithEnergy } from './aligner.js?v=9.14';
-import { buildSrt } from './srt.js?v=9.14';
-import { callGroqWhisper, buildTranscriptForGemini, callGeminiSplit, removeThaiSpaces, GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from './ai.js?v=9.14';
-import { loadMediabunny, decodeAudioFile, isVideoFile, extractAudioFromVideo, audioBufferToWavBlob } from './media.js?v=9.14';
-import { CANVAS_W, FONT_FAMILY, BOTTOM_MARGIN_RATIO, renderVideo } from './render.js?v=9.14';
-import { createTrimEditor } from './waveform.js?v=9.14';
-import { setupFineSlider, createStagedProgress, escapeHtml, getReliableDuration } from './ui.js?v=9.14';
-import { setupVoicePicker } from './voicepick.js?v=9.14';
+import { alignLinesToWords, refineSegmentBoundariesWithEnergy } from './aligner.js?v=9.15';
+import { buildSrt } from './srt.js?v=9.15';
+import { callGroqWhisper, buildTranscriptForGemini, callGeminiSplit, removeThaiSpaces, GEMINI_MODELS, DEFAULT_GEMINI_MODEL } from './ai.js?v=9.15';
+import { loadMediabunny, decodeAudioFile, isVideoFile, extractAudioFromVideo, audioBufferToWavBlob } from './media.js?v=9.15';
+import { CANVAS_W, FONT_FAMILY, BOTTOM_MARGIN_RATIO, renderVideo } from './render.js?v=9.15';
+import { createTrimEditor } from './waveform.js?v=9.15';
+import { setupFineSlider, createStagedProgress, escapeHtml, getReliableDuration } from './ui.js?v=9.15';
+import { setupVoicePicker } from './voicepick.js?v=9.15';
 
 // ===== ที่เก็บข้อมูลร่วมกับแอพหลัก (MWStore จาก ../store.js) — service worker ของแอพหลักคุมหน้านี้อยู่แล้ว =====
   const S = window.MWStore;
   await S.ready;
   // สคริปต์ของแอพหลักที่หน้านี้ยืมใช้ — โหลดหลังข้อมูลพร้อม ถ้าโหลดไม่ได้ก็ใช้ต่อได้ (budget = เพดานค่า AI ตอนถอยไป OpenRouter · r2 + voicestore = เสียงที่เจนไว้)
-  for (const src of ['../native.js?v=9.14', '../history.js?v=9.14', '../history-sheet.js?v=9.14', '../budget.js?v=9.14', '../voicestore.js?v=9.14']) {
+  for (const src of ['../native.js?v=9.15', '../history.js?v=9.15', '../history-sheet.js?v=9.15', '../budget.js?v=9.15', '../voicestore.js?v=9.15']) {
     await new Promise((ok) => { const el = document.createElement('script'); el.src = src; el.onload = el.onerror = ok; document.body.appendChild(el); });
   }
   const GROQ_KEY = 'mw_groq_key_v1', GEMINI_KEY = 'mw_gemini_key_v1', OR_KEY = 'mw_openrouter_key_v1', SUB_CFG = 'mw_sub_cfg_v1'; // key ตั้งที่แอพหลัก > ตั้งค่า
@@ -86,7 +86,7 @@ import { setupVoicePicker } from './voicepick.js?v=9.14';
       e.preventDefault();
       if (!get()) { saveNote('ยังไม่มีไฟล์ให้บันทึก ลองกดสร้างคลิปใหม่อีกครั้ง', true); return; }
       if (el.dataset.saving) return; el.dataset.saving = '1'; saveNote('กำลังบันทึก...');
-      try { const r = await MWNative.save(get(), name); saveNote('บันทึกแล้วที่ ' + r.path); } // ข้อความอยู่ใต้ปุ่ม (errorBox อยู่ล่างสุดของหน้า ถูกแถบล่างบังจนไม่เห็นว่าพังเพราะอะไร)
+      try { const r = await MWNative.save(get(), name); saveNote('บันทึกแล้วที่ ' + r.path + (r.galleryPath ? ' · และก๊อปไว้ที่ ' + r.galleryPath + (r.galleryScanned ? ' ให้แอพรูปภาพเห็น' : ' (แอพรูปภาพอาจเห็นช้า)') : r.scanned ? ' · แอพรูปภาพของเครื่องอาจยังไม่เห็นไฟล์นี้ (ต้องเปิดสิทธิ์ เข้าถึงไฟล์ทั้งหมด)' : '')); } // ข้อความอยู่ใต้ปุ่ม (errorBox อยู่ล่างสุดของหน้า ถูกแถบล่างบังจนไม่เห็นว่าพังเพราะอะไร)
       catch (err) { saveNote('บันทึกไม่ได้: ' + ((err && err.message) || err), true); }
       finally { delete el.dataset.saving; }
     });

@@ -37,6 +37,22 @@
     var m = plug("MediaScan"); if(!m || !m.scan) return false;
     try{ var r = await m.scan({ path:uri, mime:/\.webm$/i.test(name) ? "video/webm" : "video/mp4" }); return !!(r && r.indexed); }catch(e){ return false; }
   }
+  /* ก๊อปวิดีโอจาก Documents/Meowrin ไป Pictures/Meowrin (EXTERNAL_STORAGE = รากที่เก็บข้อมูลในเครื่อง · คงโฟลเดอร์ย่อยเดิม เช่น picks/) แล้วสั่งสแกน
+     คืน { path, scanned } หรือ null ถ้าทำไม่ได้ · ชื่อซ้ำ = เขียนทับสำเนาเดิม (เหมือนไฟล์ใน Documents) · ขนาดสำเนาไม่เท่าต้นฉบับ = ลบสำเนาทิ้ง ไม่ปล่อยไฟล์เสียค้างในแกลเลอรี */
+  async function toPictures(path, shown, size){
+    var fs = plug("Filesystem"); if(!fs || !fs.copy) return null;
+    var to = "Pictures/Meowrin/" + shown;
+    try{
+      try{ await fs.mkdir({ path:to.replace(/\/[^\/]+$/, ""), directory:"EXTERNAL_STORAGE", recursive:true }); }catch(e){} /* มีอยู่แล้ว = ข้าม */
+      try{ await fs.copy({ from:path, directory:"DOCUMENTS", to:to, toDirectory:"EXTERNAL_STORAGE" }); }
+      catch(e){ to = to.replace(/[^\/]+$/, altName(shown.split("/").pop())); await fs.copy({ from:path, directory:"DOCUMENTS", to:to, toDirectory:"EXTERNAL_STORAGE" }); } /* ชื่อเดิมเขียนไม่ได้ (ไฟล์ค้างจากรอบก่อน) */
+      try{ var stt = await fs.stat({ path:to, directory:"EXTERNAL_STORAGE" }); if(stt && stt.size != null && size != null && stt.size !== size){ try{ await fs.deleteFile({ path:to, directory:"EXTERNAL_STORAGE" }); }catch(e){} return null; } }
+      catch(e){} /* stat ไม่ได้ = ข้ามการตรวจ */
+      var scanned = false;
+      try{ var u = (await fs.getUri({ path:to, directory:"EXTERNAL_STORAGE" })).uri; scanned = await scanMedia(u, to); }catch(e){}
+      return { path:to, scanned:scanned };
+    }catch(e){ return null; }
+  }
   async function save(blob, name, opt){ /* opt.noHist = ไม่จดลงประวัติงาน (ตะกร้าฉากเซฟหลายไฟล์ติดกัน) */
     var fs = plug("Filesystem");
     if(!fs){ var u = URL.createObjectURL(blob), a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); }, 4000); return { web:true, name:name }; }
@@ -48,8 +64,11 @@
     catch(e){ if(/ไม่ครบ/.test(e.message)) throw e; } /* stat ไม่ได้ = ข้ามการตรวจ ไม่ล้มการบันทึก (และไม่อ้างว่าตรวจแล้ว) */
     var out = { path:"Documents/" + path, uri:uri, name:path.slice(DIR.length + 1), gallery:false, scanned:false, verified:verified, size:blob.size };
     if(/\.(mp4|mov|webm)$/i.test(name)){
-      out.scanned = await scanMedia(uri, name); /* มีปลั๊กอินสแกน = สแกนไฟล์ใน Documents ตรงๆ ไม่ต้องก๊อปซ้ำเข้าแกลเลอรี */
-      if(!out.scanned) out.gallery = await toGallery(uri, out.name.split("/").pop()); /* APK เก่า: ก๊อปเข้า Pictures/Meowrin (สแกนแบบเก่า Android 10+ อาจไม่ติด) */
+      out.scanned = await scanMedia(uri, name); /* มีปลั๊กอินสแกน = สแกนไฟล์ใน Documents ให้ CapCut เห็น */
+      /* แอพรูปภาพของเครื่อง (ColorOS) ไม่แสดงวิดีโอจากโฟลเดอร์ Documents แม้สแกนแล้ว (ยืนยันบนมือถือจริง: เซฟแล้วเห็นแค่ในแอพไฟล์) → ก๊อปไป Pictures/Meowrin อีกชุด + สแกน */
+      var pic = await toPictures(path, out.name, blob.size);
+      if(pic){ out.gallery = pic.scanned; out.galleryPath = pic.path; out.galleryScanned = pic.scanned; } /* gallery = ก๊อปแล้วและสแกนติด · galleryPath = มีสำเนาจริง (สแกนไม่ติด แกลเลอรีอาจเห็นช้า) */
+      else if(!out.scanned) out.gallery = await toGallery(uri, out.name.split("/").pop()); /* ก๊อปเข้า Pictures ไม่ได้ (ไม่มีสิทธิ์/APK เก่า): ปลั๊กอิน Media ก๊อปเข้าอัลบั้ม Meowrin (สแกนแบบเก่า Android 10+ อาจไม่ติด) */
     }
     if(window.MWHist && !(opt && opt.noHist)) try{ MWHist.addFile({ name:out.name, uri:uri, rel:path, size:blob.size }); }catch(e){} /* ประวัติงาน: จดไฟล์วิดีโอ/srt ที่เซฟ */
     return out;
