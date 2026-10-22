@@ -16,6 +16,7 @@
   var SPRINT_MS = 10 * 60e3, AUTO_MS = 15e3, MAX_PAGES = 20;
   var MILESTONES = [3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000];
   var WTEST = [["z", "ยังไม่ได้ทำ"], ["h", "ทำไปครึ่งทาง"], ["d", "ไฟติดแล้ว"], ["b", "ทำเกินโควตา"], ["e", "ค่ำ ไฟจะดับ"], ["r", "ไฟเพิ่งดับ"], ["f", "เมื่อวานใช้กันไฟดับ"], ["m", "ไฟครบหลักไมล์"]], wtI = 0; /* ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ */
+  var NTEST = [["11:00", "เตือนเช้า 11:00"], ["13:00", "เตือนบ่าย 13:00"], ["16:30", "เตือนเย็น 16:30"], ["21:00", "เตือนค่ำ 21:00"], ["praise", "ไฟติดแล้ว"], ["ms", "ไฟครบหลักไมล์"]], ntI = 0; /* ปุ่ม ทดสอบแจ้งเตือน วนฟังเสียง+ข้อความทีละแบบ (เสียงแยกตามสถานการณ์) */
   var TIMES = ["11:00", "13:00", "16:30", "21:00"];
   var WD = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
   var MONTHS = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
@@ -199,7 +200,7 @@
       if(needPerm) body += '<div class="stk-warn">' + MWIcon("warn") + '<span>ยังไม่ได้อนุญาตแจ้งเตือน</span><button class="btn small" data-stk="perm">อนุญาต</button></div>';
       if(needBat) body += '<div class="stk-warn">' + MWIcon("warn") + '<span>แอพถูกจำกัดแบต แจ้งเตือน/วิดเจ็ตอาจไม่อัปเดต · ตั้งค่าแอพ → แบตเตอรี่ → ไม่จำกัด/อนุญาตทำงานเบื้องหลัง</span><button class="btn small ghost" data-stk="settings">เปิด</button></div>';
       body += '<div class="row stk-act">' + (nst && nst.widgets ? '<span class="stk-ok">' + MWIcon("check") + 'มีวิดเจ็ตบนหน้าจอแล้ว</span>' : '<button class="btn ghost" data-stk="pin">เพิ่มวิดเจ็ตบนหน้าจอ</button>') + '</div>'
-        + '<div class="row stk-act"><button class="btn ghost" data-stk="test">ทดสอบแจ้งเตือน</button><button class="btn ghost" data-stk="wtest">ทดสอบวิดเจ็ต</button></div>'
+        + '<div class="row stk-act"><button class="btn ghost" data-stk="test">ทดสอบเสียงแจ้งเตือน</button><button class="btn ghost" data-stk="wtest">ทดสอบวิดเจ็ต</button></div>'
         + '<p class="hint tip">มือถือเช็กยอดวันนี้เองทุก 30 นาที (10:00–23:30) แม้ไม่ได้เปิดแอพ · ทำครบแล้วแจ้งเตือนที่เหลือของวันนั้นเงียบเอง · ข้อความสุ่มไม่ซ้ำ</p>';
     }
     return '<details class="fold top stk-fold" id="stkNotif"' + (nOpen ? " open" : "") + '><summary><span>วิดเจ็ต + แจ้งเตือน</span><em class="state ' + kind + '">' + tag + '</em></summary><div class="fbody">' + body + '</div></details>';
@@ -348,7 +349,11 @@
         var st1 = WTEST[wtI++ % WTEST.length];
         P.testWidget({ state: st1[0] }).then(function(r){ if(r && r.widgets === 0){ MW.toast("ยังไม่มีวิดเจ็ตบนหน้าจอหลัก กดเพิ่มวิดเจ็ตก่อน", true, 3500); return; } MW.toast("วิดเจ็ตโชว์ตัวอย่าง \"" + st1[1] + "\" · กดโฮมไปดู ค้าง 20 วินาที · กดอีกทีเพื่อดูแบบถัดไป", false, 4500); }).catch(function(){ MW.toast("ทดสอบวิดเจ็ตไม่ได้", true); });
       }
-      else if(a === "test"){ if(nst && !nst.notify){ askNotify(); return; } plugin().test({ slot: "any" }); }
+      else if(a === "test"){
+        if(nst && !nst.notify){ askNotify(); return; }
+        var t1 = NTEST[ntI++ % NTEST.length]; plugin().test({ slot: t1[0] });
+        MW.toast("ส่งทดสอบ: " + t1[1] + " · กดอีกทีฟังอันถัดไป");
+      }
       else if(a === "prev" || a === "next"){ var d = new Date(view.y, view.m + (a === "next" ? 1 : -1), 1); view = { y: d.getFullYear(), m: d.getMonth() }; render(); }
       else if(a === "change"){
         if(!await MWDialog.confirm("เปลี่ยนช่อง = เริ่มนับไฟวันต่อเนื่องใหม่ตั้งแต่วันนี้ ตกลงไหม?")) return;

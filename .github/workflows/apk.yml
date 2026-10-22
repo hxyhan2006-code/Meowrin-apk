@@ -175,6 +175,9 @@ jobs:
           for f in ../mascot/*.png; do cp "$f" "android/app/src/main/res/drawable-nodpi/mw_$(basename "$f")"; done
           # ฉากพื้นหลังวิดเจ็ต stk_bg_<ฉาก>_<อารมณ์>.png (สร้างจาก tools/widget/scenes.py)
           cp ../tools/android/res/drawable-nodpi/*.png android/app/src/main/res/drawable-nodpi/
+          # เสียงแจ้งเตือนมาสคอต stk_snd_<ชื่อ>.mp3 (สร้างจาก tools/sound/make.py) → res/raw
+          mkdir -p android/app/src/main/res/raw
+          cp ../tools/android/res/raw/*.mp3 android/app/src/main/res/raw/
           # ฟอนต์ Mitr (ตัวหนังสือวิดเจ็ต วาดด้วย Canvas = StreakArt.text) · OFL · แปลงจาก fonts/Mitr-500-*.woff2
           mkdir -p android/app/src/main/assets
           cp ../tools/android/fonts/mitr.ttf android/app/src/main/assets/mitr.ttf
@@ -182,7 +185,7 @@ jobs:
           p = "android/app/src/main/AndroidManifest.xml"
           s = open(p, encoding="utf-8").read()
           perms = "".join('    <uses-permission android:name="android.permission.%s" />\n' % n for n in [
-              "READ_MEDIA_VIDEO", "READ_MEDIA_IMAGES", "READ_MEDIA_AUDIO", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "MANAGE_EXTERNAL_STORAGE", "WAKE_LOCK", "POST_NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED"])
+              "READ_MEDIA_VIDEO", "READ_MEDIA_IMAGES", "READ_MEDIA_AUDIO", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "MANAGE_EXTERNAL_STORAGE", "WAKE_LOCK", "POST_NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "VIBRATE"])
           s = s.replace("<application", perms + "    <application", 1)
           s = s.replace("<application", '<application android:requestLegacyExternalStorage="true" android:largeHeap="true"', 1)
           assert "</application>" in s, "ไม่เจอ </application> ใน AndroidManifest.xml"

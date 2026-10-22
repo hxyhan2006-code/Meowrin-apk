@@ -1209,10 +1209,10 @@ try {
   // ไฟวันต่อเนื่อง ฝั่งเนทีฟ (ปลั๊กอิน Streak ปลอม): ส่ง base/กันไฟดับ/ยอดวันนี้/ข้อความให้วิดเจ็ต · แตะวิดเจ็ตแล้วเปิดหน้าไฟเอง · ตั้งเวลาแจ้งเตือน · เตือนสิทธิ์/แบต · ไม่มีปลั๊กอิน = บอกให้ลง APK ใหม่
   {
     const nv = await context.newPage(); const nvErr = []; nv.on('pageerror', (e) => nvErr.push(e.message));
-    await nv.addInitScript(() => { window.__sk = []; const st = { notify: false, battery: false, widgets: 1, canPin: true }; window.__tw = []; Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { window.__cb = t; }, readText: async () => 'วางจากคลิปบอร์ด' } });
+    await nv.addInitScript(() => { window.__sk = []; const st = { notify: false, battery: false, widgets: 1, canPin: true }; window.__stt = st; window.__tw = []; Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { window.__cb = t; }, readText: async () => 'วางจากคลิปบอร์ด' } });
       window.Capacitor = { isNativePlatform: () => true, isPluginAvailable: (n) => n === 'Streak', Plugins: { Streak: {
         sync: async (a) => { __sk.push(a); return st; }, status: async () => st, consumeOpen: async () => ({ open: true }), addListener: () => {},
-        requestNotify: async () => st, openSettings: async () => {}, pinWidget: async () => ({ ok: true }), test: async () => {}, testWidget: async (a) => { __tw.push(a.state); return { widgets: 1 }; } } } }; });
+        requestNotify: async () => st, openSettings: async () => {}, pinWidget: async () => ({ ok: true }), test: async (a) => { (window.__tn = window.__tn || []).push(a.slot); }, testWidget: async (a) => { __tw.push(a.state); return { widgets: 1 }; } } } }; });
     await nv.goto(base + '/index.html'); await nv.waitForFunction(() => window.MWStreak && window.MW, null, { timeout: 20000 });
     await nv.evaluate(() => { const d = new Date(), k = (o) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + o); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
       MWStore.set('mw_streak_v1', { handle: '@x', list: 'UUSHx', since: k(-3), days: { [k(-3)]: 2, [k(-2)]: 2, [k(-1)]: 2, [k(0)]: 1 }, syncedAt: Date.now() }); MWStore.flush(); });
@@ -1240,6 +1240,14 @@ try {
     check('ไฟวันต่อเนื่อง: แถบ วิดเจ็ต+แจ้งเตือน พับได้ (ปิดไว้ก่อน มีป้ายเตือนที่หัวแถบ) · แตะเปิดแล้วเห็นเวลา 4 อัน + เตือนสิทธิ์/แบต · วาดหน้าใหม่แล้วไม่หุบเอง', keep);
     await nv.click('#stkPage [data-stk=wtest]'); await nv.click('#stkPage [data-stk=wtest]'); await nv.waitForTimeout(200);
     check('ไฟวันต่อเนื่อง (เนทีฟ): ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ (ยังไม่ทำ → ครึ่งทาง → …)', JSON.stringify(await nv.evaluate(() => __tw)) === '["z","h"]');
+    /* ปุ่มทดสอบเสียงแจ้งเตือน: ยังไม่อนุญาต = ขอสิทธิ์ก่อน (ไม่ส่ง) · อนุญาตแล้ว = วนส่งทีละแบบ (4 เวลา → ไฟติด → หลักไมล์ → กลับต้น) */
+    await nv.click('#stkPage [data-stk=test]'); await nv.waitForTimeout(150);
+    const tn0 = await nv.evaluate(() => (window.__tn || []).length);
+    await nv.evaluate(() => { __stt.notify = true; });
+    for (let i = 0; i < 7; i++) await nv.click('#stkPage [data-stk=test]');
+    await nv.waitForTimeout(200);
+    const tn1 = await nv.evaluate(() => window.__tn); await nv.evaluate(() => { __stt.notify = false; });
+    check('ไฟวันต่อเนื่อง (เนทีฟ): ปุ่ม ทดสอบเสียงแจ้งเตือน ขอสิทธิ์ก่อน แล้ววนส่ง 11:00 → 13:00 → 16:30 → 21:00 → ไฟติด → หลักไมล์ → กลับต้น', tn0 === 0 && JSON.stringify(tn1) === '["11:00","13:00","16:30","21:00","praise","ms","11:00"]', tn0 + ' ' + JSON.stringify(tn1));
     await nv.click('#stkPage [data-stk=time][data-t="13:00"]'); await nv.waitForTimeout(300);
     const n2 = await nv.evaluate(() => ({ times: (__sk[__sk.length - 1].times || []).join(), saved: (MWStore.get('mw_streak_v1', {}).notif || {}).times }));
     check('ไฟวันต่อเนื่อง (เนทีฟ): แตะเวลาปิด 13:00 → ส่งเวลาใหม่ให้มือถือ + จำไว้', n2.times === '11:00,16:30,21:00' && String(n2.saved) === '11:00,16:30,21:00', JSON.stringify(n2));

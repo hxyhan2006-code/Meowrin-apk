@@ -12,6 +12,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.net.Uri;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
@@ -288,10 +290,55 @@ final class StreakCore {
                 .replace("{frz}", String.valueOf(frz));
     }
 
+    /* เสียงแจ้งเตือนของมาสคอต (8-bit · tools/sound/make.py → res/raw/stk_snd_<ชื่อ>.mp3) · ช่องแจ้งเตือนของ Android ต่อ 1 เสียง (เสียงผูกกับช่อง เปลี่ยนเองในตั้งค่าแอพได้)
+       lit ไฟติด · 1100/1300/1630/2100 เตือนตามเวลา (ยิ่งดึกยิ่งเร่ง) · ms ไฟครบหลักไมล์ */
+    static final String[][] SOUNDS = { { "lit", "ไฟติดแล้ว" }, { "1100", "เตือนเช้า 11:00" }, { "1300", "เตือนบ่าย 13:00" }, { "1630", "เตือนเย็น 16:30" }, { "2100", "เตือนค่ำ 21:00" }, { "ms", "ไฟครบหลักไมล์" } };
+    static final long[] VIB = { 0, 250, 150, 250 };
+
+    static String sndForSlot(String slot) {
+        if ("11:00".equals(slot)) return "1100";
+        if ("16:30".equals(slot)) return "1630";
+        if ("21:00".equals(slot)) return "2100";
+        return "1300"; /* 13:00 และเวลาอื่น/ทดสอบ */
+    }
+
+    static Uri sndUri(Context c, String snd) {
+        int id = c.getResources().getIdentifier("stk_snd_" + snd, "raw", c.getPackageName());
+        return id == 0 ? null : Uri.parse("android.resource://" + c.getPackageName() + "/" + id);
+    }
+
+    /* คืน id ช่องของเสียงนี้ (Android 8+ สร้างช่องถ้ายังไม่มี) · ช่องเดิม "streak" (เสียงเริ่มต้นเงียบ) ลบทิ้ง */
+    static String channelFor(Context c, NotificationManager nm, String snd) {
+        String id = CH + "_" + snd;
+        if (Build.VERSION.SDK_INT >= 26) {
+            String label = "ไฟวันต่อเนื่อง";
+            for (String[] x : SOUNDS) if (x[0].equals(snd)) label = "ไฟ · " + x[1];
+            NotificationChannel ch = new NotificationChannel(id, label, NotificationManager.IMPORTANCE_HIGH);
+            ch.setDescription("เสียงมาสคอตแมว ตอน" + label.replace("ไฟ · ", ""));
+            Uri u = sndUri(c, snd);
+            if (u != null) ch.setSound(u, new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+            ch.enableVibration(true);
+            ch.setVibrationPattern(VIB);
+            nm.createNotificationChannel(ch);
+            nm.deleteNotificationChannel(CH);
+        }
+        return id;
+    }
+
+    /* ทดสอบแจ้งเตือนจากหน้าไฟ: slot = เวลา (11:00 13:00 16:30 21:00) · praise ไฟติด · ms หลักไมล์ */
+    static void testNotify(Context c, String slot) {
+        SharedPreferences p = prefs(c);
+        int shown = p.getInt("base", 0) + 1;
+        if ("praise".equals(slot) || "ms".equals(slot)) {
+            boolean ms = "ms".equals(slot);
+            notifyPool(c, new String[] { slot }, shown, "ไฟติดแล้ว · " + shown + " วัน", ms ? "m" : "d", ms ? "ms" : "lit");
+        } else notifyNow(c, slot);
+    }
+
     static final int RECENT = 10; /* ไม่ซ้ำ 10 ข้อความล่าสุด */
 
     /* สุ่มจากชุดข้อความที่ระบุ (streak-msgs.js ส่งมาตอน sync = แก้ผ่าน OTA ได้) ไม่ซ้ำ RECENT ข้อความล่าสุด */
-    static void notifyPool(Context c, String[] keys, int streakShown, String title, String poseKey) {
+    static void notifyPool(Context c, String[] keys, int streakShown, String title, String poseKey, String snd) {
         SharedPreferences p = prefs(c);
         ArrayList<String> all = new ArrayList<>(), fresh = new ArrayList<>();
         for (String k : keys) { JSONArray a = pool(p, k); for (int i = 0; i < a.length(); i++) all.add(a.optString(i, "")); }
@@ -308,12 +355,11 @@ final class StreakCore {
         if (nm == null) return;
         Notification.Builder b;
         if (Build.VERSION.SDK_INT >= 26) {
-            NotificationChannel ch = new NotificationChannel(CH, "ไฟวันต่อเนื่อง", NotificationManager.IMPORTANCE_HIGH);
-            ch.setDescription("เตือนเมื่อวันนี้ยังทำงานไม่ครบ + ชมเมื่อไฟติด");
-            nm.createNotificationChannel(ch);
-            b = new Notification.Builder(c, CH);
+            b = new Notification.Builder(c, channelFor(c, nm, snd));
         } else {
-            b = new Notification.Builder(c).setPriority(Notification.PRIORITY_HIGH);
+            b = new Notification.Builder(c).setPriority(Notification.PRIORITY_HIGH).setVibrate(VIB);
+            Uri u = sndUri(c, snd);
+            if (u != null) b.setSound(u);
         }
         String text = fill(msg, p, streakShown);
         int pr = poseRes(c, poseName(p, poseKey));
@@ -332,7 +378,7 @@ final class StreakCore {
     static void notifyNow(Context c, String slot) {
         SharedPreferences p = prefs(c);
         int n = p.getInt("today", 0), goal = p.getInt("goal", 2);
-        notifyPool(c, new String[] { slot, "any" }, p.getInt("base", 0), "วันนี้ {n}/{goal} · ไฟ {streak} วัน", poseKey(p, false, n, goal, p.getInt("base", 0)));
+        notifyPool(c, new String[] { slot, "any" }, p.getInt("base", 0), "วันนี้ {n}/{goal} · ไฟ {streak} วัน", poseKey(p, false, n, goal, p.getInt("base", 0)), sndForSlot(slot));
     }
 
     static final int[] MILESTONES = { 3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000 };
@@ -406,7 +452,7 @@ final class StreakCore {
             if (items != null && prevOk && prevToday < goal && p.getInt("today", 0) >= goal && p.getBoolean("notify", false) && !today.equals(p.getString("praised", "")) && canNotify(c)) {
                 int shown = p.getInt("base", 0) + 1;
                 p.edit().putString("praised", today).apply();
-                notifyPool(c, new String[] { isMilestone(shown) ? "ms" : "praise" }, shown, "ไฟติดแล้ว · " + shown + " วัน", isMilestone(shown) ? "m" : "d");
+                notifyPool(c, new String[] { isMilestone(shown) ? "ms" : "praise" }, shown, "ไฟติดแล้ว · " + shown + " วัน", isMilestone(shown) ? "m" : "d", isMilestone(shown) ? "ms" : "lit");
             }
             if (fresh && p.getBoolean("notify", false) && p.getInt("today", 0) < goal && canNotify(c)) {
                 Calendar cal = Calendar.getInstance();

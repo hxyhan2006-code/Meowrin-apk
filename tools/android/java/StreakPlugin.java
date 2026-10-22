@@ -132,7 +132,7 @@ public class StreakPlugin extends Plugin {
 
     @PluginMethod
     public void test(PluginCall call) {
-        StreakCore.notifyNow(getContext(), call.getString("slot", "any"));
+        StreakCore.testNotify(getContext(), call.getString("slot", "any"));
         call.resolve();
     }
 }
