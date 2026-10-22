@@ -175,6 +175,9 @@ jobs:
           for f in ../mascot/*.png; do cp "$f" "android/app/src/main/res/drawable-nodpi/mw_$(basename "$f")"; done
           # ฉากพื้นหลังวิดเจ็ต stk_bg_<ฉาก>_<อารมณ์>.png (สร้างจาก tools/widget/scenes.py)
           cp ../tools/android/res/drawable-nodpi/*.png android/app/src/main/res/drawable-nodpi/
+          # ฟอนต์ Mitr (ตัวหนังสือวิดเจ็ต วาดด้วย Canvas = StreakArt.text) · OFL · แปลงจาก fonts/Mitr-500-*.woff2
+          mkdir -p android/app/src/main/assets
+          cp ../tools/android/fonts/mitr.ttf android/app/src/main/assets/mitr.ttf
           python3 - <<'PY2'
           p = "android/app/src/main/AndroidManifest.xml"
           s = open(p, encoding="utf-8").read()

@@ -14,6 +14,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -208,6 +209,7 @@ final class StreakCore {
         int[] ids = m.getAppWidgetIds(new ComponentName(c, StreakWidget.class));
         if (ids == null || ids.length == 0) return 0;
         float d = c.getResources().getDisplayMetrics().density;
+        Typeface tf = StreakArt.font(c);
         String sub = set ? "วันนี้ " + n + "/" + goal + " · กันไฟ " + freeze : "";
         Bitmap stats = StreakArt.stats(set ? String.valueOf(streak) : "-", lit, d), prog = StreakArt.blocks(set ? n : 0, goal, d);
         int pr = poseRes(c, pose), bg = bgRes(c, scene, key);
@@ -216,9 +218,9 @@ final class StreakCore {
             RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.streak_widget);
             v.setImageViewBitmap(R.id.stk_stats, stats);
             v.setImageViewBitmap(R.id.stk_prog, prog);
-            v.setImageViewBitmap(R.id.stk_msg, StreakArt.text(msg, 17, 8, w - 18, d));
+            v.setImageViewBitmap(R.id.stk_msg, StreakArt.text(msg, tf, 17, 8, w - 18, d));
             v.setContentDescription(R.id.stk_msg, msg);
-            v.setImageViewBitmap(R.id.stk_today, StreakArt.text(sub, 11, 8, Math.max(40, w - 75), d));
+            v.setImageViewBitmap(R.id.stk_today, StreakArt.text(sub, tf, 11, 8, Math.max(40, w - 75), d));
             v.setContentDescription(R.id.stk_today, sub);
             if (pr != 0) v.setImageViewResource(R.id.stk_mascot, pr);
             if (bg != 0) v.setImageViewResource(R.id.stk_bgimg, bg);

@@ -1,5 +1,6 @@
 package com.han.meowrin;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -18,6 +19,17 @@ final class StreakArt {
         "01110,10001,10001,01110,10001,10001,01110", "01110,10001,10001,01111,00001,00010,01100" };
     static final String DASH = "00000,00000,00000,01110,00000,00000,00000";
     static final String[] FLAME = { "...1...", "..11...", "..111..", ".1121.1", ".11221.", "112221.", "1122221", "1123221", "1123321", ".11111." };
+
+    static Typeface mitr;
+
+    /* ฟอนต์ Mitr เหมือนหัวข้อในแอพ (ไฟล์ assets/mitr.ttf แปลงจาก fonts/Mitr-500-*.woff2 ด้วย fontTools · apk.yml ก๊อปเข้า APK) · โหลดไม่ได้ = ฟอนต์ระบบตัวหนา */
+    static Typeface font(Context c) {
+        if (mitr == null) {
+            try { mitr = Typeface.createFromAsset(c.getAssets(), "mitr.ttf"); }
+            catch (Exception e) { mitr = Typeface.DEFAULT_BOLD; }
+        }
+        return mitr;
+    }
 
     static void cell(Canvas cv, Paint p, int x, int y, int s, int color) {
         p.setColor(color);
@@ -76,13 +88,13 @@ final class StreakArt {
 
     /* ตัวหนังสือสีขาวมีขอบ (stroke) ดำบางๆ ให้อ่านออกบนพื้นภาพทุกฉาก · บรรทัดเดียว ย่อขนาดอัตโนมัติจาก maxDp ลงถึง minDp ให้พอดี widthDp (ยาวเกินที่ขนาดเล็กสุด = ตัดท้ายด้วย …)
        TextView ทำขอบตัวอักษรไม่ได้ใน RemoteViews จึงวาดเป็นภาพเอง (ใส่ contentDescription ให้โปรแกรมอ่านจอ) */
-    static Bitmap text(String s, float maxDp, float minDp, float widthDp, float density) {
+    static Bitmap text(String s, Typeface tf, float maxDp, float minDp, float widthDp, float density) {
         if (s == null || s.isEmpty()) s = " ";
         Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
-        fill.setTypeface(Typeface.DEFAULT_BOLD);
+        fill.setTypeface(tf);
         fill.setColor(0xFFFFFFFF);
         Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
-        line.setTypeface(Typeface.DEFAULT_BOLD);
+        line.setTypeface(tf);
         line.setStyle(Paint.Style.STROKE);
         line.setStrokeJoin(Paint.Join.ROUND);
         line.setColor(0xFF000000);
