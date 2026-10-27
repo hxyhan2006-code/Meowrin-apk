@@ -12,7 +12,7 @@
    วันตัดตามเวลาในมือถือ (ไทย) · โหลดหลัง app.js (ใช้ MW.toast/MW.esc) */
 (function(){
   "use strict";
-  var KEY = "mw_streak_v1", GOAL = 1, BONUS_PER_FREEZE = 1, MAX_FREEZE = 2, START_FREEZE = 1;
+  var KEY = "mw_streak_v1", GOAL = 1, BONUS_PER_FREEZE = 1, MAX_FREEZE = 7, START_FREEZE = 1;
   var SPRINT_MS = 10 * 60e3, AUTO_MS = 15e3, MAX_PAGES = 20;
   var MILESTONES = [3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000];
   var WTEST = [["z", "ยังไม่ได้ทำ"], ["h", "ทำไปครึ่งทาง"], ["d", "ไฟติดแล้ว"], ["b", "ทำเกินโควตา"], ["e", "ค่ำ ไฟจะดับ"], ["r", "ไฟเพิ่งดับ"], ["f", "เมื่อวานใช้กันไฟดับ"], ["m", "ไฟครบหลักไมล์"]], wtI = 0; /* ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ */
@@ -274,8 +274,8 @@
       + (err ? '<div class="msg err">' + esc(err) + '</div>' : "") + '</div>'
       + '<h2 class="stk-h2">ปฏิทินวันต่อเนื่อง</h2>' + calendar(s, today)
       + milestone(s.streak)
-      + '<div class="stk-box"><h3>กันไฟดับ ' + s.freeze + '/' + MAX_FREEZE + '</h3><div class="stk-frz">' + snow + '</div>'
-      + '<p class="hint tip">วันที่ลงไม่ครบ ' + GOAL + ' คลิป แอพใช้กันไฟดับให้เอง ไฟไม่ดับ · ได้เพิ่มเมื่อลงเกินวันละ ' + GOAL + ' คลิป · ทุก ' + BONUS_PER_FREEZE + ' คลิปที่เกิน = 1 อัน'
+      + '<div class="stk-box"><h3>คลิปตุน (กันไฟดับ) ' + s.freeze + '/' + MAX_FREEZE + '</h3><div class="stk-frz">' + snow + '</div>'
+      + '<p class="hint tip">ลงวันละ ' + GOAL + ' คลิปก็พอ · วันไหนทำเกินจะถูกตุนไว้ทีละคลิป (เก็บได้ ' + MAX_FREEZE + ') · วันไหนไม่ได้ลง แอพหยิบที่ตุนมาใช้ให้เอง ไฟไม่ดับ'
       + (s.freeze < MAX_FREEZE ? ' · อีก ' + (BONUS_PER_FREEZE - s.bonus) + ' คลิปได้อันต่อไป' : ' · เต็มแล้ว') + '</p></div>'
       + notifBox() + myBox() + promptBox()
       + '<div class="stk-foot">' + esc(st.handle) + ' · ' + (busy ? "กำลังเช็ก..." : st.syncedAt ? "เช็กล่าสุด " + ago(st.syncedAt) : "ยังไม่ได้เช็ก") + '<button type="button" class="stk-link" data-stk="change">เปลี่ยนช่อง</button></div>';

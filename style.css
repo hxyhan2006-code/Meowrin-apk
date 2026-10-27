@@ -353,8 +353,8 @@ body.stk-open{overflow:hidden}
 .stk-ms .pin{min-width:40px;padding:4px 6px;border-radius:10px;text-align:center;font:600 13px "IBM Plex Sans Thai",sans-serif;border:1.5px solid var(--line-strong);color:var(--muted)}
 .stk-ms .pin.on{border-color:var(--fire);color:var(--fire)}
 .stk-box > small{display:block;margin-top:8px;color:var(--muted);font-size:13px}
-.stk-frz{display:flex;gap:8px}
-.stk-snow .ic{width:34px;height:34px;margin:0;color:var(--line-strong)}
+.stk-frz{display:flex;flex-wrap:wrap;gap:6px}
+.stk-snow .ic{width:30px;height:30px;margin:0;color:var(--line-strong)}
 .stk-snow.on .ic{color:var(--frost)}
 .stk-note .ic{color:var(--frost)}
 .stk-fold{margin:0 0 14px}
