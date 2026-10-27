@@ -68,13 +68,17 @@
   function calc(s, today){
     var days = s.days || {}, streak = 0, best = 0, freeze = START_FREEZE, bonus = 0, lastFrozen = "", marks = {};
     function earn(n){ bonus += n - GOAL; while(bonus >= BONUS_PER_FREEZE){ bonus -= BONUS_PER_FREEZE; if(freeze < MAX_FREEZE) freeze++; } if(freeze >= MAX_FREEZE) bonus = 0; }
+    var adds = s.adds || {};
+    function stock(k){ if(adds[k]) freeze = Math.min(MAX_FREEZE, freeze + adds[k]); } /* กดปุ่ม +ตุน ในวันนั้น = คลิปที่ทำไว้ยังไม่ได้ลง เพิ่มกันไฟดับ */
     for(var k = s.since; k && k < today; k = addDay(k, 1)){
+      stock(k);
       var n = days[k] || 0;
       if(n >= GOAL){ streak++; earn(n); marks[k] = "lit"; }
       else if(freeze > 0){ freeze--; lastFrozen = k; marks[k] = "frz"; }
       else { streak = 0; marks[k] = "miss"; }
       if(streak > best) best = streak;
     }
+    stock(today);
     var t = days[today] || 0, done = t >= GOAL;
     if(done){ streak++; earn(t); if(streak > best) best = streak; marks[today] = "lit"; }
     return { streak: streak, best: best, freeze: freeze, bonus: bonus, today: t, done: done, lastFrozen: lastFrozen, marks: marks, broke: marks[addDay(today, -1)] === "miss" };
@@ -276,7 +280,10 @@
       + milestone(s.streak)
       + '<div class="stk-box"><h3>คลิปตุน (กันไฟดับ) ' + s.freeze + '/' + MAX_FREEZE + '</h3><div class="stk-frz">' + snow + '</div>'
       + '<p class="hint tip">ลงวันละ ' + GOAL + ' คลิปก็พอ · วันไหนทำเกินจะถูกตุนไว้ทีละคลิป (เก็บได้ ' + MAX_FREEZE + ') · วันไหนไม่ได้ลง แอพหยิบที่ตุนมาใช้ให้เอง ไฟไม่ดับ'
-      + (s.freeze < MAX_FREEZE ? ' · อีก ' + (BONUS_PER_FREEZE - s.bonus) + ' คลิปได้อันต่อไป' : ' · เต็มแล้ว') + '</p></div>'
+      + (s.freeze < MAX_FREEZE ? ' · อีก ' + (BONUS_PER_FREEZE - s.bonus) + ' คลิปได้อันต่อไป' : ' · เต็มแล้ว') + '</p>'
+      + '<p class="hint tip">ทำคลิปไว้แต่ยังไม่ได้ลง (เช่นตุนลงล่วงหน้า) กดปุ่มนี้บันทึกเอง · แอพเห็นแค่คลิปที่ขึ้นช่องแล้ว</p>'
+      + '<div class="stk-row"><button class="btn small" data-stk="stock"' + (s.freeze >= MAX_FREEZE ? " disabled" : "") + '>+ ตุน 1 คลิป</button>'
+      + (Object.keys(st.adds || {}).length ? '<button class="btn ghost small" data-stk="unstock">ยกเลิกที่เพิ่มล่าสุด</button>' : "") + '</div></div>'
       + notifBox() + myBox() + promptBox()
       + '<div class="stk-foot">' + esc(st.handle) + ' · ' + (busy ? "กำลังเช็ก..." : st.syncedAt ? "เช็กล่าสุด " + ago(st.syncedAt) : "ยังไม่ได้เช็ก") + '<button type="button" class="stk-link" data-stk="change">เปลี่ยนช่อง</button></div>';
   }
@@ -314,6 +321,8 @@
       else if(a === "mascot"){ mTap++; render(); }
       else if(a === "setup") setup(page.querySelector('[data-stk="handle"]').value);
       else if(a === "refresh") check(true);
+      else if(a === "stock"){ var sa = st.adds || (st.adds = {}), sk = dayKey(Date.now()); sa[sk] = (sa[sk] || 0) + 1; save(); render(); }
+      else if(a === "unstock"){ var ua = st.adds || {}, ud = Object.keys(ua).sort().filter(function(x){ return ua[x] > 0; }).pop(); if(ud){ ua[ud]--; if(!ua[ud]) delete ua[ud]; save(); render(); } }
       else if(a === "sprint"){ st.sprint = Date.now(); save(); render(); }
       else if(a === "stop"){ st.sprint = 0; save(); render(); }
       else if(a === "on"){ var n = notif(); n.on = b.checked; st.notif = n; save(); render(); if(n.on && nst && !nst.notify) askNotify(); }
