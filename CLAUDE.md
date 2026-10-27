@@ -17,7 +17,7 @@
 
 ### สร้าง APK (`.github/workflows/apk.yml` ชื่อ `build-apk`)
 - กดรันเอง: Actions → build-apk → Run workflow → โหลด artifact `meowrin-apk` · `mode`: **`bundled` (ค่าเริ่ม)** / `live` (โหลดจาก Pages ตลอด อ่านไฟล์ในมือถือไม่ได้ ติด CORS — ไม่ใช้)
-- ทำอะไร: Capacitor 7 (`com.han.meowrin`, "Meowrin App") + ปลั๊กอิน filesystem/share/app/keep-awake/media@8.0.1 + `MediaScan` ของเราเอง (Java ฝังใน apk.yml: `scan hasAccess requestAccess move`) + `Streak` ไฟวันต่อเนื่องฝั่งเนทีฟ (ซอร์สแยกใน `tools/android/` apk.yml ก๊อปเข้าโปรเจกต์: วิดเจ็ต `StreakWidget`, รอบปลุก `StreakAlarm` เช็กยอดวันนี้จาก YouTube ทุก 30 นาที 10:00–23:30 + แจ้งเตือน, `StreakPlugin` `sync status requestNotify openSettings pinWidget test consumeOpen`) + สิทธิ์สตอเรจ/MANAGE_EXTERNAL_STORAGE/POST_NOTIFICATIONS/RECEIVE_BOOT_COMPLETED + ไอคอนจาก `icon-512.png`
+- ทำอะไร: Capacitor 7 (`com.han.meowrin`, "Meowrin App") + ปลั๊กอิน filesystem/share/app/keep-awake/media@8.0.1 + `MediaScan` ของเราเอง (Java ฝังใน apk.yml: `scan hasAccess requestAccess move`) + `Streak` ไฟวันต่อเนื่องฝั่งเนทีฟ (ซอร์สแยกใน `tools/android/` apk.yml ก๊อปเข้าโปรเจกต์: วิดเจ็ต `StreakWidget`, รอบปลุก `StreakAlarm` เฉพาะ 00:01 + เวลาแจ้งเตือนที่ตั้ง **ไม่ต่อเน็ตเบื้องหลัง** (Han ไม่ต้องการเสียแบต: ยอดวันนี้อัปเดตตอนเปิด/กลับเข้าแอพ ผ่าน `sync`) + แจ้งเตือน, `StreakPlugin` `sync status requestNotify openSettings pinWidget test consumeOpen`) + สิทธิ์สตอเรจ/MANAGE_EXTERNAL_STORAGE/POST_NOTIFICATIONS/RECEIVE_BOOT_COMPLETED + ไอคอนจาก `icon-512.png`
 - **กุญแจเซ็น = `tools/debug.keystore` ชุดเดียวทุกครั้ง ห้ามเปลี่ยน/ลบ** (ติดตั้งทับได้ ข้อมูลไม่หาย · ท้ายงานตรวจลายเซ็น ไม่ตรง = งานล้ม) · APK จาก repo เว็บแอปเดิมคนละกุญแจ ต้องลบก่อนติดตั้งครั้งแรก
 
 ## ข้อจำกัด Android/WebView ที่ยืนยันแล้วบนมือถือจริง

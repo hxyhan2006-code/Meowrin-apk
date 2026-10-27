@@ -181,7 +181,7 @@
   /* ส่งค่าให้วิดเจ็ต/แจ้งเตือนฝั่งเนทีฟ (เฉพาะตอนค่าเปลี่ยน) · base = สตรีคถึงเมื่อวาน (เนทีฟบวก 1 เองเมื่อวันนี้ครบ) */
   function pushNative(s, today){
     var P = plugin(); if(!P || !P.sync) return;
-    var n = notif(), arg = { key: st.list ? MWSync.getKey() : "", list: st.list || "", goal: GOAL, base: s ? (s.done ? s.streak - 1 : s.streak) : 0,
+    var n = notif(), arg = { list: st.list || "", goal: GOAL, base: s ? (s.done ? s.streak - 1 : s.streak) : 0,
       freeze: s ? s.freeze : 0, today: s ? s.today : 0, day: today, notify: !!n.on, times: n.on ? n.times : [], msgs: msgs(), poses: MWMascot.POOLS, scenes: MWMascot.SCENES, broke: s && s.broke ? today : "", froze: s && !s.done && s.lastFrozen === addDay(today, -1) ? today : "" };
     var k = JSON.stringify(arg); if(k === sent) return; sent = k;
     P.sync(arg).then(function(r){ nst = r; if(page && !page.hidden) render(); }).catch(function(){ sent = ""; });
@@ -201,7 +201,7 @@
       if(needBat) body += '<div class="stk-warn">' + MWIcon("warn") + '<span>แอพถูกจำกัดแบต แจ้งเตือน/วิดเจ็ตอาจไม่อัปเดต · ตั้งค่าแอพ → แบตเตอรี่ → ไม่จำกัด/อนุญาตทำงานเบื้องหลัง</span><button class="btn small ghost" data-stk="settings">เปิด</button></div>';
       body += '<div class="row stk-act">' + (nst && nst.widgets ? '<span class="stk-ok">' + MWIcon("check") + 'มีวิดเจ็ตบนหน้าจอแล้ว</span>' : '<button class="btn ghost" data-stk="pin">เพิ่มวิดเจ็ตบนหน้าจอ</button>') + '</div>'
         + '<div class="row stk-act"><button class="btn ghost" data-stk="test">ทดสอบเสียงแจ้งเตือน</button><button class="btn ghost" data-stk="wtest">ทดสอบวิดเจ็ต</button></div>'
-        + '<p class="hint tip">มือถือเช็กยอดวันนี้เองทุก 30 นาที (10:00–23:30) แม้ไม่ได้เปิดแอพ · ทำครบแล้วแจ้งเตือนที่เหลือของวันนั้นเงียบเอง · ข้อความสุ่มไม่ซ้ำ</p>';
+        + '<p class="hint tip">แอพไม่เช็กเบื้องหลัง · ลงคลิปเสร็จแตะวิดเจ็ตเข้าแอพแล้วออก ยอดและวิดเจ็ตจะอัปเดต · แจ้งเตือนเด้งตามเวลาที่เลือก ถ้ายอดล่าสุดที่แอพรู้ยังไม่ครบ (ไม่ได้เปิดแอพหลังลง = อาจเตือนทั้งที่ลงแล้ว) · ข้อความสุ่มไม่ซ้ำ</p>';
     }
     return '<details class="fold top stk-fold" id="stkNotif"' + (nOpen ? " open" : "") + '><summary><span>วิดเจ็ต + แจ้งเตือน</span><em class="state ' + kind + '">' + tag + '</em></summary><div class="fbody">' + body + '</div></details>';
   }

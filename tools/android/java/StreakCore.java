@@ -65,7 +65,7 @@ final class StreakCore {
     static void rollover(SharedPreferences p) {
         String today = dayKey(System.currentTimeMillis()), day = p.getString("day", "");
         if (day.isEmpty() || day.compareTo(today) >= 0) return;
-        int base = p.getInt("base", 0), freeze = p.getInt("freeze", 0), n = p.getInt("today", 0), goal = p.getInt("goal", 2);
+        int base = p.getInt("base", 0), freeze = p.getInt("freeze", 0), n = p.getInt("today", 0), goal = p.getInt("goal", 1);
         boolean broke = false, froze = false; /* broke = ช่วงที่ข้ามมามีวันที่ไฟดับตอนมีไฟอยู่ไหม (ไม่ใช่แค่วันสุดท้าย) · froze = เมื่อวาน (วันสุดท้ายที่ข้าม) ใช้กันไฟดับ */
         for (int guard = 0; day.compareTo(today) < 0 && guard < 400; guard++) {
             froze = false;
@@ -76,49 +76,6 @@ final class StreakCore {
             day = nextDay(day);
         }
         p.edit().putInt("base", base).putInt("freeze", freeze).putInt("today", 0).putString("day", today).putString("broke", broke ? today : "").putString("froze", froze ? today : "").apply();
-    }
-
-    /* หน้าแรกของ playlist (50 คลิปล่าสุด = พอสำหรับวันละไม่กี่คลิป) · พลาด = null ไม่แตะยอดเดิม
-       timeout สั้น: goAsync ให้เวลาราว 10 วินาที */
-    static JSONArray fetchItems(SharedPreferences p) {
-        String key = p.getString("key", ""), list = p.getString("list", "");
-        if (key.isEmpty() || list.isEmpty()) return null;
-        HttpURLConnection con = null;
-        try {
-            URL u = new URL("https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=50&playlistId="
-                    + URLEncoder.encode(list, "UTF-8") + "&key=" + URLEncoder.encode(key, "UTF-8"));
-            con = (HttpURLConnection) u.openConnection();
-            con.setConnectTimeout(4000);
-            con.setReadTimeout(4000);
-            con.setRequestProperty("Referer", "https://localhost/"); /* key ที่จำกัดโดเมนไว้ให้ตัวแอพ (WebView ส่ง localhost) ใช้ได้เหมือนกัน */
-            if (con.getResponseCode() != 200) return null;
-            InputStream in = con.getInputStream();
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] buf = new byte[8192];
-            for (int r; (r = in.read(buf)) > 0; ) out.write(buf, 0, r);
-            return new JSONObject(out.toString("UTF-8")).optJSONArray("items");
-        } catch (Exception e) {
-            return null;
-        } finally {
-            if (con != null) con.disconnect();
-        }
-    }
-
-    /* จำนวนคลิปที่ลงในวัน day (เวลาในมือถือ) */
-    static int countDay(JSONArray items, String day) {
-        SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
-        iso.setTimeZone(TimeZone.getTimeZone("UTC"));
-        int n = 0;
-        for (int i = 0; i < items.length(); i++) {
-            try {
-                JSONObject cd = items.getJSONObject(i).optJSONObject("contentDetails");
-                String at = cd == null ? "" : cd.optString("videoPublishedAt", "");
-                if (at.length() < 19) continue;
-                Date d = iso.parse(at.substring(0, 19));
-                if (d != null && day.equals(dayKey(d.getTime()))) n++;
-            } catch (Exception ignored) { }
-        }
-        return n;
     }
 
     static PendingIntent openApp(Context c, int req) {
@@ -236,7 +193,7 @@ final class StreakCore {
         SharedPreferences p = prefs(c);
         rollover(p);
         boolean set = !p.getString("list", "").isEmpty();
-        int goal = p.getInt("goal", 2), n = p.getInt("today", 0);
+        int goal = p.getInt("goal", 1), n = p.getInt("today", 0);
         boolean lit = set && n >= goal;
         int streak = p.getInt("base", 0) + (lit ? 1 : 0);
         String key = set ? poseKey(p, lit, n, goal, streak) : "z";
@@ -250,7 +207,7 @@ final class StreakCore {
     static int previewWidget(Context ctx, String state) {
         final Context c = ctx.getApplicationContext();
         SharedPreferences p = prefs(c);
-        int goal = p.getInt("goal", 2), base = p.getInt("base", 0) > 0 ? p.getInt("base", 0) : 12, frz = p.getInt("freeze", 1);
+        int goal = p.getInt("goal", 1), base = p.getInt("base", 0) > 0 ? p.getInt("base", 0) : 12, frz = p.getInt("freeze", 1);
         boolean lit = "d".equals(state) || "b".equals(state) || "m".equals(state);
         int n = "h".equals(state) ? 1 : "d".equals(state) || "m".equals(state) ? goal : "b".equals(state) ? goal + 1 : 0;
         int streak = "r".equals(state) ? 0 : lit ? base + 1 : base;
@@ -281,7 +238,7 @@ final class StreakCore {
     }
 
     static String fill(String s, SharedPreferences p, int streakShown) {
-        return fill(s, p.getInt("today", 0), p.getInt("goal", 2), streakShown, p.getInt("freeze", 0));
+        return fill(s, p.getInt("today", 0), p.getInt("goal", 1), streakShown, p.getInt("freeze", 0));
     }
 
     static String fill(String s, int n, int goal, int streakShown, int frz) {
@@ -377,7 +334,7 @@ final class StreakCore {
     /* เตือนตามเวลา: ชุดของเวลานั้น + ชุดใช้ได้ทุกเวลา */
     static void notifyNow(Context c, String slot) {
         SharedPreferences p = prefs(c);
-        int n = p.getInt("today", 0), goal = p.getInt("goal", 2);
+        int n = p.getInt("today", 0), goal = p.getInt("goal", 1);
         notifyPool(c, new String[] { slot, "any" }, p.getInt("base", 0), "วันนี้ {n}/{goal} · ไฟ {streak} วัน", poseKey(p, false, n, goal, p.getInt("base", 0)), sndForSlot(slot));
     }
 
@@ -389,12 +346,10 @@ final class StreakCore {
         try { String[] t = hhmm.split(":"); return Integer.parseInt(t[0]) * 60 + Integer.parseInt(t[1]); } catch (Exception e) { return -1; }
     }
 
-    /* รอบปลุก: 00:01 (ข้ามวันให้วิดเจ็ต) + ทุก 30 นาทีช่วง 10:00–23:30 + 23:55 + เวลาแจ้งเตือนที่ตั้งไว้ */
+    /* รอบปลุก: 00:01 (ข้ามวันให้วิดเจ็ต) + เวลาแจ้งเตือนที่ตั้งไว้เท่านั้น · ไม่ต่อเน็ต ไม่เช็กเป็นรอบ (ยอดวันนี้อัปเดตตอนเปิด/กลับเข้าแอพ) */
     static long nextAt(SharedPreferences p, long now) {
         ArrayList<Integer> slots = new ArrayList<>();
         slots.add(1);
-        for (int m = 10 * 60; m <= 23 * 60 + 30; m += 30) slots.add(m);
-        slots.add(23 * 60 + 55);
         for (String t : p.getString("times", "").split(",")) { int m = minutes(t); if (m >= 0) slots.add(m); }
         long best = Long.MAX_VALUE;
         for (int dayOff = 0; dayOff <= 1; dayOff++) {
@@ -433,28 +388,16 @@ final class StreakCore {
         synchronized (LOCK) { tickLocked(c, p); }
     }
 
+    /* ไม่ต่อเน็ต: ใช้ยอดวันนี้ที่แอพส่งมาล่าสุด (sync) · ข้ามวัน = เลื่อน base · ถึงเวลาที่ตั้งและยอดยังไม่ครบ = แจ้งเตือน */
     static void tickLocked(Context c, SharedPreferences p) {
         try {
             if (p.getString("list", "").isEmpty()) return;
             long now = System.currentTimeMillis();
-            String today = dayKey(now), day = p.getString("day", "");
-            JSONArray items = fetchItems(p);
-            /* ข้ามวัน: นับยอดของวันที่ค้างไว้ก่อน (คลิปที่ลงหลังรอบเช็กสุดท้ายก่อนเที่ยงคืนจะได้ไม่หาย) แล้วค่อยเลื่อนวัน */
-            if (items != null && !day.isEmpty() && day.compareTo(today) < 0) p.edit().putInt("today", countDay(items, day)).apply();
+            String today = dayKey(now);
             rollover(p);
-            int prevToday = p.getInt("today", 0);
-            boolean prevOk = p.getLong("checkedAt", 0) > 0 && today.equals(dayKey(p.getLong("checkedAt", 0))); /* รอบก่อนเช็กวันนี้ไว้แล้ว */
-            if (items != null) p.edit().putInt("today", countDay(items, today)).putLong("checkedAt", now).apply();
             renderWidgets(c);
-            boolean fresh = now - p.getLong("checkedAt", 0) < 40 * 60_000L; /* เช็กไม่ได้ (เน็ต/โควต้า) และยอดเก่า = ไม่เตือนมั่ว */
-            int goal = p.getInt("goal", 2);
-            /* ไฟเพิ่งติด (รอบก่อนยังไม่ครบ รอบนี้ครบ) = ชมหนึ่งครั้ง (หลักไมล์ใช้ชุด ms) · ติดตั้งใหม่/ครบอยู่แล้ว/เปิดแอพเห็นเองแล้ว = ไม่ชมย้อนหลัง */
-            if (items != null && prevOk && prevToday < goal && p.getInt("today", 0) >= goal && p.getBoolean("notify", false) && !today.equals(p.getString("praised", "")) && canNotify(c)) {
-                int shown = p.getInt("base", 0) + 1;
-                p.edit().putString("praised", today).apply();
-                notifyPool(c, new String[] { isMilestone(shown) ? "ms" : "praise" }, shown, "ไฟติดแล้ว · " + shown + " วัน", isMilestone(shown) ? "m" : "d", isMilestone(shown) ? "ms" : "lit");
-            }
-            if (fresh && p.getBoolean("notify", false) && p.getInt("today", 0) < goal && canNotify(c)) {
+            int goal = p.getInt("goal", 1);
+            if (p.getBoolean("notify", false) && p.getInt("today", 0) < goal && canNotify(c)) {
                 Calendar cal = Calendar.getInstance();
                 cal.setTimeInMillis(now);
                 int nowM = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE);

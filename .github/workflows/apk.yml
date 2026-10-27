@@ -167,7 +167,7 @@ jobs:
           }
           ''')
           PY4
-          # ไฟวันต่อเนื่องฝั่งเนทีฟ (วิดเจ็ต + แจ้งเตือน + เช็กยอดวันนี้ตอนแอพปิด): ซอร์สอยู่ใน tools/android/ (ไม่อยู่ใน OTA)
+          # ไฟวันต่อเนื่องฝั่งเนทีฟ (วิดเจ็ต + แจ้งเตือน + ปลุกเฉพาะเวลาแจ้งเตือน ไม่เช็กเน็ตเบื้องหลัง): ซอร์สอยู่ใน tools/android/ (ไม่อยู่ใน OTA)
           cp ../tools/android/java/*.java android/app/src/main/java/com/han/meowrin/
           for d in layout xml drawable; do mkdir -p android/app/src/main/res/$d; cp ../tools/android/res/$d/*.xml android/app/src/main/res/$d/; done
           # มาสคอตแมว (วิดเจ็ต/แจ้งเตือน): mascot/<ท่า>.png → res/drawable-nodpi/mw_<ท่า>.png (ท่าใหม่ = ต้องสร้าง APK ใหม่)

@@ -55,9 +55,9 @@ public class StreakPlugin extends Plugin {
     public void sync(PluginCall call) {
         Context c = getContext();
         SharedPreferences.Editor e = StreakCore.prefs(c).edit();
-        e.putString("key", call.getString("key", ""));
+        e.putLong("checkedAt", System.currentTimeMillis());
         e.putString("list", call.getString("list", ""));
-        e.putInt("goal", call.getInt("goal", 2));
+        e.putInt("goal", call.getInt("goal", 1));
         e.putInt("base", call.getInt("base", 0));
         e.putInt("freeze", call.getInt("freeze", 0));
         e.putInt("today", call.getInt("today", 0));
