@@ -12,7 +12,7 @@
    วันตัดตามเวลาในมือถือ (ไทย) · โหลดหลัง app.js (ใช้ MW.toast/MW.esc) */
 (function(){
   "use strict";
-  var KEY = "mw_streak_v1", GOAL = 1, BONUS_PER_FREEZE = 1, MAX_FREEZE = 7, START_FREEZE = 1;
+  var KEY = "mw_streak_v1", GOAL = 1, BONUS_PER_FREEZE = 1, MAX_FREEZE = 3, START_FREEZE = 1;
   var SPRINT_MS = 10 * 60e3, AUTO_MS = 15e3, MAX_PAGES = 20;
   var MILESTONES = [3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000];
   var WTEST = [["z", "ยังไม่ได้ทำ"], ["h", "ทำไปครึ่งทาง"], ["d", "ไฟติดแล้ว"], ["b", "ทำเกินโควตา"], ["e", "ค่ำ ไฟจะดับ"], ["r", "ไฟเพิ่งดับ"], ["f", "เมื่อวานใช้กันไฟดับ"], ["m", "ไฟครบหลักไมล์"]], wtI = 0; /* ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ */
@@ -281,8 +281,8 @@
       + '<div class="stk-box"><h3>คลิปตุน (กันไฟดับ) ' + s.freeze + '/' + MAX_FREEZE + '</h3><div class="stk-frz">' + snow + '</div>'
       + '<p class="hint tip">ลงวันละ ' + GOAL + ' คลิปก็พอ · วันไหนทำเกินจะถูกตุนไว้ทีละคลิป (เก็บได้ ' + MAX_FREEZE + ') · วันไหนไม่ได้ลง แอพหยิบที่ตุนมาใช้ให้เอง ไฟไม่ดับ'
       + (s.freeze < MAX_FREEZE ? ' · อีก ' + (BONUS_PER_FREEZE - s.bonus) + ' คลิปได้อันต่อไป' : ' · เต็มแล้ว') + '</p>'
-      + '<p class="hint tip">ทำคลิปไว้แต่ยังไม่ได้ลง (เช่นตุนลงล่วงหน้า) กดปุ่มนี้บันทึกเอง · แอพเห็นแค่คลิปที่ขึ้นช่องแล้ว</p>'
-      + '<div class="stk-row"><button class="btn small" data-stk="stock"' + (s.freeze >= MAX_FREEZE ? " disabled" : "") + '>+ ตุน 1 คลิป</button>'
+      + '<p class="hint tip">ทำคลิปไว้แต่ยังไม่ได้ลง (เช่นตุนลงล่วงหน้า) กดปุ่มนี้บันทึกเอง (วันละครั้ง) · แอพเห็นแค่คลิปที่ขึ้นช่องแล้ว</p>'
+      + '<div class="stk-row"><button class="btn small" data-stk="stock"' + (s.freeze >= MAX_FREEZE || (st.adds || {})[dayKey(Date.now())] ? " disabled" : "") + '>+ ตุน 1 คลิป</button>'
       + (Object.keys(st.adds || {}).length ? '<button class="btn ghost small" data-stk="unstock">ยกเลิกที่เพิ่มล่าสุด</button>' : "") + '</div></div>'
       + notifBox() + myBox() + promptBox()
       + '<div class="stk-foot">' + esc(st.handle) + ' · ' + (busy ? "กำลังเช็ก..." : st.syncedAt ? "เช็กล่าสุด " + ago(st.syncedAt) : "ยังไม่ได้เช็ก") + '<button type="button" class="stk-link" data-stk="change">เปลี่ยนช่อง</button></div>';
@@ -321,7 +321,7 @@
       else if(a === "mascot"){ mTap++; render(); }
       else if(a === "setup") setup(page.querySelector('[data-stk="handle"]').value);
       else if(a === "refresh") check(true);
-      else if(a === "stock"){ var sa = st.adds || (st.adds = {}), sk = dayKey(Date.now()); sa[sk] = (sa[sk] || 0) + 1; save(); render(); }
+      else if(a === "stock"){ var sa = st.adds || (st.adds = {}), sk = dayKey(Date.now()); if(sa[sk]) return; sa[sk] = 1; save(); render(); } /* วันละ 1 ครั้ง กันกดรัวให้เต็ม */
       else if(a === "unstock"){ var ua = st.adds || {}, ud = Object.keys(ua).sort().filter(function(x){ return ua[x] > 0; }).pop(); if(ud){ ua[ud]--; if(!ua[ud]) delete ua[ud]; save(); render(); } }
       else if(a === "sprint"){ st.sprint = Date.now(); save(); render(); }
       else if(a === "stop"){ st.sprint = 0; save(); render(); }
