@@ -1,6 +1,6 @@
 /* streak.js (window.MWStreak) — ไฟวันต่อเนื่องแบบ Duolingo: ปุ่มไฟ+ตัวเลขบนหัวแอพ (#stkBtn) แตะแล้วเปิดหน้าเต็มจอ (#stkPage)
    นับจากคลิปที่ลงจริงบนช่องของ Han ผ่าน YouTube Data API (playlist Shorts UUSH… · videoPublishedAt) ไม่มีปุ่มกดนับเอง = โกงไม่ได้
-   กติกา: วันละ GOAL คลิป = ไฟติด · คลิปเกิน GOAL ทุก 2 คลิป = กันไฟดับ 1 อัน (เก็บได้ MAX_FREEZE) · วันที่ไม่ครบใช้กันไฟดับอัตโนมัติ ไม่มีเหลือ = ไฟดับเริ่มนับใหม่
+   กติกา: วันละ GOAL คลิป = ไฟติด · คลิปเกิน GOAL ทุก BONUS_PER_FREEZE คลิป = กันไฟดับ 1 อัน (วันละ 1 คลิปก็ไฟติด วันไหนทำ 2 ได้กันไฟดับ) (เก็บได้ MAX_FREEZE) · วันที่ไม่ครบใช้กันไฟดับอัตโนมัติ ไม่มีเหลือ = ไฟดับเริ่มนับใหม่
    คำนวณสตรีคใหม่ทั้งหมดจากจำนวนคลิปรายวัน (days) ทุกครั้ง ไม่เก็บตัวนับที่คลาดได้ · เก็บใน MWStore key mw_streak_v1
    ข้อความแจ้งเตือน/วิดเจ็ตอยู่ใน streak-msgs.js (MWStreakMsgs) · Han วางชุดของตัวเองได้ (แถบ "ข้อความของฉัน": คำตอบจาก AI นอกแอพ หัวหมวด [11:00] [w_d] …)
    แถบ "Prompt ของฉัน" เก็บ prompt สั่ง AI ไว้ (mw_streak_prompt_v1 ข้อความล้วน บันทึกเองทุกครั้งที่พิมพ์/วาง) มี วาง/คัดลอก/ลบ
@@ -12,7 +12,7 @@
    วันตัดตามเวลาในมือถือ (ไทย) · โหลดหลัง app.js (ใช้ MW.toast/MW.esc) */
 (function(){
   "use strict";
-  var KEY = "mw_streak_v1", GOAL = 2, BONUS_PER_FREEZE = 2, MAX_FREEZE = 2, START_FREEZE = 1;
+  var KEY = "mw_streak_v1", GOAL = 1, BONUS_PER_FREEZE = 1, MAX_FREEZE = 2, START_FREEZE = 1;
   var SPRINT_MS = 10 * 60e3, AUTO_MS = 15e3, MAX_PAGES = 20;
   var MILESTONES = [3, 7, 14, 30, 50, 100, 150, 200, 365, 500, 730, 1000];
   var WTEST = [["z", "ยังไม่ได้ทำ"], ["h", "ทำไปครึ่งทาง"], ["d", "ไฟติดแล้ว"], ["b", "ทำเกินโควตา"], ["e", "ค่ำ ไฟจะดับ"], ["r", "ไฟเพิ่งดับ"], ["f", "เมื่อวานใช้กันไฟดับ"], ["m", "ไฟครบหลักไมล์"]], wtI = 0; /* ปุ่ม ทดสอบวิดเจ็ต วนทีละสถานการณ์ */
@@ -275,7 +275,7 @@
       + '<h2 class="stk-h2">ปฏิทินวันต่อเนื่อง</h2>' + calendar(s, today)
       + milestone(s.streak)
       + '<div class="stk-box"><h3>กันไฟดับ ' + s.freeze + '/' + MAX_FREEZE + '</h3><div class="stk-frz">' + snow + '</div>'
-      + '<p class="hint tip">วันที่ลงไม่ครบ ' + GOAL + ' คลิป แอพใช้กันไฟดับให้เอง ไฟไม่ดับ · ได้เพิ่มจากการลงเกินวันละ ' + GOAL + ' คลิป ทุก ' + BONUS_PER_FREEZE + ' คลิป = 1 อัน'
+      + '<p class="hint tip">วันที่ลงไม่ครบ ' + GOAL + ' คลิป แอพใช้กันไฟดับให้เอง ไฟไม่ดับ · ได้เพิ่มเมื่อลงเกินวันละ ' + GOAL + ' คลิป · ทุก ' + BONUS_PER_FREEZE + ' คลิปที่เกิน = 1 อัน'
       + (s.freeze < MAX_FREEZE ? ' · อีก ' + (BONUS_PER_FREEZE - s.bonus) + ' คลิปได้อันต่อไป' : ' · เต็มแล้ว') + '</p></div>'
       + notifBox() + myBox() + promptBox()
       + '<div class="stk-foot">' + esc(st.handle) + ' · ' + (busy ? "กำลังเช็ก..." : st.syncedAt ? "เช็กล่าสุด " + ago(st.syncedAt) : "ยังไม่ได้เช็ก") + '<button type="button" class="stk-link" data-stk="change">เปลี่ยนช่อง</button></div>';
