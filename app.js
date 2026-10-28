@@ -14,7 +14,7 @@
   var getKey = MWSync.getKey, yt = MWSync.yt; /* เรียก YouTube API อยู่ใน sync.js */
   function persist(){ save(DATA_STORE, data); }
   function msg(el, text, err){ $(el).innerHTML = text ? '<div class="msg'+(err?' err':'')+'">'+esc(text)+'</div>' : ""; }
-  function fmtNumTh(n){ n = Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1)+" ล้าน"; if(n>=1e5) return Math.round(n/1e5)/10+" แสน"; if(n>=1e4) return Math.round(n/1e3)/10+" หมื่น"; if(n>=1e3) return Math.round(n/100)/10+" พัน"; return String(n); }
+  function fmtNumTh(n){ n = Number(n)||0; if(n>=1e6) return (n/1e6).toFixed(1)+" ล้าน"; if(n>=1e5) return Math.round(n/1e4)/10+" แสน"; if(n>=1e4) return Math.round(n/1e3)/10+" หมื่น"; if(n>=1e3) return Math.round(n/100)/10+" พัน"; return String(n); }
   function ago(iso){ var d = Math.floor((Date.now()-new Date(iso).getTime())/864e5); if(d<1) return "วันนี้"; if(d<30) return d+" วันก่อน"; if(d<365) return Math.floor(d/30)+" เดือนก่อน"; return Math.floor(d/365)+" ปีก่อน"; }
 
   function videoId(url){
