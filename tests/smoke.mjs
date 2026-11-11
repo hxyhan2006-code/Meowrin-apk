@@ -407,6 +407,8 @@ try {
   check('ค้นหา: "เรื่อง" ไม่ไปจับกลุ่มคำพ้อง เรือ/พายเรือ (nzk ตัดวรรณยุกต์ เรื่อง=เรือง) · แต่ "เรือ" จริงยังจับได้', !/เรือ/.test(akt.a) && /เรือ/.test(akt.b), JSON.stringify(akt));
   // v9.06 ตัวแยกคำค้น: ชื่อสะกดเพี้ยน/คำประกอบ/คำสั้นกลางคำ
   const tq = await ak.evaluate(() => { const f = (q) => FT.ui.terms(q).map((v) => v[0]).join('+'); return { a: f('อารอง'), b: f('ลูฟี่ ทหารเรือ'), c: f('ลูฟี่ เงิน'), d: f('ลูฟี่ทำหน้าแปลกๆ'), e: f('นามิร้องไห้') }; });
+  const tk = await ak.evaluate(() => { const f = (q) => FT.ui.terms(q).map((v) => v[0]).join('+'); return { a: f('ลูฟี่กำลังคิด'), b: f('ลูฟี่ครุ่นคิด'), c: f('ลูฟี่ คิด'), d: f('คิดกับลอว์') }; });
+  check('ค้นหา: "ลูฟี่กำลังคิด"/"ครุ่นคิด" = luffy+คิด (กริยา) ไม่ใช่ตัวละคร Kid · "ลูฟี่ คิด" ยังเป็น Kid', tk.a === 'luffy+คิด' && tk.b === 'luffy+คิด' && tk.c === 'luffy+kid' && tk.d === 'law+kid', JSON.stringify(tk));
   check('ค้นหา: "อารอง" = อาร์ลอง (ไม่แตกเป็น อา+ร้อง) · "ลูฟี่ ทหารเรือ" ไม่มี พายเรือ · "ลูฟี่ เงิน"/"ทำหน้าแปลกๆ" ได้กลุ่มคำพ้อง · "ร้องไห้" ยังเป็นร้องไห้', tq.a === 'arlong' && tq.b === 'luffy+ทหารเรือ' && tq.c === 'luffy+เงิน' && tq.d === 'luffy+หน้าแปลก' && tq.e === 'nami+ร้องไห้', JSON.stringify(tq));
   const akg = await ak.evaluate(async () => { const before = document.querySelectorAll('#results .card').length, act = FT.ui.askActive(); FT.ui.renderAll(); await new Promise((r) => setTimeout(r, 200)); return { before, act, after: document.querySelectorAll('#results .card').length }; });
   check('ถาม AI: คำตอบที่โชว์อยู่ไม่ถูกค้นหาอัตโนมัติทับ (เช่น ตอนคลิปทำดัชนีเสร็จ/โหลดคลังใหม่)', akg.act === true && akg.before === 1 && akg.after === 1, JSON.stringify(akg));
