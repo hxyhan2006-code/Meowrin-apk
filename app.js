@@ -50,7 +50,7 @@
   function saveClips(){ if(!save(CACHE_STORE, { at: cache.at, clips: clips })) toast("พื้นที่เก็บในเครื่องเต็ม บันทึกคลิปไม่ได้ ลองพักบางช่อง", true); }
   function isChan(c, ch){ return c.chId === ch.id || (!c.chId && c.channel === ch.title); }
 
-  var PAGE = 40; /* แสดงทีละกี่คลิป */
+  var PAGE = 42; /* แสดงทีละกี่คลิป · 42 หารลงตัวทั้ง 2 และ 3 คอลัมน์ แถวสุดท้ายไม่แหว่ง */
   var RANGES = [{ d:30, t:"30 วัน" }, { d:90, t:"90 วัน" }, { d:365, t:"1 ปี" }, { d:0, t:"ทั้งหมด" }];
   var ui = { range:30, only:"", q:"", shown:PAGE }; /* only = "saved" ★ เก็บไว้ทำทีหลัง | "made" ทำแล้ว | "" ปกติ (สองโหมดแรกไม่สนช่วงเวลา) */
   function ageDays(c){ return (Date.now() - new Date(c.published).getTime()) / 864e5; }
