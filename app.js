@@ -50,13 +50,13 @@
   function saveClips(){ if(!save(CACHE_STORE, { at: cache.at, clips: clips })) toast("พื้นที่เก็บในเครื่องเต็ม บันทึกคลิปไม่ได้ ลองพักบางช่อง", true); }
   function isChan(c, ch){ return c.chId === ch.id || (!c.chId && c.channel === ch.title); }
 
-  var PAGE = 42; /* แสดงทีละกี่คลิป · 42 หารลงตัวทั้ง 2 และ 3 คอลัมน์ แถวสุดท้ายไม่แหว่ง */
+  function pageSize(){ return data.cols === 3 ? 60 : 40; } /* แสดงทีละกี่คลิป · 3 แถบเห็นเยอะกว่า 2 แถบ ทั้งคู่หารลงตัว */
   var RANGES = [{ d:30, t:"30 วัน" }, { d:90, t:"90 วัน" }, { d:365, t:"1 ปี" }, { d:0, t:"ทั้งหมด" }];
-  var ui = { range:30, only:"", q:"", shown:PAGE }; /* only = "saved" ★ เก็บไว้ทำทีหลัง | "made" ทำแล้ว | "" ปกติ (สองโหมดแรกไม่สนช่วงเวลา) */
+  var ui = { range:30, only:"", q:"", shown:pageSize() }; /* only = "saved" ★ เก็บไว้ทำทีหลัง | "made" ทำแล้ว | "" ปกติ (สองโหมดแรกไม่สนช่วงเวลา) */
   function ageDays(c){ return (Date.now() - new Date(c.published).getTime()) / 864e5; }
   function vpd(c){ return c.views / Math.max(ageDays(c), 1); } /* วิวต่อวัน (คลิปอายุไม่ถึงวันนับเป็น 1 วัน) */
   function inRange(c, d){ return !d || ageDays(c) <= d; }
-  function resetShown(){ ui.shown = PAGE; }
+  function resetShown(){ ui.shown = pageSize(); }
   /* ---------- แนะนำวันนี้ (v9.07): สุ่มแบบมีน้ำหนักจากคลิปที่ยังไม่ได้ทำ · seed = วันที่ + จำนวนครั้งที่กดสุ่มใหม่ → ทั้งวันนิ่ง ข้ามเที่ยงคืนเปลี่ยน ---------- */
   var DAILY_KEY = "mw_daily_v1", DAILY_CAP = 3; /* ช่องเดียวไม่เกิน 3 คลิปต่อ 12 อันดับ */
   function dayKey(){ var d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
@@ -99,7 +99,7 @@
   function toggleOnly(k){ ui.only = ui.only === k ? "" : k; resetShown(); render(); }
   $("savedBtn").addEventListener("click", function(){ toggleOnly("saved"); });
   $("madeBtn").addEventListener("click", function(){ toggleOnly("made"); });
-  $("viewBtn").addEventListener("click", function(){ data.cols = data.cols === 3 ? 2 : 3; persist(); render(); });
+  $("viewBtn").addEventListener("click", function(){ data.cols = data.cols === 3 ? 2 : 3; persist(); resetShown(); render(); });
 
   function metricChip(c, sort){
     if(sort === "vpd" || sort === "daily") return '<span class="chip hot">'+MWIcon("flame")+fmtNumTh(Math.round(vpd(c)))+'/วัน</span>';
@@ -177,7 +177,7 @@
   }
   $("list").addEventListener("click", function(e){
     var b = e.target.closest("button"); if(!b) return;
-    if(b.id === "moreBtn"){ ui.shown += PAGE; render(); return; }
+    if(b.id === "moreBtn"){ ui.shown += pageSize(); render(); return; }
     if(b.dataset.save){ if(data.saved[b.dataset.save]) delete data.saved[b.dataset.save]; else data.saved[b.dataset.save] = true; persist(); render(); }
     if(b.dataset.made){ data.made[b.dataset.made] = !data.made[b.dataset.made]; if(!data.made[b.dataset.made]) delete data.made[b.dataset.made]; persist(); render(); }
     if(b.dataset.pick){ var c = clips.find(function(x){ return x.id === b.dataset.pick; }); if(c) setPick(c); }
